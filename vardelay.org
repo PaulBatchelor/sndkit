@@ -1,0 +1,376 @@
+#+TITLE: Vardelay
+* Overview
+Vardelay is an implementation of a variable-length delay
+line, using third order [[https://ccrma.stanford.edu/~jos/pasp/Lagrange_Interpolation.html][Langrange Interpolation]].
+This delay time of this delay line can be adjusted over
+time. Because it uses interpolation, any adjustments can
+cause pitch shifting to occur. This itself is often a
+desirable artifact, and is the basis for audio effects
+like flanging and chorusing.
+
+In addition to delay time, a feedback parameter will also be
+supplied, as it is so often used with delay lines.
+* Tangled Files
+=vardelay.c= and =vardelay.h= are the tangled files.
+
+#+NAME: vardelay.c
+#+BEGIN_SRC c :tangle vardelay.c
+#include <math.h>
+#include <stdlib.h>
+#define SK_VARDELAY_PRIV
+#include "vardelay.h"
+<<funcs>>
+#+END_SRC
+
+If =SK_VARDELAY_PRIV= is defined, private structs are made
+public.
+
+#+NAME: vardelay.h
+#+BEGIN_SRC c :tangle vardelay.h
+#ifndef SK_VARDELAY_H
+#define SK_VARDELAY_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+#ifdef SK_VARDELAY_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+* Initialization
+Initialized with =sk_vardelay_init=. must supply your own
+buffer, with buffer size. This way, no internal memory
+allocation is required.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vardelay_init(sk_vardelay *vd, int sr,
+                      SKFLT *buf, unsigned long sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_vardelay_init(sk_vardelay *vd, int sr,
+                      SKFLT *buf, unsigned long sz)
+{
+    <<init>>
+}
+#+END_SRC
+
+Anything buffer size less than 4 samples is not enough
+to do third-order interpolation, so it returns an error.
+* Struct
+Called =sk_vardelay=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_vardelay sk_vardelay;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_vardelay {
+    <<sk_vardelay>>
+};
+#+END_SRC
+* Constants and Variables
+** Sample rate
+a copy of the sampling rate is stored in the struct.
+It is used to convert delay time seconds to samples.
+
+#+NAME: sk_vardelay
+#+BEGIN_SRC c
+int sr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+vd->sr = sr;
+#+END_SRC
+** Buffer, Buffer Size
+The delay buffer is the chunk of memory where samples will
+be read/written. It is assumed to be neatly pre-allocated
+and zeroed out externally. The size is also assumed to be
+known ahead of time and correct.
+
+If the buffer size is less than 4, the delay line is
+disabled, as there aren't enough samples to do the
+interpolation.
+
+#+NAME: sk_vardelay
+#+BEGIN_SRC c
+SKFLT *buf;
+unsigned long sz;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+if (sz < 4) {
+    vd->buf = NULL;
+    vd->buf = 0;
+} else {
+    vd->buf = buf;
+    vd->sz = sz;
+}
+#+END_SRC
+** Previous output
+A variable is used to store the output of the previous delay
+in what is known as a single-sample delay or a unit delay.
+This delay is used to introduce feedback into the system.
+In discrete digital systems like this one, unit delays are
+inevitable for feedback, which is why they are referred to
+as *implicit* delays.
+
+#+NAME: sk_vardelay
+#+BEGIN_SRC c
+SKFLT prev;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+vd->prev = 0;
+#+END_SRC
+** Write Position
+The write position is used to store the current index
+position in the buffer being written to. The write position
+starts at zero, moves forward until it reaches the end of
+the buffer, and then goes back to the beginning again. The
+delayed samples start the write position, and move backwards
+in time. If that position is a negative, it wraps around.
+
+Notably, the write position is a signed =long= to compensate
+for negative values. This is needed for the delay to read
+stuff back in time.
+
+#+NAME: sk_vardelay
+#+BEGIN_SRC c
+long writepos;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+vd->writepos = 0;
+#+END_SRC
+* Parameters
+** Delay Time
+Set with =sk_vardelay_delay=, In units of seconds.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vardelay_delay(sk_vardelay *vd, SKFLT delay);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_vardelay_delay(sk_vardelay *vd, SKFLT delay)
+{
+    vd->delay = delay;
+}
+#+END_SRC
+
+#+NAME: sk_vardelay
+#+BEGIN_SRC c
+SKFLT delay;
+#+END_SRC
+
+The initial delay time is set to be half the delay time, in
+units of seconds.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_vardelay_delay(vd, ((SKFLT)sz / sr) * 0.5);
+#+END_SRC
+** Feedback
+Set with =sk_vardelay_feedback=. Should be a value between
+0 and 1.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vardelay_feedback(sk_vardelay *vd, SKFLT feedback);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_vardelay_feedback(sk_vardelay *vd, SKFLT feedback)
+{
+    vd->feedback = feedback;
+}
+#+END_SRC
+
+#+NAME: sk_vardelay
+#+BEGIN_SRC c
+SKFLT feedback;
+#+END_SRC
+
+No feedback by default.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_vardelay_feedback(vd, 0);
+#+END_SRC
+* Computation
+Done with =sk_vardelay_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_vardelay_tick(sk_vardelay *vd, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_vardelay_tick(sk_vardelay *vd, SKFLT in)
+{
+    SKFLT out;
+    SKFLT dels;
+    SKFLT f;
+    long i;
+    SKFLT s[4];
+    unsigned long n[4];
+    SKFLT a, b, c, d;
+
+    out = 0;
+    <<return_if_empty>>
+    <<write_to_buffer>>
+    <<calculate_read_position>>
+    <<wrap_and_flip>>
+    <<read_samples>>
+    <<calculate_interpolation_coefficients>>
+    <<interpolate>>
+    <<update_position>>
+    <<update_feedback>>
+
+    return out;
+}
+#+END_SRC
+
+If buffer is NULL or size is 0, return 0.
+
+#+NAME: return_if_empty
+#+BEGIN_SRC c
+if (vd->buf == NULL || vd->sz == 0) return 0;
+#+END_SRC
+
+Write to buffer with feedback.
+
+#+NAME: write_to_buffer
+#+BEGIN_SRC c
+vd->buf[vd->writepos] = in + vd->prev * vd->feedback;
+#+END_SRC
+
+Calculate the read position. This is two parts: a fractional
+component, and an integer component.
+
+Get floating point + integer components of delay time.
+The delay time position is set to be the write position
+=dels= samples in the past, where =dels= is the delay time
+in samples.
+
+#+NAME: calculate_read_position
+#+BEGIN_SRC c
+dels = vd->delay * vd->sr;
+i = floor(dels);
+f = i - dels;
+i = vd->writepos - i;
+#+END_SRC
+
+Because we're looking backwards, the fractional component is
+backwards too. A fractional value here is set to be
+negative (reaching back in time).
+
+If there is a fractional component that is negative, or the
+integer component is negative, these must be corrected.
+
+The fractional value is flipped to be positive by adding 1
+to itself. The integer position is set back in time one
+sample. This sets the interpolation up so that instead of
+taking a sample and interpolating backwards, you start with
+the previous sample and move forwards. The integer position
+is then set to be in bounds.
+
+By default, the position is wrapped around using addition
+until the sample is in bounds.
+
+#+NAME: wrap_and_flip
+#+BEGIN_SRC c
+if ((f < 0.0) || (i < 0)) {
+    /* flip fractional component */
+    f = f + 1.0;
+    /* go backwards one sample */
+    i = i - 1;
+    while (i < 0) i += vd->sz;
+} else while(i >= vd->sz) i -= vd->sz;
+#+END_SRC
+
+Read samples. This includes the current sample, the previous
+sample, and two samples in the future.
+
+#+NAME: read_samples
+#+BEGIN_SRC c
+/* x(n) */
+n[1] = i;
+
+/* x(n + 1) */
+if (i == (vd->sz - 1)) n[2] = 0;
+else n[2] = n[1] + 1;
+
+/* x(n - 1) */
+if (i == 0) n[0] = vd->sz - 1;
+else n[0] = i - 1;
+
+if (n[2] == vd->sz - 1) n[3] = 0;
+else n[3] = n[2] + 1;
+
+{
+    int j;
+    for (j = 0; j < 4; j++) s[j] = vd->buf[n[j]];
+}
+#+END_SRC
+
+Calculate interpolation coefficients. These four
+coefficients correspond with the four samples read.
+
+#+NAME: calculate_interpolation_coefficients
+#+BEGIN_SRC c
+{
+    SKFLT tmp[2];
+
+    d = ((f * f) - 1) * 0.1666666667;
+    tmp[0] = (f + 1.0) * 0.5;
+    tmp[1] = 3.0 * d;
+    a = tmp[0] - 1.0 - d;
+    c = tmp[0] - tmp[1];
+    b = tmp[1] - f;
+}
+#+END_SRC
+
+Interpolate. This follows the following equation:
+
+$$
+y(n) = (a x(n - 1) + b x(n) + c x(n + 1) + d x(n + 2)) \cdot f + x(n)
+$$
+
+#+NAME: interpolate
+#+BEGIN_SRC c
+out = (a*s[0] + b*s[1] + c*s[2] + d*s[3]) * f + s[1];
+#+END_SRC
+
+Update position. Increment the write position, and wrap
+back to zero if it reaches the end of the delay buffer.
+
+#+NAME: update_position
+#+BEGIN_SRC c
+vd->writepos++;
+if (vd->writepos == vd->sz) vd->writepos = 0;
+#+END_SRC
+
+Update feedback. The current output is set to be the =prev=
+value in the delay line.
+
+#+NAME: update_feedback
+#+BEGIN_SRC c
+vd->prev = out;
+#+END_SRC

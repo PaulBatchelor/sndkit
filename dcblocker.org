@@ -1,0 +1,118 @@
+#+TITLE: DC Blocker
+* Introduction
+This document outlines an implementation of a DC Blocker, a
+typical utility used to block out what is known as DC offset.
+DC Blockers are occasionally used to clean up recorded
+audio, but they are more often seen handling digital
+algorithms that tend to naturally introduce a lot of DC
+into their signal. This is common in the physical modelling
+family of DSP algorithms (Karplus-Strongs, waveguides,
+FDN reverberators, etc).
+
+Without knowing how a DC blocker works, it would seem to have
+magical characteristics. A DC blocker has the ability to
+"drag down" a waveform of audio with DC offset so that it is
+centered. But how does it know how much to drag?
+
+In truth, a DC blocker is typically nothing more than
+a recursive highpass filter whose cutoff set to be a
+sub-audio frequency. This has the effect of removing any
+slow moving waveforms that often are the culrpits of
+unwanted DC biasing.
+* Difference Equation
+The difference equation for a
+[[https://ccrma.stanford.edu/~jos/filters/DC_Blocker.html][DC blocker]] looks like this:
+
+$$
+y(n) = x(n) - x(n - 1) + Ry(n - 1)
+$$
+
+Where $R$ is usually a constant between 0.9 and 1.
+
+This difference equation outlines the whole darn algorithm!
+What will be needed is a function that takes in an input,
+and stores the previous input, output, as well as the
+constant $R$. And that's it.
+* Tangled Files
+This program outputs two files: =dcblocker.c= and
+=dcblocker.h=. Using the macro =SK_DCBLOCKER_PRIV= will
+expose the main struct. Otherwise, it is opaque.
+
+#+NAME: dcblocker.c
+#+BEGIN_SRC c :tangle dcblocker.c
+#define SK_DCBLOCKER_PRIV
+#include "dcblocker.h"
+<<funcs>>
+#+END_SRC
+
+#+NAME: dcblocker.h
+#+BEGIN_SRC c :tangle dcblocker.h
+#ifndef SK_DCBLOCKER_H
+#define SK_DCBLOCKER_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<typedefs>>
+#ifdef SK_DCBLOCKER_PRIV
+<<structs>>
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+* Struct Definition
+The main struct for this DC blocker will be called
+=sk_dcblocker=. It only needs three parameters: an
+=x= value storing the previous input value, a =y= value
+storing the previous output value, and an =R= value
+storing the DC filter constant.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_dcblocker sk_dcblocker;
+#+END_SRC
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_dcblocker {
+    SKFLT x, y, R;
+};
+#+END_SRC
+* Initialization
+The =sk_dcblocker= can be initialized with
+=sk_dcblocker_init=. It zeros out =x= and =y=, and sets
+=R= to be a value of =0.99=, which is a reasonable DC
+coefficent value.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_dcblocker_init(sk_dcblocker *dcblk);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_dcblocker_init(sk_dcblocker *dcblk)
+{
+    dcblk->x = 0;
+    dcblk->y = 0;
+    dcblk->R = 0.99; /* quite reasonable, indeed! */
+}
+#+END_SRC
+* Computation
+A single sample of audio is processed with the function
+=sk_dcblocker_tick=. It performs the arithmetic for the
+difference equation, updates the internal values, then
+returns the output.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_dcblocker_tick(sk_dcblocker *dcblk, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_dcblocker_tick(sk_dcblocker *dcblk, SKFLT in)
+{
+    dcblk->y = in - dcblk->x + dcblk->R*dcblk->y;
+    dcblk->x = in;
+    return dcblk->y;
+}
+#+END_SRC

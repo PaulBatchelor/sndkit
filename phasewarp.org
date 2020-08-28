@@ -1,0 +1,104 @@
+#+TITLE: PhaseWarp
+* Overview
+PhaseWarp can be thought of as a special kind of filter for
+normalized phasor signals. When used with a phasor and a
+table-lookup oscillator this produces what is known as
+[[https://en.wikipedia.org/wiki/Phase_distortion_synthesis][phase distortion synthesis]], famously used on Casio
+synthesizers like the VZ-1.
+* Algorithm
+The algorithm for PhaseWarp works by adjusting the midpoint
+position where the phasor reaches 0.5. The adjustment amount
+is usually a normalized bipolar signal in the range -1 to 1.
+When the position value is positive, it warps the midpoint
+towards the upper bounds, causing a greater slope in the
+upper half, while decreasing the slope in the lower half.
+A negative position does opposite, creating a higher slope
+in the lower half, and a lower slope in the upper half.
+
+(The whole thing makes a lot more sense when you graph it.
+Someday, I'll do that here. For now, you'll just have to
+take my word for it.)
+* Tangled Files
+=phasewarp.c= and =phasewarp.h=.
+
+#+NAME: phasewarp.c
+#+BEGIN_SRC c :tangle phasewarp.c
+#include "phasewarp.h"
+<<funcs>>
+#+END_SRC
+
+#+NAME: phasewarp.h
+#+BEGIN_SRC c :tangle phasewarp.h
+#ifndef SK_PHASEWARP_H
+#define SK_PHASEWARP_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+* Compute
+This algorithm is so simple, it can be done in a stateless
+function called =sk_phasewarp_tick=. Its arguments are
+the input phasor signal and the warp factor.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_phasewarp_tick(SKFLT in, SKFLT warp);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_phasewarp_tick(SKFLT in, SKFLT warp)
+{
+    SKFLT out;
+    SKFLT wmp;
+
+    out = 0;
+
+    <<calculate_warped_midpoint>>
+    <<determine_side_and_warp>>
+    return out;
+}
+#+END_SRC
+
+Calculate warped midpoint. Call it =wmp=.
+
+#+NAME: calculate_warped_midpoint
+#+BEGIN_SRC c
+wmp = (warp + 1.0) * 0.5;
+#+END_SRC
+
+Determine side and compute. If the phasor position is
+less than the warped midpoint, than compute
+with lefthand slope. Otherwise, compute righthand slope.
+
+#+NAME: determine_side_and_warp
+#+BEGIN_SRC c
+if (in < wmp) {
+    <<compute_with_lefthand_slope>>
+} else {
+    <<compute_with_righthand_slope>>
+}
+#+END_SRC
+
+Compute With Lefthand Slope. This slope is equal to
+=0.5/wmp=. This value scales the phasor input =slope * in=.
+
+#+NAME: compute_with_lefthand_slope
+#+BEGIN_SRC c
+if (wmp != 0) out = ((SKFLT)0.5 / wmp) * in;
+#+END_SRC
+
+Compute Righthand Slope. The righthand slope is computed as
+=0.5/(1 - wmp)=. The output is computed as
+=slope * (in - wmp) + 0.5=.
+
+#+NAME: compute_with_righthand_slope
+#+BEGIN_SRC c
+if (wmp != 1.0) {
+    out = ((SKFLT)0.5 / (SKFLT)(1.0 - wmp)) * (in - wmp) + 0.5;
+}
+#+END_SRC
