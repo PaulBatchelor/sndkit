@@ -20,4 +20,4 @@ known as "CC0".
 The tangled output is dual-licensed under MIT or
 the [[https://unlicense.org/][Unlicense]].
 
-Happy Hacking Humans.
+Happy Hacking, Humans.
