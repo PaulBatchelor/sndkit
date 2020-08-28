@@ -18,6 +18,7 @@
 (ww-add-link "peakeq" "peakeq.org")
 (ww-add-link "modalres" "modalres.org")
 (ww-add-link "phasewarp" "phasewarp.org")
+(ww-add-link "curated" "curated.org")
 
 # sync and close
 
