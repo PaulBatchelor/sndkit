@@ -1,4 +1,5 @@
 PORT?=8080
+WIKI_PATH=sndkit
 
 default: update
 
@@ -11,8 +12,8 @@ update:
 	$(MAKE) dump
 
 export: db
-	$(RM) -r _site/wiki
-	mkdir -p _site/wiki
+	$(RM) -r _site/$(WIKI_PATH)
+	mkdir -p _site/$(WIKI_PATH)
 	weewiki sync
 	weewiki export
 	mv mkdb.janet mkdb.janet.old
@@ -25,8 +26,8 @@ dump:
 	weewiki dump mkdb.janet
 
 transfer:
-	mkdir -p _live/wiki
-	cp -r _site/wiki/* _live/wiki
+	mkdir -p _live/$(WIKI_PATH)
+	cp -r _site/$(WIKI_PATH)/* _live/$(WIKI_PATH)
 
 server:
 	weewiki server - $(PORT)
