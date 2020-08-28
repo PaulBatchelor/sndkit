@@ -1,4 +1,6 @@
 #+TITLE: sndkit
+This is a work in progress. Please come back later.
+
 sndkit is a sonic toolkit for everywhere.
 
 It is a collection of highly portable ANSI-C implementations
