@@ -1,5 +1,5 @@
-(def ww-dir "_site/wiki")
-(def webroot "/wiki")
+(def ww-dir "_site/sndkit")
+(def webroot "/sndkit")
 
 (defn pgexists? (name)
   (var db (ww-db))
@@ -42,6 +42,7 @@
   (print
    (string
     "<img src=\""
+    webroot "/_img/"
     path "\""
     (if-not (nil? alt) (string " alt=\"" alt "\""))
     ">")))

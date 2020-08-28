@@ -188,7 +188,7 @@ number of lower bits. This value is stored in the variable
 
 @!
 #$$n = log2(M/s)$$
-(img "/res/wiki/osc/osc_log2.png")
+(img "osc_log2.png")
 !@
 
 Where =n= is the number of lower bits, =M= is the maximum
@@ -354,7 +354,7 @@ linear interpolation is commonly shown as:
 #$$
 #y = (1 - \alpha) x_1 + \alpha x_2
 #$$
-(img "/res/wiki/osc/osc_lerp.png")
+(img "osc_lerp.png")
 !@
 
 Where $x_1$ and $x_2$ are two values, and $\alpha$ is a
@@ -385,7 +385,7 @@ shave off a multiply operation.
 #   &= x_1 + (x_2 - x_1)\alpha
 # }
 # $$
-(img "/res/wiki/osc/osc_lerp_simp.png")
+(img "osc_lerp_simp.png")
 !@
 
 Which then gets translated to the following C code below.

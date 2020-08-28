@@ -12,7 +12,7 @@ help explain and contextualize what every single line of
 code is doing.
 
 The text in this wiki is licensed under the
-[[https://creativecommons.org/share-your-work/public-domain/cc0/][Creatives Commons Zero]] license, otherwise
+[[https://creativecommons.org/share-your-work/public-domain/cc0/][Creative Commons Zero]] license, otherwise
 known as "CC0".
 
 The tangled output is dual-licensed under MIT or

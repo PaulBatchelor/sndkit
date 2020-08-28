@@ -16,6 +16,7 @@ export: db
 	mkdir -p _site/$(WIKI_PATH)
 	weewiki sync
 	weewiki export
+	rsync -rvt _img _site/$(WIKI_PATH)/
 	mv mkdb.janet mkdb.janet.old
 	weewiki dump mkdb.janet
 
@@ -26,8 +27,10 @@ dump:
 	weewiki dump mkdb.janet
 
 transfer:
+	$(RM) -r _live/$(WIKI_PATH)
 	mkdir -p _live/$(WIKI_PATH)
-	cp -r _site/$(WIKI_PATH)/* _live/$(WIKI_PATH)
+	rsync -rvt _site/$(WIKI_PATH)/* _live/$(WIKI_PATH)
+	rsync -rvt _img _live/$(WIKI_PATH)/
 
 server:
 	weewiki server - $(PORT)
