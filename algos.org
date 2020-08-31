@@ -1,0 +1,19 @@
+#+TITLE: Algorithms
+@!(ref "osc")!@ is a table-lookup oscillator.
+
+@!(ref "fmair")!@ is a table-lookup FM oscillator.
+
+@!(ref "rline")!@ is a random line segment generator.
+
+@!(ref "peakeq")!@ is a peaking equalizer filter.
+
+@!(ref "bigverb")!@ is a digital reverb algorithm.
+
+@!(ref "dcblocker")!@ is a DC Blocking filter.
+
+@!(ref "vardelay")!@ is a variable delay line.
+
+@!(ref "phasewarp")!@ is a filter for warping a phasor
+signal.
+
+@!(ref "modalres")!@ is a resonator filter.

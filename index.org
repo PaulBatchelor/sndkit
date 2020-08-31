@@ -1,6 +1,4 @@
 #+TITLE: sndkit
-This is a work in progress. Please come back later.
-
 sndkit is a sonic toolkit for everywhere.
 
 It is a collection of highly portable ANSI-C implementations
@@ -19,5 +17,10 @@ known as "CC0".
 
 The tangled output is dual-licensed under MIT or
 the [[https://unlicense.org/][Unlicense]].
+
+A annotated list of available algorithms can be found @(ref
+"algos" "here")!@. A @!(ref "curated" "curated overview")!@ of
+the algorithm is also available for those wishing to learn
+more about audio programming.
 
 Happy Hacking, Humans.
