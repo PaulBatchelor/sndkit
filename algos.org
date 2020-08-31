@@ -1,7 +1,7 @@
 #+TITLE: Algorithms
 @!(ref "osc")!@ is a table-lookup oscillator.
 
-@!(ref "fmair")!@ is a table-lookup FM oscillator.
+@!(ref "fmpair")!@ is a table-lookup FM oscillator.
 
 @!(ref "rline")!@ is a random line segment generator.
 

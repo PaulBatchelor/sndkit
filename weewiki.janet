@@ -1,5 +1,5 @@
 (def ww-dir "_site/sndkit")
-(def webroot "/sndkit")
+(def webroot (if (ww-server?) "/wiki" "/sndkit"))
 
 (defn pgexists? (name)
   (var db (ww-db))
