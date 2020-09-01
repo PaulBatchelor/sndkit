@@ -8,6 +8,7 @@ sync:
 
 update:
 	$(MAKE) db
+	$(MAKE) keys.db
 	$(MAKE) sync
 	$(MAKE) dump
 
@@ -34,3 +35,13 @@ transfer:
 
 server:
 	weewiki server - $(PORT)
+
+keys:
+	$(RM) keys.txt
+	$(MAKE) keys.txt
+
+keys.txt:
+	weewiki keyscrape > $@
+
+keys.db: keys.txt
+	./keys2db < keys.txt | sqlite3 $@

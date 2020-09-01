@@ -22,6 +22,7 @@
 (ww-add-link "wiki_index" "wiki_index.org")
 (ww-add-link "algos" "algos.org")
 (ww-add-link "bitnoise" "bitnoise.org")
+(ww-add-link "keywords" "keywords.org")
 
 # sync and close
 
