@@ -21,6 +21,7 @@
 (ww-add-link "curated" "curated.org")
 (ww-add-link "wiki_index" "wiki_index.org")
 (ww-add-link "algos" "algos.org")
+(ww-add-link "bitnoise" "bitnoise.org")
 
 # sync and close
 
