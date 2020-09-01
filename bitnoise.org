@@ -294,14 +294,20 @@ bit position. ANDing with 1 then isolates that last bit.
 y = (bn->lfsr >> bn->pos) & 1;
 #+END_SRC
 
-Since it's binary, scaling can be done with a ternerary
-operator. No multiplies necessary.
+The value is scaled to be in between -1 and 1. Because
+it is binary, one could be tempted to use a ternary value
+like =y ? 1.0 : -1.0=. However, according to
+[[https://godbold.org][godbolt], =y * 2 - 1= takes about 3
+instructions to do in x86_64 (=mov=, =mul=, =sub=), and
+=y ? 1.0 : -1.0= takes instructions (=cmp=, =je=, =mov=,
+=jmp=, =mov=). (I'm pretty sure the one with less
+instructions is more efficient).
 
 This computed output is cached for later use in =saved=.
 
 #+NAME: scale_and_store
 #+BEGIN_SRC c
-bn->saved = y ? 1.0 : -1.0;
+bn->saved = y * 2 - 1;
 #+END_SRC
 
 #+NAME: update_LFSR
