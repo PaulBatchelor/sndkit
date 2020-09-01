@@ -17,3 +17,5 @@
 signal.
 
 @!(ref "modalres")!@ is a resonator filter.
+
+@!(ref "bitnoise")!@ is a 1-bit noise generator.
