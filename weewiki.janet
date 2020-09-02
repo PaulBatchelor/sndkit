@@ -82,4 +82,8 @@
 ``
 ))
 
+(defn marker [id &opt msg]
+  (default msg "")
+  (prin (string "<a id=\"" id "\">" msg "</a>")))
+
 (import "keywords")

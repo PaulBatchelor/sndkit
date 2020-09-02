@@ -513,6 +513,7 @@ fmp->clphs += floor(cfreq * fmp->maxlens);
 fmp->mlphs += floor(mfreq * fmp->maxlens);
 #+END_SRC
 * Feedback FM Variation
+@!(marker "feedback_fm")!@
 The original FM pair algorithm can be slightly modified to
 include =feedback=. To do this, the =sk_fmpair= struct is
 encapsulated in a new struct called =sk_fmpair_fdbk=.
