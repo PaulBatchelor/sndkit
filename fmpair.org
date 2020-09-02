@@ -152,7 +152,9 @@ It contains all the forward declarations. If
 #endif
 #endif
 #+END_SRC
-* Struct
+* Structs
+The main FM oscillator algorithm is encapsulated in a struct
+called =sk_fmpair=.
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct sk_fmpair sk_fmpair;
@@ -509,6 +511,126 @@ value.
 #+BEGIN_SRC c
 fmp->clphs += floor(cfreq * fmp->maxlens);
 fmp->mlphs += floor(mfreq * fmp->maxlens);
+#+END_SRC
+* Feedback FM Variation
+The original FM pair algorithm can be slightly modified to
+include =feedback=. To do this, the =sk_fmpair= struct is
+encapsulated in a new struct called =sk_fmpair_fdbk=.
+
+Feedback FM is based on the Two-oscillator feedback FM
+design outlined on page 248 of the Computer Music Tutorial
+by Curtis Roads.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_fmpair_fdbk sk_fmpair_fdbk;
+#+END_SRC
+
+Appenended to the new struct are two new values: =feedback=,
+and =prev=. The =feedback= variable controls the feedback
+amount, while the =prev= variable stores the state of the
+last oscillator.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_fmpair_fdbk {
+    sk_fmpair fmpair;
+    SKFLT prev;
+    SKFLT feedback;
+};
+#+END_SRC
+
+It is initialized with =sk_fmpair_fdbk_init= just like
+=sk_fmpair_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_init(sk_fmpair_fdbk *fmp, int sr,
+                         SKFLT *ctab, int csz, SKFLT ciphs,
+                         SKFLT *mtab, int msz, SKFLT miphs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_init(sk_fmpair_fdbk *fmp, int sr,
+                         SKFLT *ctab, int csz, SKFLT ciphs,
+                         SKFLT *mtab, int msz, SKFLT miphs)
+{
+    sk_fmpair_init(&fmp->fmpair, sr,
+                   ctab, csz, ciphs,
+                   mtab, msz, miphs);
+    fmp->prev = 0;
+    fmp->feedback = 0;
+}
+#+END_SRC
+
+The feedback amount can be set with =sk_fmpair_fdbk_amt=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_amt(sk_fmpair_fdbk *f, SKFLT amt);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_amt(sk_fmpair_fdbk *f, SKFLT amt)
+{
+    f->feedback = amt;
+}
+#+END_SRC
+
+Computation of the FM pair feedback is done with
+=sk_fmpair_fdbk_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_fmpair_fdbk_tick(sk_fmpair_fdbk *fmp);
+#+END_SRC
+
+This re-uses many named codeblocks seen in the
+=sk_fmpair_tick=: <<calculate_frequencies>>,
+<<table_lookup_for_modulator>>, <<scale_modulator_output>>,
+<<modulate_carrier_frequency>>,
+<<table_lookup_for_modulator>>, and
+<<update_phase_positions>>.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_fmpair_fdbk_tick(sk_fmpair_fdbk *f)
+{
+    SKFLT out;
+    SKFLT cfreq, mfreq;
+    SKFLT modout;
+    int ipos;
+    SKFLT frac;
+    SKFLT x[2];
+    sk_fmpair *fmp;
+    out = 0;
+    fmp = &f->fmpair;
+
+    <<calculate_frequencies>>
+    <<table_lookup_for_modulator>>
+    <<scale_modulator_output>>
+
+    /* feedback-oscillator specific */
+    <<apply_feedback>>
+
+    <<modulate_carrier_frequency>>
+    <<table_lookup_for_carrier>>
+    <<update_phase_positions>>
+    return out;
+}
+#+END_SRC
+
+In this function, feedback is added right after the
+modulator is scaled.
+
+This modulated value is then stored in the =prev= sample.
+
+#+NAME: apply_feedback
+#+BEGIN_SRC c
+modout += f->prev * f->feedback;
+f->prev = modout;
 #+END_SRC
 * C:M Ratio tips
 Some suggestions to get started with picking out good C,M
