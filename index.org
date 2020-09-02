@@ -19,8 +19,13 @@ The tangled output is dual-licensed under MIT or
 the [[https://unlicense.org/][Unlicense]].
 
 A annotated list of available algorithms can be found @!(ref
-"algos" "here")!@. A @!(ref "curated" "curated overview")!@ of
+"algos" "here")!@.
+
+A @!(ref "curated" "curated overview")!@ of
 the algorithm is also available for those wishing to learn
 more about audio programming.
+
+The source code for this wiki can be found on
+[[https://git.sr.ht/~pbatch/sndkit][SourceHut]].
 
 Happy Hacking, Humans.
