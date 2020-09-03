@@ -1,0 +1,72 @@
+#+TITLE: 1pvalp
+* Overview
+=1pvalp= implements a =one-pole= =virtual-analog=
+=lowpass filter=, based on the implementation defined in
+"The Art of VA Filter Design" by Vadim Zavalishin.
+This particular filter id discretized using the
+=topology-preserving bilinear transform=, abbreviated
+as =TPBLT= or =TPT=.
+
+The full derivation of this filter is available in chapter 3
+of book. To keep things short and sweet, only the last
+of the implementation is mentioned here.
+* Tangled Files
+As per usual, a single C and Header file is provided called
+=1pva.c= and =1pva.h=. Defining =SK_1PVA_PRIV= will expose
+the core struct used in this algorithm.
+* Struct
+Called =sk_1pvalp=.
+* Cutoff Frequency
+The only parameter is the cutoff frequency. It is set with
+=sk_1pvalp_freq=.
+
+Caching is used so coefficients need not be re-calculated
+every sample.
+* Initialization
+Done with =sk_1pvalp_init=. Sampling rate is all that is
+needed.
+* Computation
+Done with =sk_1pvalp_tick=. The computation itself only
+requires a few short lines of very simple C code. However,
+the steps required to get it to this point were not as
+simple a matter. Often this is the case for filter
+implementations. By the time a filter design reaches C
+code, all you are left with is a handful of arithmetic
+and trig operations.
+
+In the chapter, Zavalishin does a wonderful job showing how
+take the filter topology of a 1-pole lowpass filter and
+faithfully digitize it in a delay-free way using the
+=bilinear transform=.
+
+The final equation looks like this:
+
+$$
+y = v + s
+$$
+
+Where $y$ is the filter output, $v$ can be considered to be
+the estimated output of $y$, and $s$ is the feedback.
+
+To begin, the =G= coefficient must be computed if the
+frequency has been updated. =G= is computed as =g/(1 + g)=,
+where =g= is the =gain= amount $tan(\omega_c T \over 2)$,
+where $\omega_c$ is the cutoff frequency, converted to
+radians/second. The tangent operation is common operation
+used in the BLT which does something called =prewarping=.
+Basically, the BLT is a process for getting analogue filters
+digitized, but it doesn't come for free. The behavior of
+the cutoff frequency in the filter gets skewed a bit.
+This is known as =frequency warping=. The prewarping
+controls the warp in such a way that the cutoff frequency
+has a perfect mapping from the analog space, leaving
+everything around it to warp.
+
+The $v$, or predicted part of the equation is computed and
+stored in a variable called =v= as =(x - s) * G=, where
+=x= is the input signal, =s= is the filter memory state, and
+=G= is the computed scaling parameter used in the =BLT=.
+
+The final filter output =y= can be computed as =v + s=.
+
+The filter memory state =s= is updated to be =y + v=.
