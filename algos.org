@@ -19,3 +19,5 @@ signal.
 @!(ref "modalres")!@ is a resonator filter.
 
 @!(ref "bitnoise")!@ is a 1-bit noise generator.
+
+@!(ref "valp1")!@ is a virtual-analog 1-pole lowpass filter.
