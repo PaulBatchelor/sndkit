@@ -23,6 +23,7 @@
 (ww-add-link "algos" "algos.org")
 (ww-add-link "bitnoise" "bitnoise.org")
 (ww-add-link "keywords" "keywords.org")
+(ww-add-link "valp1" "valp1.org")
 
 # sync and close
 

@@ -2,14 +2,27 @@
 * Overview
 =valp1= implements a =one-pole= =virtual-analog=
 =lowpass filter=, based on the implementation defined in
-"The Art of VA Filter Design" by Vadim Zavalishin.
+"The Art of VA Filter Design" by Vadim Zavalishin (DSP
+engineer at Native Instruments and creator of Reaktor).
 This particular filter id discretized using the
 =topology-preserving bilinear transform=, abbreviated
 as =TPBLT= or =TPT=.
 
+The scope of this document mostly aims to talk about the
+direct implementation, rather than the steps leading up to
+it. Those missing steps and mathematical notation are *very*
+important for actually grokking how this filter works.
+
+Think of this C implementation as the corpse
+a fallen Gazelle in the desert, picked clean to the bone so
+nothing is left but a handful of arithmetic and trig
+operations. It's really hard to reconstruct and understand
+this filter using the C code alone.
+
 The full derivation of this filter is available in chapter 3
-of book. To keep things short and sweet, only the last
-of the implementation is mentioned here.
+("Time-discretization").
+of Zavalishin's book, which as of writing, is available as
+a [[https://www.native-instruments.com/fileadmin/ni_media/downloads/pdf/VAFilterDesign_1.1.1.pdf][PDF]] from Native Instruments.
 * Tangled Files
 As per usual, a single C and Header file is provided called
 =valp1.c= and =valp1.h=. Defining =SK_VALP1_PRIV= will expose
