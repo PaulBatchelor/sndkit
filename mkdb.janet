@@ -24,6 +24,7 @@
 (ww-add-link "bitnoise" "bitnoise.org")
 (ww-add-link "keywords" "keywords.org")
 (ww-add-link "valp1" "valp1.org")
+(ww-add-link "chaosnoise" "chaosnoise.org")
 
 # sync and close
 
