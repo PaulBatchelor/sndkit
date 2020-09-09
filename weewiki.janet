@@ -40,12 +40,14 @@
       name
       "]]"))))
 
-(defn img [path &opt alt]
+(defn img [path &opt alt srcset]
   (print
    (string
     "<img src=\""
     path "\""
     (if-not (nil? alt) (string " alt=\"" alt "\""))
+    (if-not (nil? srcset)
+      (string "srcset=\"" srcset "\""))
     ">")))
 
 (defn img-link [path link &opt alt]
@@ -90,18 +92,24 @@
 (import "keywords")
 (import "fig")
 
+
+(defn pngfilepath [name]
+  (if (ww-server?)
+    (string "/" fig-dir "/" name ".png")
+    (string webroot "/" fig-dir "/" name ".png")))
+
 (defn fig (name eqn)
   (if write-tex (fig/fig name eqn fig-dir))
   (img
-   (if (ww-server?)
-     (string "/" fig-dir "/" name ".png")
-     (string webroot "/" fig-dir "/" name ".png"))
-   eqn))
+   (pngfilepath name)
+   eqn
+   (string
+    (pngfilepath name) " 1x,"
+    (pngfilepath (string name "2x")) " 2x,")
+))
 
 (defn smallfig (name eqn)
   (if write-tex (fig/smallfig name eqn fig-dir))
   (img
-   (if (ww-server?)
-     (string "/" fig-dir "/" name ".png")
-     (string webroot "/" fig-dir "/" name ".png"))
+   (pngfilepath name)
    eqn))
