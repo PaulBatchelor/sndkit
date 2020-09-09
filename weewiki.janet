@@ -1,5 +1,7 @@
 (def ww-dir "_site/sndkit")
 (def webroot (if (ww-server?) "/wiki" "/sndkit"))
+(def write-tex (if (ww-server?) false true))
+(def fig-dir "_fig")
 
 (defn pgexists? (name)
   (var db (ww-db))
@@ -42,7 +44,6 @@
   (print
    (string
     "<img src=\""
-    webroot "/_img/"
     path "\""
     (if-not (nil? alt) (string " alt=\"" alt "\""))
     ">")))
@@ -87,3 +88,12 @@
   (prin (string "<a id=\"" id "\">" msg "</a>")))
 
 (import "keywords")
+(import "fig")
+
+(defn fig (name eqn)
+  (if write-tex (fig/fig name eqn fig-dir))
+  (img
+   (if (ww-server?)
+     (string "/" fig-dir "/" name ".png")
+     (string webroot "/" fig-dir "/" name ".png"))
+   eqn))

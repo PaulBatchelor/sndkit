@@ -17,7 +17,8 @@ export: db
 	mkdir -p _site/$(WIKI_PATH)
 	weewiki sync
 	weewiki export
-	rsync -rvt _img _site/$(WIKI_PATH)/
+	mkdir -p _site/$(WIKI_PATH)/_fig
+	rsync -rvt _fig/*.png _site/$(WIKI_PATH)/_fig
 	mv mkdb.janet mkdb.janet.old
 	weewiki dump mkdb.janet
 

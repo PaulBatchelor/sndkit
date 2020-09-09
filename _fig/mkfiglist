@@ -1,0 +1,7 @@
+echo "FIGS=\\"
+
+for f in *.tex
+do
+    echo "${f%\.tex}.png \\"
+done
+echo

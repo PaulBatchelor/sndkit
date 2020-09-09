@@ -187,8 +187,7 @@ number of lower bits. This value is stored in the variable
 =nlb=. This value is calculated with the equation
 
 @!
-#$$n = log2(M/s)$$
-(img "osc_log2.png")
+(fig "osc_log2" "n = log2(M/s)")
 !@
 
 Where =n= is the number of lower bits, =M= is the maximum
@@ -351,10 +350,7 @@ of as a crossfade between two values. The equation for
 linear interpolation is commonly shown as:
 
 @!
-#$$
-#y = (1 - \alpha) x_1 + \alpha x_2
-#$$
-(img "osc_lerp.png")
+(fig "osc_lerp" "y = (1 - \\alpha) x_1 + \\alpha x_2")
 !@
 
 Where $x_1$ and $x_2$ are two values, and $\alpha$ is a
@@ -378,14 +374,16 @@ shave off a multiply operation.
 
 @!
 # $$
-# \eqalign{
-# y &= (1 - \alpha)x_1 + \alpha x_2 \cr
-#   &= x_1 - \alpha x_1 + \alpha x_2 \cr
-#   &= x_1 + \alpha x_2 - \alpha x_1 \cr
-#   &= x_1 + (x_2 - x_1)\alpha
-# }
 # $$
-(img "osc_lerp_simp.png")
+(fig "osc_lerp_simp"
+``
+\eqalign{
+y &= (1 - \alpha)x_1 + \alpha x_2 \cr
+  &= x_1 - \alpha x_1 + \alpha x_2 \cr
+  &= x_1 + \alpha x_2 - \alpha x_1 \cr
+  &= x_1 + (x_2 - x_1)\alpha
+}
+``)
 !@
 
 Which then gets translated to the following C code below.
