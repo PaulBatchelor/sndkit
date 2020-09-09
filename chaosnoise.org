@@ -1,18 +1,18 @@
 #+TITLE: ChaosNoise
 * Overview
 The =chaosnoise= algorithm is noise generator that uses
-a chaos function to it's sound.
+a chaos function to produce sound.
 
-At the core, chaosnoise is a essentially a 2-pole filter
-with an unstable filter coefficient and a nonlinearity.
-In other words, it gets its noise doing things DSP engineers
+At it's core, chaosnoise is essentially an unstable 2-pole
+filter with a nonlinearity.
+In other words, it makes noise doing things DSP engineers
 work very hard to avoid under normal circumstances.
 
 The underlying chaos function is largely based on the one
 found in the Crackle Ugen found in SuperCollider. In this
 implementation, however, there is an added =rate= parameter
 similar to the one found in @!(ref "bitnoise")!@. This
-is can be used to change the tone quality of the algorithm.
+is used to change the tone quality of the algorithm.
 * Tangled Files
 This tangles to =chaosnoise.c= and =chaosnoise.h=. Defining
 =SK_CHAOSNOISE_PRIV= will expose the core struct in the
