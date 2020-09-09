@@ -97,3 +97,11 @@
      (string "/" fig-dir "/" name ".png")
      (string webroot "/" fig-dir "/" name ".png"))
    eqn))
+
+(defn smallfig (name eqn)
+  (if write-tex (fig/smallfig name eqn fig-dir))
+  (img
+   (if (ww-server?)
+     (string "/" fig-dir "/" name ".png")
+     (string webroot "/" fig-dir "/" name ".png"))
+   eqn))

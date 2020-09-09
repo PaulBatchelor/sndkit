@@ -763,9 +763,12 @@ Calculate interpolation. Using the coefficents
 described above and the fractional component =f=, one can compute
 cubic interpolation with the following expression:
 
-$$
+@!(fig "bigverb_interpolation"
+``
 y(n) = (a x(n - 1) + b x(n) + c x(n + 1) + d x(n + 2)) \cdot f + x(n)
-$$
+``
+)
+!@
 
 #+NAME: compute_interpolation
 #+BEGIN_SRC c
@@ -902,7 +905,9 @@ previous random value.
 The RNG algorithm used is quite simple, and is used to
 produce a 16-bit value.
 
-$$x(n) = (5^{6}x(n - 1) + 1) \& 0xFFFF$$
+@!
+(fig "bigverb_rng" ``x(n) = (5^{6}x(n - 1) + 1) \& 0xFFFF``)
+!@
 
 Before and after this equation, the value is balanced so that
 is a 16-bit bipolar signal.

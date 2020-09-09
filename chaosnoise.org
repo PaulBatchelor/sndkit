@@ -239,12 +239,14 @@ sample gets computed.
 
 This uses the following difference equation:
 
-$$
-y(n) = | c y(n - 1) - y(n - 2) - \gamma |
-$$
+@!
+(fig "chaosnoise_eqn"
+``y(n) = | c y(n - 1) - y(n - 2) - \gamma |``)
+!@
 
-Where $c$ is the chaos value, and $\gamma$ is a nonlinearity
-set to be =0.05=.
+Where @!(smallfig "chaosnoise_c" "c")!@ is the chaos value,
+and @!(smallfig "chaosnoise_gamma" "\\gamma")!@ is a
+nonlinearity set to be =0.05=.
 
 After the output value is computed, the coefficients are
 updated.
