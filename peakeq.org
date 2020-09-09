@@ -19,7 +19,6 @@ has better numerical stability.
 We begin with the transfer function, described in the 1987
 paper:
 
-
 @!(fig "peakeq_tforiginal"
 ``
 {
