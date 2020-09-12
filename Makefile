@@ -1,5 +1,29 @@
+.PHONY: tangle
+
 PORT?=8080
 WIKI_PATH=sndkit
+WORGLE=worgle
+
+TANGLED=\
+bigverb.c bigverb.h \
+bitnoise.c bitnoise.h \
+chaosnoise.c chaosnoise.h \
+dcblocker.c dcblocker.h \
+fmpair.c fmpair.h \
+modalres.c modalres.h \
+osc.c osc.h \
+peakeq.c peakeq.h \
+phasewarp.c phasewarp.h \
+rline.c rline.h \
+valp1.c valp1.h \
+vardelay.c vardelay.h \
+
+.SUFFIX: .org .c
+
+.SUFFIXES: .org .c
+.org.c: .org .c
+	@echo "WORGLE $<"
+	@cd $(dir $<); $(WORGLE) $(WORGLE_FLAGS) $(notdir $<)
 
 default: update
 
@@ -46,3 +70,8 @@ keys.txt:
 
 keys.db: keys.txt
 	./keys2db < keys.txt | sqlite3 $@
+
+tangle: $(TANGLED)
+
+clean:
+	$(RM) $(TANGLED)
