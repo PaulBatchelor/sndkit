@@ -1,2 +1,2 @@
 # sndkit
-sndkit is a sonic toolkit for everywhere.
+sndkit is a sonic toolkit for everyone.
