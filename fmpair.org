@@ -611,10 +611,11 @@ SKFLT sk_fmpair_fdbk_tick(sk_fmpair_fdbk *f)
 
     <<calculate_frequencies>>
     <<table_lookup_for_modulator>>
-    <<scale_modulator_output>>
 
     /* feedback-oscillator specific */
     <<apply_feedback>>
+
+    <<scale_modulator_output>>
 
     <<modulate_carrier_frequency>>
     <<table_lookup_for_carrier>>
@@ -623,7 +624,7 @@ SKFLT sk_fmpair_fdbk_tick(sk_fmpair_fdbk *f)
 }
 #+END_SRC
 
-In this function, feedback is added right after the
+In this function, feedback is added right before the
 modulator is scaled.
 
 This modulated value is then stored in the =prev= sample.
