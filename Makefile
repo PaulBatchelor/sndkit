@@ -17,6 +17,7 @@ phasewarp.c phasewarp.h \
 rline.c rline.h \
 valp1.c valp1.h \
 vardelay.c vardelay.h \
+oscf.c oscf.h \
 
 .SUFFIX: .org .c
 
