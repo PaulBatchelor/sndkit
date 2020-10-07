@@ -3,6 +3,7 @@
 PORT?=8080
 WIKI_PATH=sndkit
 WORGLE=worgle
+WORGLE_FLAGS=-g -Werror
 
 TANGLED=\
 bigverb.c bigverb.h \

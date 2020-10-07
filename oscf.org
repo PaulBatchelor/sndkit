@@ -249,7 +249,7 @@ out-of-bounds samples here.
 #+BEGIN_SRC c
 x[0] = oscf->tab[ipos];
 
-if (ipos == oscf->sz) {
+if (ipos >= (oscf->sz - 1)) {
     x[1] = oscf->tab[0];
 } else {
     x[1] = oscf->tab[ipos + 1];
