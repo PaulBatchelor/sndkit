@@ -23,3 +23,6 @@ signal.
 @!(ref "valp1")!@ is a virtual-analog 1-pole lowpass filter.
 
 @!(ref "chaosnoise")!@ is a chaotic noise generator.
+
+@!(ref "oscf")!@ is a table-lookup oscillator with floating
+point precision.
