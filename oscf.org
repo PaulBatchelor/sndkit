@@ -180,12 +180,18 @@ SKFLT sk_oscf_tick(sk_oscf *oscf)
     unsigned long ipos;
     SKFLT fpos;
     SKFLT x[2];
+    SKFLT phs;
+
+    phs = oscf->phs;
 
     <<update_freq>>
     <<get_position>>
     <<get_values>>
     <<interpolate>>
     <<update_phase>>
+    <<bounds_checking>>
+
+    oscf->phs = phs;
 
     return out;
 }
@@ -232,7 +238,7 @@ this way is numerically ideal for floating point.
 
 #+NAME: get_position
 #+BEGIN_SRC c
-fpos = oscf->phs * oscf->sz;
+fpos = phs * oscf->sz;
 ipos = floor(fpos);
 fpos = fpos - ipos;
 #+END_SRC
@@ -264,14 +270,60 @@ crossfade in some circles.
 out = fpos * x[1] + (1 - fpos) * x[0];
 #+END_SRC
 
-Update the internal phase state. Care must be done to ensure
+Update the internal phase state using the incrementor.
+
+#+NAME: update_phase
+#+BEGIN_SRC c
+phs += oscf->inc;
+#+END_SRC
+
+Care must be done to ensure
 that the phase is within the range 0 and 1. while loops
 are used in place of things like =fmod= because they are
 less expensive.
 
-#+NAME: update_phase
+#+NAME: bounds_checking
 #+BEGIN_SRC c
-oscf->phs += oscf->inc;
-while (oscf->phs > 1) oscf->phs--;
-while (oscf->phs < 0) oscf->phs++;
+while (phs > 1) phs--;
+while (phs < 0) phs++;
+#+END_SRC
+* Variation: external phase control
+@!(marker "external_phase_control")!@
+The function =sk_oscf_tick_extphs= can be used in place
+of =sk_oscf_tick= to compute a sample of of oscf with an
+external phasor. This can be used to implement things like
+hard sync and @!(ref "phasewarp"
+"phase distortion synthesis")!@. Note that internal
+frequency control is disabled in this mode.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_oscf_tick_extphs(sk_oscf *oscf, SKFLT phs);
+#+END_SRC
+
+The function re-uses many of the same codeblocks used
+in =sk_oscf_tick=. The big change is that bounds checking
+happens *before* the computation, rather than after. This
+allows intentional wrap-around for things like hard sync
+oscillation.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_oscf_tick_extphs(sk_oscf *oscf, SKFLT phs)
+{
+    SKFLT out;
+    unsigned long ipos;
+    SKFLT fpos;
+    SKFLT x[2];
+
+    out = 0;
+
+    <<bounds_checking>>
+    <<update_freq>>
+    <<get_position>>
+    <<get_values>>
+    <<interpolate>>
+
+    return out;
+}
 #+END_SRC
