@@ -19,6 +19,7 @@ rline.c rline.h \
 valp1.c valp1.h \
 vardelay.c vardelay.h \
 oscf.c oscf.h \
+bezier.c bezier.h \
 
 .SUFFIX: .org .c
 

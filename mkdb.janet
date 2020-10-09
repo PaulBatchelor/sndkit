@@ -26,6 +26,7 @@
 (ww-add-link "valp1" "valp1.org")
 (ww-add-link "chaosnoise" "chaosnoise.org")
 (ww-add-link "oscf" "oscf.org")
+(ww-add-link "bezier" "bezier.org")
 
 # sync and close
 

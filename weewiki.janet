@@ -108,7 +108,7 @@
     (pngfilepath (string name "2x")) " 2x,")
 ))
 
-(defn smallfig (name eqn)
+(defn smallfig (name &opt eqn)
   (if write-tex (fig/smallfig name eqn fig-dir))
   (img
    (pngfilepath name)
