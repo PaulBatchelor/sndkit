@@ -282,9 +282,13 @@ that the phase is within the range 0 and 1. while loops
 are used in place of things like =fmod= because they are
 less expensive.
 
+A note that the phase cannot be *exactly* 1, hence the
+greather than *or* equal to. (This mistake was figured out
+the hard way by the author).
+
 #+NAME: bounds_checking
 #+BEGIN_SRC c
-while (phs > 1) phs--;
+while (phs >= 1) phs--;
 while (phs < 0) phs++;
 #+END_SRC
 * Variation: external phase control
