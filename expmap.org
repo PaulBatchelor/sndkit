@@ -1,0 +1,80 @@
+#+TITLE: expmap
+* Overview
+=expmap= is an exponential signal mapper with variable
+slope. It takes in a normalized linear value, and applies
+an exponential curve to it.
+
+Two version of =expmap= are provided: a naive implementation
+that is easy to read and adapt, and a more optimized version
+that uses parameter caching to reduce division operations
+and calls to =exp=.
+* Equation
+This is all there is to it:
+
+@!(fig "expmap_eqn"
+"
+{1 - e^{x*s} \\over 1 - e^{s}}
+")!@
+
+Where @!(smallfig "expmap_x" "x")!@ is the normalized
+linear input signal, and @!(smallfig "expmap_s" "s")!@ is
+the slope.
+
+As @!(smallfig "expmap_s")!@ gets more negative, the
+exponential curve will be more convex, with more values
+staying closer to 1. As @!(smallfig "expmap_s")!@ gets more
+positive, the exponential curve will get more concave, with
+more values staying closer to 0.
+* Tangled Files
+* Naive Function (stateless).
+The function =sk_expmap_stateless= will compute
+this exponential function without any internal state.
+The code is quite clear and simple,
+but requires two calls =exp=, which is an expensive
+operation.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_expmap_stateless(SKFLT in, SKFLT slope);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_expmap_stateless(SKFLT in, SKFLT slope)
+{
+    return (1 - exp(in*slope)) / (1 - exp(slope));
+}
+#+END_SRC
+* Struct
+Called =sk_expmap=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_expmap sk_expmap;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_expmap {
+    <<sk_expmap>>
+};
+#+END_SRC
+
+#+NAME: sk_expmap
+#+BEGIN_SRC c
+SKFLT prev;
+SKFLT slope;
+SKFLT pslope;
+SKFLT scale;
+#+END_SRC
+
+=prev= is the previous input value, will be used to avoid
+computation.
+
+=slope= and =pslope= is the slope parameter and previous
+slope parameter. When they don't match, =scale= is updated.
+
+=scale= is the constant =1/(1 - exp(slope)=. A scaler used
+to shave off an expensive =exp= operation and =div=
+operation.
+* Compute
