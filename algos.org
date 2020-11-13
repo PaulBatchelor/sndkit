@@ -29,3 +29,6 @@ point precision.
 
 @!(ref "bezier")!@ applies a bezier curve transformation to
 an normalized ramp signal.
+
+@!(ref "expmap")!@ applies an exponential curve
+transformation to an normalized ramp signal.
