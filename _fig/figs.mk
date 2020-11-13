@@ -37,6 +37,12 @@ chaosnoise_eqn.png \
 chaosnoise_eqn2x.png \
 chaosnoise_gamma.png \
 chaosnoise_gamma2x.png \
+expmap_eqn.png \
+expmap_eqn2x.png \
+expmap_s.png \
+expmap_s2x.png \
+expmap_x.png \
+expmap_x2x.png \
 osc_lerp.png \
 osc_lerp2x.png \
 osc_lerp_simp.png \

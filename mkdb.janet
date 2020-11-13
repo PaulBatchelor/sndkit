@@ -27,6 +27,7 @@
 (ww-add-link "chaosnoise" "chaosnoise.org")
 (ww-add-link "oscf" "oscf.org")
 (ww-add-link "bezier" "bezier.org")
+(ww-add-link "expmap" "expmap.org")
 
 # sync and close
 
