@@ -1,6 +1,6 @@
 #!/usr/bin/awk -f
 BEGIN {
-    FS=":"
+    FS="\t"
     print("DROP TABLE IF EXISTS keywords;")
     print("CREATE TABLE keywords(page TEXT, keyword TEXT, line INTEGER);")
     print("BEGIN;");
