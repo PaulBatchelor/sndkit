@@ -28,6 +28,7 @@
 (ww-add-link "oscf" "oscf.org")
 (ww-add-link "bezier" "bezier.org")
 (ww-add-link "expmap" "expmap.org")
+(ww-add-link "phsclk" "phsclk.org")
 
 # sync and close
 
