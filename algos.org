@@ -32,3 +32,6 @@ an normalized ramp signal.
 
 @!(ref "expmap")!@ applies an exponential curve
 transformation to an normalized ramp signal.
+
+@!(ref "phsclk")!@ converts a phasor signal into a clock
+signal.
