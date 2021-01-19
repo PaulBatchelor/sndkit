@@ -2,7 +2,7 @@
 
 PORT?=8080
 WIKI_PATH=sndkit
-WORGLE=worgle
+WORGLE=$(abspath worgle/worglite)
 WORGLE_FLAGS=-g -Werror
 
 TANGLED=\
@@ -61,6 +61,10 @@ transfer:
 	rsync -rvt _site/$(WIKI_PATH)/* _live/$(WIKI_PATH)
 	rsync -rvt _img _live/$(WIKI_PATH)/
 
+
+worgle/worglite: worgle/worgle.c worgle/parg.c
+	$(CC) -std=c89 -Wall -pedantic -O3 -DWORGLITE $^ -o $@
+
 server:
 	weewiki server - $(PORT)
 
@@ -74,7 +78,8 @@ keys.txt:
 keys.db: keys.txt
 	./keys2db < keys.txt | sqlite3 $@
 
-tangle: $(TANGLED)
+tangle: worgle/worglite $(TANGLED)
 
 clean:
 	$(RM) $(TANGLED)
+	$(RM) worgle/worglite

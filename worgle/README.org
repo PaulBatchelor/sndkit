@@ -1,0 +1,7 @@
+Contained here is a pre-tangled version of Worgle,
+a highly portable (and highly limited) tangler for
+noweb-style literate programs written in org and org-mode.
+
+Compiling with -DWORGLITE produces worglite, a lightweight
+version of worgle good enough to tangle the documents here
+in sndkit.
