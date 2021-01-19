@@ -16,7 +16,7 @@ it can either be *tangled* into code, or *woven* into HTML.
 
 ## Generating Tangled Code
 
-Code in sndkit is tangled using [worgle](https://pbat.ch/worgle).
+Code in sndkit is tangled using [worgle](https://pbat.ch/proj/worgle).
 For convenience, a local copy of worgle is provided so you
 don't need install this.
 
