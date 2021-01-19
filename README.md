@@ -33,7 +33,7 @@ C library), unless very explicitely stated.
 
 Many sndkit algorithms already exist pre-tangled in
 [Soundpipe](https://pbat.ch/proj/soundpipe.html). Have a
-look at that some real-world usage.
+look at that for some real-world usage.
 
 It is highly encouraged to read the
 [woven output](https://pbat.ch/sndkit/algos), as they will
