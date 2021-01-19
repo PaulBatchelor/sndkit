@@ -58,4 +58,4 @@ The text in this wiki is licensed under the
 known as "CC0".
 
 The tangled output is dual-licensed under MIT or
-the [[https://unlicense.org/][Unlicense]].
+the [Unlicense](https://unlicense.org/).
