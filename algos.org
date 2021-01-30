@@ -35,3 +35,5 @@ transformation to an normalized ramp signal.
 
 @!(ref "phsclk")!@ converts a phasor signal into a clock
 signal.
+
+@!(ref "phasor")!@ generates normalized periodic ramp signal.

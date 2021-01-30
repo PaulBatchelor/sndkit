@@ -20,6 +20,7 @@ valp1.c valp1.h \
 vardelay.c vardelay.h \
 oscf.c oscf.h \
 bezier.c bezier.h \
+phasor.c phasor.h \
 
 .SUFFIX: .org .c
 

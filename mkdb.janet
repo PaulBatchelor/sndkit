@@ -29,6 +29,7 @@
 (ww-add-link "bezier" "bezier.org")
 (ww-add-link "expmap" "expmap.org")
 (ww-add-link "phsclk" "phsclk.org")
+(ww-add-link "phasor" "phasor.org")
 
 # sync and close
 
