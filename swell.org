@@ -1,0 +1,82 @@
+#+TITLE: Swell
+* Overview
+swell is a special kind of smoothing filter on a control
+signal that takes in two smoothing parameters A and B. when
+the signal is increasing it uses smoothing parameter A, and
+when it is decreasing it uses parameter B. No change will
+continue using whatever paremeter was chosen last. This
+creates a certain kind of resistance that is very useful
+for swellling effects, which is where it gets its name.
+
+At the core of this is a recursive one-pole smoothing
+filter, which requires one sample of filter memory.
+
+The alpha coefficient is used to compute the filter. It is
+computed from one of the smoothing parameters which are in
+tau units.
+
+The previous sample is held. This is used to analyze
+whether or not to go up or down.
+
+An inertia filter is included in this design to allow for
+changes between the two smoothing states to be more
+gradual. This is another one pole smoothing filter, applied
+to the signal switching between the two smoothing times.
+
+To sumarize the topology of this filter design: Swell is a
+one-pole smoothing filter whose smoothing factor is
+determined by the direction of the input signal, placed
+through another one-pole smoothing filter for inertial
+control.
+* Tangled Files
+Tangles to files =swell.c= and =swell.h=.
+
+Defining =SK_SWELL_PRIV= exposes the contents =sk_swell=
+struct. Otherwise, it is opaque.
+* Initialization
+The struct for swell is called =sk_swell=. It is
+initialized with =sk_swell_init=. The sampling rate is
+required.
+* Components
+There are two recursive one-pole IIR filters known as the
+smoothing filter and the switching filter. Both require 1
+sample of filter memory, as well as a coefficient used to
+compute the filter.
+* Parameters
+Swell takes in three parameters: smooth factor A, smooth
+factor B, and inertia.
+
+Set smoothign factor A with =sk_swell_smootha=.
+
+Set smoothing factor B with =sk_swell_smoothb=.
+
+Set inertia with =sk_swell_inertia=. This parameter uses
+@!(ref "parameter_caching" "parameter caching")!@.
+* Computation
+The function =sk_swell_tick= computes one sample of audio
+from an input signal =in=.
+
+The direction is determined by comparing the current input
+signal with the previous input signal. A positive change
+will select the A smoothing factor. A negative change will
+select the B smoothing factor. No change will hold onto the
+last selected factor. This will be referred to as the
+=switching= signal.
+
+The switching signal is put through a 1-pole filter known
+as the inertia filter. Before computing this filter, the
+inertia parameter is checked to see if it needs to be
+updated via @!(ref "parameter_caching" "parameter
+caching")!@.
+
+The filtered switching signal is then snapped to the A/B
+smoothing parameter if it is within an epsilon boundary.
+This is done to prevent the next smoothing filter from
+constantly re-calculating filter coefficients. Calls to
+math functions like =exp= can be expensive, and should be
+avoided if possible.
+
+Using the filtered-and-snapped switching signal, the main
+smoothing filter can now be computed on the input signal.
+Similar to the inertia filter, parameter caching is also
+used.
