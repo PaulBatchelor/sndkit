@@ -8,22 +8,12 @@ continue using whatever paremeter was chosen last. This
 creates a certain kind of resistance that is very useful
 for swellling effects, which is where it gets its name.
 
-At the core of this is a recursive one-pole smoothing
-filter, which requires one sample of filter memory.
-
-The alpha coefficient is used to compute the filter. It is
-computed from one of the smoothing parameters which are in
-tau units.
-
-The previous sample is held. This is used to analyze
-whether or not to go up or down.
-
 An inertia filter is included in this design to allow for
 changes between the two smoothing states to be more
 gradual. This is another one pole smoothing filter, applied
 to the signal switching between the two smoothing times.
 
-To sumarize the topology of this filter design: Swell is a
+To summarize the topology of this filter design: Swell is a
 one-pole smoothing filter whose smoothing factor is
 determined by the direction of the input signal, placed
 through another one-pole smoothing filter for inertial
@@ -37,7 +27,7 @@ struct. Otherwise, it is opaque.
 The struct for swell is called =sk_swell=. It is
 initialized with =sk_swell_init=. The sampling rate is
 required.
-* Components
+* Filter Components
 There are two recursive one-pole IIR filters known as the
 smoothing filter and the switching filter. Both require 1
 sample of filter memory, as well as a coefficient used to
@@ -46,7 +36,7 @@ compute the filter.
 Swell takes in three parameters: smooth factor A, smooth
 factor B, and inertia.
 
-Set smoothign factor A with =sk_swell_smootha=.
+Set smoothing factor A with =sk_swell_smootha=.
 
 Set smoothing factor B with =sk_swell_smoothb=.
 
