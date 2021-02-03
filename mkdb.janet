@@ -30,6 +30,7 @@
 (ww-add-link "expmap" "expmap.org")
 (ww-add-link "phsclk" "phsclk.org")
 (ww-add-link "phasor" "phasor.org")
+(ww-add-link "swell" "swell.org")
 
 # sync and close
 

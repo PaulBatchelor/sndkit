@@ -36,4 +36,8 @@ transformation to an normalized ramp signal.
 @!(ref "phsclk")!@ converts a phasor signal into a clock
 signal.
 
-@!(ref "phasor")!@ generates normalized periodic ramp signal.
+@!(ref "phasor")!@ generates normalized periodic ramp
+signal.
+
+@!(ref "swell")!@ is a smoothing filter for control signals
+whose smoothing amount changes based on the direction.
