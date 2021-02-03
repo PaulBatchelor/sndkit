@@ -280,6 +280,7 @@ SKFLT sk_swell_tick(sk_swell *sw, SKFLT in)
     <<determine_direction>>
     <<filter_switch_signal>>
     <<snap_signal>>
+    <<compute_smoothing_filter>>
     return out;
 }
 #+END_SRC
@@ -349,7 +350,7 @@ if (switching != sw->smooth_pamt) {
 }
 
 out =
-    sw->smooth_b0*switching +
+    sw->smooth_b0*in +
     sw->smooth_a1*sw->smooth_y;
 sw->smooth_y = out;
 #+END_SRC
