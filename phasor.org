@@ -149,3 +149,21 @@ SKFLT sk_phasor_tick(sk_phasor *ph)
     return out;
 }
 #+END_SRC
+* Resetting The Phase
+The phase of the phasor can be reset with
+a particular value in =sk_phasor_reset=. If the the
+value is less than 0, it will use a default value of 0.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_phasor_reset(sk_phasor *phs, SKFLT val);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_phasor_reset(sk_phasor *phs, SKFLT val)
+{
+    if (val >= 0) phs->phs = val;
+    else phs->phs = 0;
+}
+#+END_SRC
