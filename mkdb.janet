@@ -31,6 +31,7 @@
 (ww-add-link "phsclk" "phsclk.org")
 (ww-add-link "phasor" "phasor.org")
 (ww-add-link "swell" "swell.org")
+(ww-add-link "biramp" "biramp.org")
 
 # sync and close
 

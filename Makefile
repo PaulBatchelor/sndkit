@@ -22,6 +22,7 @@ oscf.c oscf.h \
 bezier.c bezier.h \
 phasor.c phasor.h \
 swell.c swell.h \
+biramp.c biramp.h \
 
 .SUFFIX: .org .c
 

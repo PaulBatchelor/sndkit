@@ -1,0 +1,152 @@
+#+TITLE: Biramp
+* Overview
+Produces an up-and-down ramp signal from an input phasor
+ramp signal. Things like this are useful for creating quick
+time-synced LFO signals. Because it ramps down to 0, it
+won't clip.
+
+A few flavors of biramp will be created: a stateless
+version with position control, a stateful version with
+position that only updates at the beginnig of the phasor,
+and a stateful version with no position contorl that
+inverts the direction of the phasor at the beginning of
+each phase.
+* Tangled Files
+Tangles into =biramp.c= and =biramp.h=.
+
+#+NAME: biramp.h
+#+BEGIN_SRC c :tangle biramp.h
+#ifndef SK_BIRAMP_H
+#define SK_BIRAMP_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: biramp.c
+#+BEGIN_SRC c :tangle biramp.c
+#define SK_BIRAMP_PRIV
+#include "biramp.h"
+<<funcs>>
+#+END_SRC
+* Version 1: Stateless
+The stateless version of biramp is called
+=sk_biramp_stateless=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_biramp_stateless(SKFLT phs, SKFLT pos);
+#+END_SRC
+
+The stateless version needs only the input phasor signal
+and split position (expected to be a normalized value).
+
+When the phasor is less than the position, the output is
+=phasor/position=.
+
+When the phasor is greater than or equal to the position,
+the output is =1 - phasor/1 - position=.
+
+The position cannot be 0 or 1 exactly. Instead of throwing
+an error, these will just return themselves.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_biramp_stateless(SKFLT phs, SKFLT pos)
+{
+    SKFLT out;
+    out = 0;
+
+    if (pos == 0 || pos == 1) return pos;
+
+    if (phs < pos) out = phs / pos;
+    else out = (1 - phs) / (1 - pos);
+
+    return out;
+}
+#+END_SRC
+* Version 2: Stateful
+The function =sk_biramp_stateful= is a variation of the
+stateless biramp with some managed internal state.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_biramp_stateful(SKFLT phs, SKFLT pos,
+                         SKFLT *lphs, SKFLT *lpos);
+#+END_SRC
+
+The stateful version of this functionality can be used so
+that the position only updates when the phasor resets back
+to zero. To do this, two additional pointer values are
+given: the previous phase, and the used cached position
+parameter.
+
+This will use the cached position value instead of the
+immediation position value to compute the biramp. The
+cached value will update itself if it is less than 0, or if
+it finds the phasor has reset. The phasor resets when the
+last phasor value is greater than the current phasor value.
+
+The cached phasor value is updated here as well.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_biramp_stateful(SKFLT phs, SKFLT pos,
+                         SKFLT *lphs, SKFLT *lpos)
+{
+    SKFLT out;
+    out = 0;
+
+    if (*lphs > phs || *lpos < 0) {
+        *lpos = pos;
+    }
+
+    out = sk_biramp_stateless(phs, *lpos);
+
+    *lphs = phs;
+    return out;
+}
+#+END_SRC
+* Version 3: Flipper
+The final variation, called a =flipper=, will
+produce a phasor signal whose direction is flipped when the
+phase is reset. The stateful variables here include the
+cached phasor signal from the previous signal, and an
+integer storing the direction. When the direction is 0, it
+is normal. Non-zero is a flip.
+
+The direction state is updated on a phase reset, when the
+cached phasor is greater than the current phasor.
+
+It's important that the cached last phase value is stored
+pre-flipped. That way, the phasor consistently stays in one
+direction and makes the reset checker very straight-forward.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_biramp_flipper(SKFLT phs, SKFLT *lphs, int *flipit);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_biramp_flipper(SKFLT phs, SKFLT *lphs, int *flipit)
+{
+    SKFLT out;
+    out = 0;
+
+    if (*lphs > phs) {
+        (*flipit) =  ~(*flipit);
+    }
+
+    out = phs;
+    *lphs = phs;
+
+    if (*flipit) out = 1 - out;
+
+    return out;
+}
+#+END_SRC

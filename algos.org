@@ -41,3 +41,6 @@ signal.
 
 @!(ref "swell")!@ is a smoothing filter for control signals
 whose smoothing amount changes based on the direction.
+
+@!(ref "biramp")!@ converts a phasor ramp signal into a ramp
+that goes up and down.
