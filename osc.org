@@ -7,7 +7,7 @@ The algorithm for this is an interesting mix of numerical
 processing, with the phasor being implemented in fixed
 point, and everything else being done in floating point.
 A big advantage to doing it this way is numerical stability:
-there is no risk of any phase acculumation or truncation
+there is no risk of any phase accumulation or truncation
 like you'd get with floating-point. This
 is an important characteristic needed for phasor to avoid
 things like drift over time. As will be seen later, the
@@ -258,7 +258,7 @@ void sk_osc_init(sk_osc *osc, int sr, SKFLT *wt, int sz, SKFLT iphs)
 * Computation
 The meat of the algorithm is here. Here outlines the
 =tick= function, where a single sample of an oscillator
-is computer.
+is computed.
 
 #+NAME: funcs
 #+BEGIN_SRC c

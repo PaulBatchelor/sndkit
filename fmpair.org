@@ -39,7 +39,7 @@ To paint a picture:
 At the time, computers were about the
 size of fridges. They were expensive devices owned by the
 University, and time spent using the computer was precious.
-Chowing no doubt had to fight to get his time slot. Being
+Chowning no doubt had to fight to get his time slot. Being
 a composer amongst scientists and engineers, he probably
 could only work in late hours.
 
@@ -60,8 +60,8 @@ sounds must have been such a rewarding experience.
 
 Chowing's original FM synthesis algorithm would eventually
 become one of Stanford University's highest grossing patents
-of all time. To this day, the royalties of this patent help
-to sustain the CCRMA facilities.
+of all time. The royalties of this
+patent helped to sustain the CCRMA facilities.
 
 Famously, the patent was sold to Yamaha, and that gave us
 things like the DX7 synthesizer (and all the cheesy music
@@ -71,7 +71,7 @@ sound cards at the time, used in video game consoles and
 arcade machines. The most famous of these chips was the
 [[https://en.wikipedia.org/wiki/Yamaha_YM2151][YM2151]], also known as the OPM chip.
 * Overview of Algorithm and Implementation
-An FM Pair uses two oscillators, sometimes referred two as
+An FM Pair uses two oscillators, sometimes referred to as
 =operators=. One of these operators synthesizes audble sound.
 This known as the =carrier=, and can be remembered because
 it *carries* the sound signal to the speaker. The other

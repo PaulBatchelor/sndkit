@@ -1,13 +1,13 @@
 #+TITLE: R-Line
 * Introduction
-R-Line is a random line segment generator. It 
+R-Line is a random line segment generator. It
 produces random values at regular rate, and then
 linearly interpolates between them. The algorithm has
-audio-rate parametric control of the range of values, as
-well as the frequency that values change.
+audio-rate parametric control of both the range
+and rate of change for generated values.
 
 This algorithm is a great little control signal generator
-that can add a bit of zest to a otherwise
+that can add a bit of zest to an otherwise
 static parameter in a patch. It's a very efficient way to
 add a warm organic feel to a patch.
 * Notable Implementation Details
@@ -107,7 +107,9 @@ rl->rng = seed;
 
 The fixed point phasor has two major constants: the maximum
 length, as well as the masking value. Detailed explanation
-of these are beyond the scope of this document.
+of these are beyond the scope of this document. For more
+information, consult the relevant sections in
+@!(ref "osc")!@.
 
 #+NAME: macros
 #+BEGIN_SRC c
@@ -309,7 +311,7 @@ void sk_rline_rate(sk_rline *rl, SKFLT rate)
 SKFLT rate;
 #+END_SRC
 
-Initialized to be 1.
+Initialized to be an arbitrary default value 1.
 
 #+NAME: init
 #+BEGIN_SRC c
@@ -364,7 +366,7 @@ out = out * (rl->max - rl->min) + rl->min;
 
 
 Update phase position. The phase is updated by incrementing
-it by a amount obtained by multilying the frequency by the
+it by a amount obtained by multiplying the frequency by the
 maximum phase length in units of seconds. How this works is
 beyond the scope of this document, but is explained in @!(ref
 "osc")!@.
@@ -388,7 +390,7 @@ by the maximum phasor length normalizes the phasor to be in
 range 0 and 1. Multiplying by the difference of the two
 segment values scales this value to be in the correct range.
 This constant is useful because it shaves off a divide
-operation, which has traditionally been costly arithmetic
+operation, which has traditionally been a costly arithmetic
 computatoin compared to a multiply.
 
 #+NAME: generate_next_line_segment
