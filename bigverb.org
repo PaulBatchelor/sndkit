@@ -95,6 +95,9 @@ macro =SK_BIGVERB_PRIV=.
 #include <math.h>
 #define SK_BIGVERB_PRIV
 #include "bigverb.h"
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 <<parameter_set>>
 <<fdelay_constants>>
 <<static_funcdefs>>

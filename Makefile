@@ -5,6 +5,13 @@ WIKI_PATH=sndkit
 WORGLE=$(abspath worgle/worglite)
 WORGLE_FLAGS=-g -Werror
 
+C89?=$(CC) -std=c89
+C99?=$(CC) -std=c99
+
+CFLAGS += -Ipatchwerk
+CFLAGS += -Wall
+CFLAGS += -O3
+
 TANGLED=\
 bigverb.c bigverb.h \
 bitnoise.c bitnoise.h \
@@ -25,6 +32,27 @@ swell.c swell.h \
 biramp.c biramp.h \
 core.c core.h \
 
+OBJ=\
+bigverb.o \
+bitnoise.o \
+chaosnoise.o \
+dcblocker.o \
+fmpair.o \
+modalres.o \
+osc.o \
+peakeq.o \
+phasewarp.o \
+rline.o \
+valp1.o \
+vardelay.o \
+oscf.o \
+bezier.o \
+phasor.o \
+swell.o \
+biramp.o \
+core.o \
+patchwerk/patchwerk.o
+
 .SUFFIX: .org .c
 
 .SUFFIXES: .org .c
@@ -32,7 +60,17 @@ core.c core.h \
 	@echo "WORGLE $<"
 	@cd $(dir $<); $(WORGLE) $(WORGLE_FLAGS) $(notdir $<)
 
-default: update
+.SUFFIXES: .c .o
+.c.o: .c .o
+	@echo "$(C89) $<"
+	@$(C89) -pedantic -c $(CFLAGS) $< -o $@
+
+.SUFFIXES: .c .c99
+.c.c99: .c .c99
+	@echo "$(C99) $<"
+	@$(C99) -c $(CFLAGS) $< -o $@
+
+default: libsndkit.a
 
 sync:
 	weewiki sync
@@ -84,6 +122,12 @@ keys.db: keys.txt
 
 tangle: worgle/worglite $(TANGLED)
 
+libsndkit.a: tangle $(OBJ)
+	@echo "Building $@"
+	@$(AR) rcs $@ $(OBJ)
+
 clean:
 	$(RM) $(TANGLED)
 	$(RM) worgle/worglite
+	$(RM) libsndkit.a
+	$(RM) $(OBJ)
