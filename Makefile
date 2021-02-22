@@ -31,6 +31,7 @@ phasor.c phasor.h \
 swell.c swell.h \
 biramp.c biramp.h \
 core.c core.h \
+expmap.c expmap.h \
 
 OBJ=\
 bigverb.o \
