@@ -59,17 +59,17 @@ include nodes/config.mk
 .SUFFIX: .org .c
 
 .SUFFIXES: .org .c
-.org.c: .org .c
+.org.c:
 	@echo "WORGLE $<"
 	@cd $(dir $<); $(WORGLE) $(WORGLE_FLAGS) $(notdir $<)
 
 .SUFFIXES: .c .o
-.c.o: .c .o
+.c.o:
 	@echo "$(C89) $<"
 	@$(C89) -pedantic -c $(CFLAGS) $< -o $@
 
 .SUFFIXES: .c .c99
-.c.c99: .c .c99
+.c.c99:
 	@echo "$(C99) $<"
 	@$(C99) -c $(CFLAGS) $< -o $@
 
