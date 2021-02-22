@@ -1,0 +1,510 @@
+#+TITLE: Core
+* Overview
+This document describes and outlines a small API for
+sndkit. It is primarily designed to be a small layer on top
+of Patchwerk, a library used to build up directed audio
+graphs. A large portion of the functionality is based on
+what is found in runt-patchwerk. Just simpler.
+
+In addition to maintaining an instance of patchwerk, the
+sndkit API provides a stack and a register system. The
+stack is the primary means of sharing data between nodes.
+Registers are for more persitently used values.
+* Tangled files
+=core.h= and =core.c=.
+
+#+NAME: core.h
+#+BEGIN_SRC c :tangle core.h
+#ifndef SKPW_H
+#define SKPW_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+#ifdef SK_CORE_PRIV
+<<structs>>
+<<core>>
+#endif
+<<macros>>
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: core.c
+#+BEGIN_SRC c :tangle core.c
+#include <stdlib.h>
+#include <math.h>
+#include "patchwerk.h"
+#define SK_CORE_PRIV
+#include "core.h"
+<<enums>>
+<<funcs>>
+#+END_SRC
+* Engine Management
+All this behavior is defined in a struct called =sk_core=.
+
+Creating/freeing is done with =sk_core_new= and
+=sk_core_del=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_core * sk_core_new(int sr);
+void sk_core_del(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_core * sk_core_new(int sr)
+{
+    sk_core *core;
+    pw_patch *patch;
+
+    core = malloc(sizeof(sk_core));
+    core->patch = malloc(pw_patch_size());
+
+    patch = core->patch;
+    pw_patch_init(patch, 64);
+    pw_patch_alloc(patch, 8, 10);
+    pw_patch_srate_set(patch, sr);
+
+    sk_stack_init(&core->stack);
+    return core;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_core_del(sk_core *core)
+{
+    if (core == NULL) return;
+
+    pw_patch_destroy(core->patch);
+    pw_patch_free_nodes(core->patch);
+    free(core->patch);
+
+    free(core);
+    core = NULL;
+}
+#+END_SRC
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_core sk_core;
+#+END_SRC
+
+#+NAME: core
+#+BEGIN_SRC c
+struct sk_core {
+    pw_patch *patch;
+    sk_stack stack;
+};
+#+END_SRC
+
+A internal block of audio can be computed with
+=sk_core_compute=. Usually this size is 64 samples.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_core_compute(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_core_compute(sk_core *core)
+{
+    pw_patch_compute(core->patch);
+}
+#+END_SRC
+
+Building up nodes involves interacting with the patchwerk
+API. To get the top level struct of that opaquely, use
+=sk_core_patch=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+pw_patch * sk_core_patch(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+pw_patch * sk_core_patch(sk_core *core)
+{
+    return core->patch;
+}
+#+END_SRC
+
+The function =sk_core_seconds_to_blocks= converts
+seconds to a number of render blocks.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_core_seconds_to_blocks(sk_core *core, SKFLT secs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_core_seconds_to_blocks(sk_core *core, SKFLT secs)
+{
+    size_t nblocks;
+    int sr;
+
+    sr = pw_patch_srate_get(core->patch);
+    nblocks = floor((sr * secs) / 64) + 1;
+
+    return nblocks;
+}
+#+END_SRC
+* Stack
+** Core Data Types
+An item on a stack is contained in a thing known as a
+=stacklet=. A stacklet has integer for a type flag, a
+floating point number for numerical values, and a generic
+pointer for C structures.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_stacklet sk_stacklet;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_stacklet {
+    int type;
+    SKFLT f;
+    void *ptr;
+};
+<<stack_struct>>
+#+END_SRC
+
+A stacklet is initialized with the function
+=sk_stacklet_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_stacklet_init(sk_stacklet *s);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_stacklet_init(sk_stacklet *s)
+{
+    s->type = SK_TYPE_NONE;
+    s->f = 0;
+    s->ptr = NULL;
+}
+#+END_SRC
+
+An array of stacklets forms the foundation of a =sk_stack=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_stack sk_stack;
+#+END_SRC
+
+The stack will be hard coded to be 16.
+
+An integer =pos= is used to keep track of position.
+
+#+NAME: stack_struct
+#+BEGIN_SRC c
+#define SK_STACKSIZE 16
+struct sk_stack {
+    sk_stacklet stack[SK_STACKSIZE];
+    int pos;
+};
+#+END_SRC
+
+A stack is initialized with =sk_stack_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_stack_init(sk_stack *s);
+#+END_SRC
+
+The position is set to be negative, indicating an empty
+stack.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_stack_init(sk_stack *s)
+{
+    int i;
+
+    for (i = 0; i < SK_STACKSIZE; i++) {
+        sk_stacklet_init(&s->stack[i]);
+    }
+
+    s->pos = -1;
+}
+#+END_SRC
+** Types
+The typeflag currently supports the following types:
+
+#+NAME: enums
+#+BEGIN_SRC c
+enum {
+   SK_TYPE_NONE,
+   SK_TYPE_CONSTANT,
+   SK_TYPE_CABLE,
+   SK_TYPE_TABLE,
+   SK_TYPE_GENERIC
+};
+#+END_SRC
+** Push/Pop
+Push and pop are the core operations for the stack. Both
+return non-zero values on error.
+
+=sk_stack_pop= will pop a value off the stack and save it
+to the stacklet variable =s=.
+
+=sk_stack_push= will push an initialized stacklet to the
+stack, and save that value to stacklet variable =s= to
+be filled with some item.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_pop(sk_stack *stack, sk_stacklet **out);
+int sk_stack_push(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_pop(sk_stack *stack, sk_stacklet **out)
+{
+    sk_stacklet *s;
+    /* no items on stack */
+    if (stack->pos < 0) return 1;
+
+    /* stack overflow */
+    if (stack->pos >= SK_STACKSIZE) return 2;
+
+    s = &stack->stack[stack->pos];
+    stack->pos--;
+
+    *out = s;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_push(sk_stack *stack, sk_stacklet **out)
+{
+    sk_stacklet *s;
+
+    if (stack->pos >= (SK_STACKSIZE - 1)) return 1;
+    stack->pos++;
+    s = &stack->stack[stack->pos];
+
+    sk_stacklet_init(s);
+    *out = s;
+    return 0;
+}
+#+END_SRC
+* Parameters and Cables
+=sndkit_param= is an abstraction used to deal with
+patchwerk cables, and is designed to link up with the
+sndkit stack and patchwerk nodes.
+
+A sndkit parameter can either be a patchwerk cable from a
+node or a constant value. If it is cable, it will properly
+manage the buffer stack in patchwerk. If it is a constant,
+it will only manipulate the sndkit stack.
+** Struct
+A parameter is stored in a struct called =sk_param=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct {
+    char type;
+    union {
+        pw_cable *c;
+        SKFLT f;
+    } data;
+} sk_param;
+#+END_SRC
+** Getting a Parameter
+Get a parameter from the core stack via =sk_param_get=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_get(sk_core *core, sk_param *p);
+#+END_SRC
+
+Getting a parameter is a matter of popping from the stack
+and checking the type. A constant will set the constant
+value and flag in the param struct. A cable will set the
+cable value and flag in the param struct, and will also pop
+from the buffer stack.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_get(sk_core *core, sk_param *p)
+{
+    sk_stack *stk;
+    sk_stacklet *s;
+    int rc;
+
+    stk = &core->stack;
+
+    rc = sk_stack_pop(stk, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CONSTANT) {
+        p->type = 0;
+        p->data.f = s->f;
+    } else if (s->type == SK_TYPE_CABLE) {
+        p->type = 1;
+        p->data.c = (pw_cable *)s->ptr;
+        pw_cable_pop(p->data.c);
+    } else {
+        /* Wrong type! */
+        return 1;
+    }
+
+    return 0;
+}
+#+END_SRC
+** Setting a Parameter
+Set a parameter with =sk_param_set=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_set(sk_core *core,
+                 pw_node *node,
+                 sk_param *p,
+                 int cid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_set(sk_core *core,
+                 pw_node *node,
+                 sk_param *p,
+                 int cid)
+{
+    pw_cable *c;
+
+    pw_node_get_cable(node, cid, &c);
+    if (p->type == 0) {
+        pw_cable_set_value(c, p->data.f);
+    } else {
+        int rc;
+        rc = pw_cable_connect(p->data.c, c);
+        SK_PW_ERROR_CHECK(rc);
+    }
+    return 0;
+}
+#+END_SRC
+
+Setting a parameter will properly assign the internal value
+to a cable of a node. This node's cable is referenced by
+its index position. A constant parameter will set the node
+cable as a consant. A cable parameter will be connected to
+the node cable.
+** Pushing Constants
+Constant values can be pushed to the stack with the
+function =sk_core_constant=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_constant(sk_core *core, SKFLT x);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_constant(sk_core *core, SKFLT x)
+{
+    int rc;
+    sk_stacklet *s;
+    sk_stack *stk;
+
+    stk = &core->stack;
+
+    rc = sk_stack_push(stk, &s);
+    SK_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_CONSTANT;
+    s->f = x;
+
+    return 0;
+}
+#+END_SRC
+** Pushing Output
+An signal cable from a node is pushed to the stack via
+=sk_param_out=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_out(sk_core *core,
+                 pw_node *node,
+                 int cid);
+#+END_SRC
+
+Cables need to be pushed in the order they are created in
+the patch. The onus is on the developers of the node to
+make sure this is done properly. Don't worry,
+this is less tricky than it sounds. If done correctly, this
+process can be mostly automated or abstracted away.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_out(sk_core *core,
+                 pw_node *node,
+                 int cid)
+{
+    pw_cable *c;
+    sk_stacklet *s;
+    sk_stack *stk;
+    int rc;
+
+    stk = &core->stack;
+
+    rc = sk_stack_push(stk, &s);
+    SK_ERROR_CHECK(rc);
+    rc = pw_node_get_cable(node, cid, &c);
+    SK_PW_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_CABLE;
+    s->ptr = c;
+
+    return 0;
+}
+#+END_SRC
+
+=sk_param_out= will take an output cable of a node
+(referenced by index), and push it onto the sndkit stack.
+It will also push the cable's buffer onto the stack.
+* Error Checking
+=SK_ERROR_CHECK= is a convenient macro used that will
+check an error code and exit if it is non-zero.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_ERROR_CHECK(rc) if (rc) return rc;
+#+END_SRC
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_PW_ERROR_CHECK(rc) if(rc != PW_OK) {\
+    fprintf(stderr, "Error: %s\n", pw_error(rc));\
+    return 1;\
+}
+#+END_SRC
+* Tables
+A small abstraction for dealing with tables that are managed
+by patchwerk.
+* Registers
+** TODO regset/regget
+** TODO regmrk
+marks a register as being used
+** TODO regclr
+clears the register, making it free to be claimed.
+** TODO regnxt
+returns the next free register
+* Buffer Operations
+** TODO bdup
+** TODO bhold/bunhold
+** TODO bdrop
