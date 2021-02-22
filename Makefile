@@ -8,7 +8,7 @@ WORGLE_FLAGS=-g -Werror
 C89?=$(CC) -std=c89
 C99?=$(CC) -std=c99
 
-CFLAGS += -Ipatchwerk
+CFLAGS += -Ipatchwerk -I.
 CFLAGS += -Wall
 CFLAGS += -O3
 
@@ -52,6 +52,8 @@ swell.o \
 biramp.o \
 core.o \
 patchwerk/patchwerk.o
+
+include nodes/config.mk
 
 .SUFFIX: .org .c
 

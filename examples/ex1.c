@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include "patchwerk.h"
 #include "core.h"
-#include "nodes/wavout.h"
-#include "nodes/sine.h"
+#include "wavout/wavout.h"
+#include "sine/sine.h"
 
 int main(int argc, char *argv[])
 {
@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     unsigned int n;
     unsigned int nblocks;
 
-    core = sk_core_new(sr);
+    core = sk_core_new(44100);
 
     nblocks = sk_core_seconds_to_blocks(core, 10);
 

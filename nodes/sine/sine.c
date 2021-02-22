@@ -7,6 +7,10 @@
 #include "sine.h"
 #include "osc.h"
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 struct sine_n {
     pw_cable *freq;
     pw_cable *amp;

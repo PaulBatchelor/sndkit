@@ -65,7 +65,6 @@ int sk_node_wavout(sk_core *core, const char *filename)
     sk_param in;
     void *ud;
     struct wavout_n *wavout;
-    int sr;
     drwav_data_format format;
 
     rc = sk_param_get(core, &in);
