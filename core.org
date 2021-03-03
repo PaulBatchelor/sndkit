@@ -477,6 +477,81 @@ int sk_param_out(sk_core *core,
 =sk_param_out= will take an output cable of a node
 (referenced by index), and push it onto the sndkit stack.
 It will also push the cable's buffer onto the stack.
+* Registers
+A register interface is used alongside the stack
+interface to store and retrieve data. A value stored
+in a register can be directly referenced by an id value.
+
+Registers are very useful for storing data that is
+used more than once throughout the patch, or for situations
+where using stack operations to manipulate the day becomes
+tedious. Examples of
+this include cables containing clock signals and lookup
+tables.
+** structs
+A single register entry is encapsulated in a struct called
+=sk_register_entry=.
+
+A register entry contains an =sk_stacklet= as well as a flag
+to indicate the current state of the register.
+
+A register is initialized with =sk_register_entry_init=,
+which will initialize the stacklet and zero out the flags.
+
+A register is encapsulated in a struct called =sk_register=,
+and is a fixed array of =sk_register_entry= values. The
+size is defined via a macro.
+** TODO regset/regget
+Setting/getting values are done with =sk_core_regget= and
+=sk_core_regset=, making calls to the underlying functions
+=sk_register_set= and =sk_register_get=.
+
+values are assumed to be encapsulated in
+a =sk_stacklet=, and registers are addressed by id.
+** TODO regmrk
+=sk_core_regmrk=, marks a register as being used. this makes
+an underlying call to =sk_register_mark=.
+** TODO regclr
+=sk_core_clear= clears the register, making it free to be
+claimed. This makes an underlying call to
+=sk_register_clear=.
+** TODO regnxt
+=sk_core_regnxt= returns the next free register, which
+makes an underlying call to =sk_register_nextfree=
+
+this will iterate through
+the registers until it finds one that is free. it will
+return the id of this register.
+* Buffer Operations
+Patchwerk works by reading and writing to fixed-size blocks
+of samples known as buffers. Buffers are manipulated using
+a =stack=, and are managed/queried from a =pool=.
+** TODO bdup
+The function =sk_core_bdup= duplicates a buffer that is on
+the stack. This will perform the dup operation on both the
+patchwerk stack and the sndkit stack.
+** TODO bdrop
+The function =sk_core_bdrop= drops a buffer that is on the
+stack. This will before the drop operation on both the
+patchwerk stack and the sndkit stack.
+** TODO bhold/bunhold
+The functions =sk_core_bhold= and =sk_core_bunhold= pop the
+last item off the stack (which expects to be a cable), and
+marks the internal buffer in the cable to be held or unheld,
+respectively.
+
+Holding a buffer tells patchwerk not to re-use it
+in the buffer pool, allowing the signal inside of it to be
+used as many times as needed until the buffer is explicitely
+unheld. If you don't unhold buffers, it makes them
+inaccessible later, thereby causing a sort of resource leak.
+Left unchecked, this eventually causes patchwerk to lock up.
+
+The =sk_core_bhold= operation pushes the item back onto the
+stack, which allows it to be stored in a register.
+* Tables
+A small abstraction for dealing with tables that are managed
+by patchwerk.
 * Error Checking
 =SK_ERROR_CHECK= is a convenient macro used that will
 check an error code and exit if it is non-zero.
@@ -493,18 +568,3 @@ check an error code and exit if it is non-zero.
     return 1;\
 }
 #+END_SRC
-* Tables
-A small abstraction for dealing with tables that are managed
-by patchwerk.
-* Registers
-** TODO regset/regget
-** TODO regmrk
-marks a register as being used
-** TODO regclr
-clears the register, making it free to be claimed.
-** TODO regnxt
-returns the next free register
-* Buffer Operations
-** TODO bdup
-** TODO bhold/bunhold
-** TODO bdrop
