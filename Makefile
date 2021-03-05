@@ -58,6 +58,8 @@ scale.o \
 
 include nodes/config.mk
 
+OBJ+=lil/lil.c99
+
 .SUFFIX: .org .c
 
 .SUFFIXES: .org .c
