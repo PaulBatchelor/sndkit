@@ -492,22 +492,90 @@ tables.
 A single register entry is encapsulated in a struct called
 =sk_register_entry=.
 
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_register_entry sk_register_entry;
+#+END_SRC
+
 A register entry contains an =sk_stacklet= as well as a flag
 to indicate the current state of the register.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_register_entry {
+    sk_stacklet data;
+    int flags;
+};
+#+END_SRC
 
 A register is initialized with =sk_register_entry_init=,
 which will initialize the stacklet and zero out the flags.
 
-A register is encapsulated in a struct called =sk_register=,
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_register_entry_init(sk_register_entry *e);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_register_entry_init(sk_register_entry *e)
+{
+    sk_stacklet_init(&e->data);
+    e->flags = 0;
+}
+#+END_SRC
+
+A register collection is
+encapsulated in a struct called =sk_regtbl=,
 and is a fixed array of =sk_register_entry= values. The
 size is defined via a macro.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_regtbl sk_regtbl;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+#define SK_REGSIZE 16
+struct sk_regtbl {
+    sk_register_entry r[SK_REGSIZE];
+};
+#+END_SRC
+
+Registers are initialized with =sk_regtbl_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_regtbl_init(sk_regtbl *rs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_regtbl_init(sk_regtbl *rs)
+{
+    int i;
+
+    for (i = 0; i < SK_REGSIZE; i++) {
+        sk_register_entry_init(&rs->r[i]);
+    }
+}
+#+END_SRC
 ** TODO regset/regget
 Setting/getting values are done with =sk_core_regget= and
 =sk_core_regset=, making calls to the underlying functions
 =sk_register_set= and =sk_register_get=.
 
-values are assumed to be encapsulated in
+Values are assumed to be encapsulated in
 a =sk_stacklet=, and registers are addressed by id.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regget(sk_core *core, int pos, sk_stacklet **s);
+int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet **s);
+int sk_core_regset(sk_core *core, int pos, sk_stacklet **s);
+int sk_register_set(sk_regtbl *rt, int pos, sk_stacklet **s);
+#+END_SRC
 ** TODO regmrk
 =sk_core_regmrk=, marks a register as being used. this makes
 an underlying call to =sk_register_mark=.
