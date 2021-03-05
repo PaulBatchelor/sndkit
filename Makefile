@@ -11,6 +11,7 @@ C99?=$(CC) -std=c99
 CFLAGS += -Ipatchwerk -I.
 CFLAGS += -Wall
 CFLAGS += -O3
+CFLAGS += -g
 
 TANGLED=\
 bigverb.c bigverb.h \
