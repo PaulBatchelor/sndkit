@@ -1,0 +1,58 @@
+#+TITLE: Rephasor
+* Overview
+=rephasor= is an unusual little algorithm that is designed
+to recreate an incoming phasor signal at a slightly
+different frequency.
+
+This works by examining the incremental amount of change
+happening between each phasor sample, then using a scaled
+version of that signal to produce a new phasor.
+
+Why? Because I'm having a bit of a phasor a renaissance.
+I am discovering that these phasors are actually quite
+useful control signals, not just for table lookup
+oscillators. In the spirit of that, I'm looking for ways to
+explore ways to modify phasor signals.
+* Tangled Files
+Tangles to =rephasor.c= and =rephasor.h=.
+
+=SK_REPHASOR_PRIV= exposes structs.
+* Struct
+Called =sk_rephasor=.
+
+The struct is needed to store stateful data. The previous
+sample of the input phasor signal, and the previous phase
+of the internal phasor signal is used.
+
+Internal and external phasor memory are both marked as
+being initialized by setting them to be -1.
+
+A value holding the scale amount is also stored here. It
+is set to a sensible of default of 1. In theory, this should
+create an identical phasor signal as the input with a
+unit delay.
+* Setting the scaling value
+Called =sk_rephasor_scale=.
+* Compute
+Done with =sk_rephasor_tick=. Expects an incoming input
+phasor signal.
+
+The current phase of the internal phasor is set to be
+the output of the current sample. If it is negative, it
+assumed to be initalized but not set, and the current
+phasor signal is set to be the output, and the
+internal phasor value is set to be the current external
+phasor value.
+
+The =delta= amount is calculated next. This is the absolute
+value of the difference between the current and previous
+external phasor. The absolute value is used to compensate
+for phasor resets. If the previous phasor hasn't been
+initialized, the delta value is zero.
+
+At this point, it is safe to cache the external phasor
+signal.
+
+The internal phasor is updated. The increment value
+is the =delta= multiplied by the internal =scale= value.
+Wraparound is applied so that the range is within 0 and 1.
