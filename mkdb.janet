@@ -33,6 +33,7 @@
 (ww-add-link "swell" "swell.org")
 (ww-add-link "biramp" "biramp.org")
 (ww-add-link "core" "core.org")
+(ww-add-link "scale" "scale.org")
 
 # sync and close
 

@@ -44,3 +44,5 @@ whose smoothing amount changes based on the direction.
 
 @!(ref "biramp")!@ converts a phasor ramp signal into a ramp
 that goes up and down.
+
+@!(ref "scale")!@ provides some simple scaling utilities.

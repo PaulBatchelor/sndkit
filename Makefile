@@ -52,7 +52,8 @@ phasor.o \
 swell.o \
 biramp.o \
 core.o \
-patchwerk/patchwerk.o
+patchwerk/patchwerk.o \
+scale.o \
 
 include nodes/config.mk
 
