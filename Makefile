@@ -33,6 +33,8 @@ swell.c swell.h \
 biramp.c biramp.h \
 core.c core.h \
 expmap.c expmap.h \
+scale.c scale.h \
+rephasor.c rephasor.h \
 
 OBJ=\
 bigverb.o \
@@ -55,6 +57,7 @@ biramp.o \
 core.o \
 patchwerk/patchwerk.o \
 scale.o \
+rephasor.o \
 
 include nodes/config.mk
 

@@ -17,25 +17,130 @@ explore ways to modify phasor signals.
 Tangles to =rephasor.c= and =rephasor.h=.
 
 =SK_REPHASOR_PRIV= exposes structs.
+
+#+NAME: rephasor.h
+#+BEGIN_SRC c :tangle rephasor.h
+#ifndef SK_REPHASOR_H
+#define SK_REPHASOR_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<typedefs>>
+#ifdef SK_REPHASOR_PRIV
+<<structs>>
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: rephasor.c
+#+BEGIN_SRC c :tangle rephasor.c
+#include <math.h>
+#define SK_REPHASOR_PRIV
+#include "rephasor.h"
+<<funcs>>
+#+END_SRC
 * Struct
 Called =sk_rephasor=.
 
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_rephasor sk_rephasor;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_rephasor {
+    <<sk_rephasor>>
+};
+#+END_SRC
+
+Initialized with =sk_rephasor_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_rephasor_init(sk_rephasor *rp);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_rephasor_init(sk_rephasor *rp)
+{
+    <<init>>
+}
+#+END_SRC
+
 The struct is needed to store stateful data. The previous
-sample of the input phasor signal, and the previous phase
-of the internal phasor signal is used.
+sample of the input phasor signal (=extphs=), and the
+previous phase of the internal phasor signal is used
+(=phs=).
+
+#+NAME: sk_rephasor
+#+BEGIN_SRC c
+SKFLT extphs;
+SKFLT phs;
+#+END_SRC
 
 Internal and external phasor memory are both marked as
-being initialized by setting them to be -1.
+being initialized but not set by setting them to be -1.
+
+#+NAME: init
+#+BEGIN_SRC c
+rp->extphs = -1;
+rp->phs = -1;
+#+END_SRC
 
 A value holding the scale amount is also stored here. It
 is set to a sensible of default of 1. In theory, this should
 create an identical phasor signal as the input with a
 unit delay.
+
+#+NAME: sk_rephasor
+#+BEGIN_SRC c
+SKFLT scale;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_rephasor_scale(rp, 1.0);
+#+END_SRC
 * Setting the scaling value
 Called =sk_rephasor_scale=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_rephasor_scale(sk_rephasor *rp, SKFLT scale);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_rephasor_scale(sk_rephasor *rp, SKFLT scale)
+{
+    rp->scale = scale;
+}
+#+END_SRC
 * Compute
 Done with =sk_rephasor_tick=. Expects an incoming input
 phasor signal.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT in)
+{
+    SKFLT out;
+    out = 0;
+    <<set_output>>
+    <<calculate_delta>>
+    <<cache_external_phasor>>
+    <<update_internal_phasor>>
+    return out;
+}
+#+END_SRC
 
 The current phase of the internal phasor is set to be
 the output of the current sample. If it is negative, it
@@ -44,15 +149,35 @@ phasor signal is set to be the output, and the
 internal phasor value is set to be the current external
 phasor value.
 
+#+NAME: set_output
+#+BEGIN_SRC c
+
+#+END_SRC
+
 The =delta= amount is calculated next. This is the absolute
 value of the difference between the current and previous
 external phasor. The absolute value is used to compensate
 for phasor resets. If the previous phasor hasn't been
 initialized, the delta value is zero.
 
+#+NAME: calculate_delta
+#+BEGIN_SRC c
+
+#+END_SRC
+
 At this point, it is safe to cache the external phasor
 signal.
+
+#+NAME: cache_external_phasor
+#+BEGIN_SRC c
+
+#+END_SRC
 
 The internal phasor is updated. The increment value
 is the =delta= multiplied by the internal =scale= value.
 Wraparound is applied so that the range is within 0 and 1.
+
+#+NAME: update_internal_phasor
+#+BEGIN_SRC c
+
+#+END_SRC
