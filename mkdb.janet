@@ -34,6 +34,7 @@
 (ww-add-link "biramp" "dsp/biramp.org")
 (ww-add-link "core" "core.org")
 (ww-add-link "scale" "dsp/scale.org")
+(ww-add-link "rephasor" "dsp/rephasor.org")
 
 # sync and close
 

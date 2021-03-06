@@ -46,3 +46,6 @@ whose smoothing amount changes based on the direction.
 that goes up and down.
 
 @!(ref "scale")!@ provides some simple scaling utilities.
+
+@!(ref "rephasor")!@ resynthesizes a phasor signal with a
+slightly different scaling amount.
