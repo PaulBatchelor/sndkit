@@ -190,6 +190,7 @@ while (rp->phs >= 1.0) rp->phs -= 1.0;
 while (rp->phs < 0.0) rp->phs += 1.0;
 #+END_SRC
 * Rephasorx
+@!(marker "rephasorx")!@
 The =rephasorx= is a specialized version of =rephasor= that
 is designed to stay synchronized with the external phasor
 signal. This allows it to be used in a long-term
