@@ -1,4 +1,4 @@
-EX=ex1.bin ex2.bin
+EX=ex1.bin ex2.bin ex3.bin
 
 LDFLAGS=-L../
 CFLAGS=-I../ -I../patchwerk -I../nodes

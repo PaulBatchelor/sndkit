@@ -1,0 +1,3 @@
+sine 440 0.5
+wavout zz "sine.wav"
+computes 40

@@ -5,6 +5,7 @@
 #include "wavout/wavout.h"
 #include "sine/sine.h"
 #include "scale/scale.h"
+#include "arith/arith.h"
 
 int patch(sk_core *core)
 {
@@ -14,16 +15,14 @@ int patch(sk_core *core)
 
     rc = sk_core_constant(core, 5);
     SK_ERROR_CHECK(rc);
-    rc = sk_core_constant(core, 1);
+    rc = sk_core_constant(core, 40);
     SK_ERROR_CHECK(rc);
     rc = sk_node_sine(core);
     SK_ERROR_CHECK(rc);
 
-    rc = sk_core_constant(core, 200);
+    rc = sk_core_constant(core, 440);
     SK_ERROR_CHECK(rc);
-    rc = sk_core_constant(core, 300);
-    SK_ERROR_CHECK(rc);
-    rc = sk_node_biscale(core);
+    rc = sk_node_add(core);
     SK_ERROR_CHECK(rc);
 
     rc = sk_core_constant(core, 0.1);

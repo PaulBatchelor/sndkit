@@ -133,6 +133,7 @@ SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT in);
 SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT in)
 {
     SKFLT out;
+    SKFLT delta;
     out = 0;
     <<set_output>>
     <<calculate_delta>>
@@ -144,14 +145,18 @@ SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT in)
 
 The current phase of the internal phasor is set to be
 the output of the current sample. If it is negative, it
-assumed to be initalized but not set, and the current
+is assumed to be initalized but not set, and the current
 phasor signal is set to be the output, and the
 internal phasor value is set to be the current external
 phasor value.
 
 #+NAME: set_output
 #+BEGIN_SRC c
+if (rp->phs < 0) {
+   rp->phs = in;
+}
 
+out = rp->phs;
 #+END_SRC
 
 The =delta= amount is calculated next. This is the absolute
@@ -162,7 +167,8 @@ initialized, the delta value is zero.
 
 #+NAME: calculate_delta
 #+BEGIN_SRC c
-
+if (rp->extphs < 0 || in < rp->extphs) delta = 0;
+else delta = in - rp->extphs;
 #+END_SRC
 
 At this point, it is safe to cache the external phasor
@@ -170,7 +176,7 @@ signal.
 
 #+NAME: cache_external_phasor
 #+BEGIN_SRC c
-
+rp->extphs = in;
 #+END_SRC
 
 The internal phasor is updated. The increment value
@@ -179,5 +185,7 @@ Wraparound is applied so that the range is within 0 and 1.
 
 #+NAME: update_internal_phasor
 #+BEGIN_SRC c
-
+rp->phs += delta * rp->scale;
+while (rp->phs >= 1.0) rp->phs -= 1.0;
+while (rp->phs < 0.0) rp->phs += 1.0;
 #+END_SRC

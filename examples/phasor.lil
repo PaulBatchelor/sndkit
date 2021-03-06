@@ -1,0 +1,5 @@
+phasor 1 0
+biscale zz 220 440
+sine zz 0.5
+wavout zz "phasor.wav"
+computes 10

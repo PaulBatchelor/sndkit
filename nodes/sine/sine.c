@@ -5,7 +5,7 @@
 #include "core.h"
 #define SK_OSC_PRIV
 #include "sine.h"
-#include "osc.h"
+#include "dsp/osc.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

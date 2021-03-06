@@ -1,0 +1,12 @@
+# a sine wave modulated by a phasor
+scale [phasor 1 0] 220 440
+sine zz 0.2
+
+# same thing, but with a slightly slower phasor
+# cable management coming soon
+scale [rephasor [phasor 1 0] 0.75] 220 440
+sine zz 0.2
+add zz zz
+
+wavout zz "test.wav"
+computes 10
