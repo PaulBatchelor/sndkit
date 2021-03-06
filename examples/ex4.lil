@@ -1,0 +1,5 @@
+# basically ex3
+sine 350 0.2
+sine [add [sine 0.1 100] 440] 0.2
+add zz zz
+wavout zz test.wav

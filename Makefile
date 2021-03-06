@@ -8,7 +8,7 @@ WORGLE_FLAGS=-g -Werror
 C89?=$(CC) -std=c89
 C99?=$(CC) -std=c99
 
-CFLAGS += -Ipatchwerk -I.
+CFLAGS += -Ipatchwerk -I. -Inodes
 CFLAGS += -Wall
 CFLAGS += -O3
 CFLAGS += -g
@@ -33,6 +33,7 @@ swell.c swell.h \
 biramp.c biramp.h \
 core.c core.h \
 expmap.c expmap.h \
+scale.c scale.h \
 
 OBJ=\
 bigverb.o \
@@ -59,6 +60,9 @@ scale.o \
 include nodes/config.mk
 
 OBJ+=lil/lil.c99
+OBJ+=lil/lil_main.c99
+OBJ+=nodes/loader.o
+OBJ+=nodes/sklil.o
 
 .SUFFIX: .org .c
 
@@ -132,6 +136,9 @@ tangle: worgle/worglite $(TANGLED)
 libsndkit.a: tangle $(OBJ)
 	@echo "Building $@"
 	@$(AR) rcs $@ $(OBJ)
+
+sndkit: main.o $(OBJ)
+	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
 	$(RM) $(TANGLED)

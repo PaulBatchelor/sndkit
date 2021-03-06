@@ -118,6 +118,31 @@ void sk_core_compute(sk_core *core)
 }
 #+END_SRC
 
+=sk_core_computes= is like =sk_core_compute=, but computes
+an approximuate number of seconds of audio. This value
+gets rounded to the nearest block. The number of blocks
+rendered gets rendered.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_core_computes(sk_core *core, SKFLT secs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_core_computes(sk_core *core, SKFLT secs)
+{
+    size_t nblocks, n;
+    nblocks = sk_core_seconds_to_blocks(core, secs);
+
+    for (n = 0; n < nblocks; n++) {
+        sk_core_compute(core);
+    }
+
+    return nblocks;
+}
+#+END_SRC
+
 Building up nodes involves interacting with the patchwerk
 API. To get the top level struct of that opaquely, use
 =sk_core_patch=.
