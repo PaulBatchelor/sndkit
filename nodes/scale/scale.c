@@ -34,6 +34,28 @@ static void biscale_compute(pw_node *node)
     }
 }
 
+static void scale_compute(pw_node *node)
+{
+    int blksize;
+    int n;
+    struct scale_n *scale;
+
+    blksize = pw_node_blksize(node);
+
+    scale = (struct scale_n *)pw_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        PWFLT out, in, min, max;
+
+        in = pw_cable_get(scale->in, n);
+        min = pw_cable_get(scale->min, n);
+        max = pw_cable_get(scale->max, n);
+        out = sk_scale(in, min, max);
+
+        pw_cable_set(scale->out, n, out);
+    }
+}
+
 static void destroy(pw_node *node)
 {
     pw_patch *patch;
@@ -46,7 +68,7 @@ static void destroy(pw_node *node)
     pw_memory_free(patch, &ud);
 }
 
-int sk_node_biscale(sk_core *core)
+static int node_scale(sk_core *core, pw_function compute)
 {
     pw_patch *patch;
     pw_node *node;
@@ -84,7 +106,7 @@ int sk_node_biscale(sk_core *core)
     pw_node_get_cable(node, 3, &scale->out);
 
     pw_node_set_data(node, scale);
-    pw_node_set_compute(node, biscale_compute);
+    pw_node_set_compute(node, compute);
     pw_node_set_destroy(node, destroy);
 
     sk_param_set(core, node, &in, 0);
@@ -92,4 +114,14 @@ int sk_node_biscale(sk_core *core)
     sk_param_set(core, node, &max, 2);
     sk_param_out(core, node, 3);
     return 0;
+}
+
+int sk_node_biscale(sk_core *core)
+{
+    return node_scale(core, biscale_compute);
+}
+
+int sk_node_scale(sk_core *core)
+{
+    return node_scale(core, scale_compute);
 }

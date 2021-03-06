@@ -81,7 +81,7 @@ OBJ+=nodes/sklil.o
 	@echo "$(C99) $<"
 	@$(C99) -c $(CFLAGS) $< -o $@
 
-default: libsndkit.a
+default: tangle sndkit libsndkit.a
 
 sync:
 	weewiki sync
@@ -133,7 +133,7 @@ keys.db: keys.txt
 
 tangle: worgle/worglite $(TANGLED)
 
-libsndkit.a: tangle $(OBJ)
+libsndkit.a: $(OBJ)
 	@echo "Building $@"
 	@$(AR) rcs $@ $(OBJ)
 

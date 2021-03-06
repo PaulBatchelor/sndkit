@@ -8,12 +8,16 @@
 void sklil_load_sine(lil_t lil);
 void sklil_load_wavout(lil_t lil);
 void sklil_load_arith(lil_t lil);
+void sklil_load_scale(lil_t lil);
+void sklil_load_phasor(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
     sklil_load_sine(lil);
     sklil_load_wavout(lil);
     sklil_load_arith(lil);
+    sklil_load_scale(lil);
+    sklil_load_phasor(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
