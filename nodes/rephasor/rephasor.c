@@ -91,3 +91,99 @@ int sk_node_rephasor(sk_core *core)
     sk_param_out(core, node, 2);
     return 0;
 }
+
+struct rephasorx_n {
+    pw_cable *ext;
+    pw_cable *factor;
+    pw_cable *out;
+    sk_rephasorx rpx;
+};
+
+static void rephasorx_compute(pw_node *node,
+                              PWFLT (*tick)(sk_rephasorx *, SKFLT))
+
+{
+    int blksize;
+    int n;
+    struct rephasorx_n *rephasorx;
+
+    blksize = pw_node_blksize(node);
+
+    rephasorx = (struct rephasorx_n *)pw_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        PWFLT out, ext, factor;
+        ext = pw_cable_get(rephasorx->ext, n);
+        factor = pw_cable_get(rephasorx->factor, n);
+
+        sk_rephasorx_factor(&rephasorx->rpx, factor);
+        out = tick(&rephasorx->rpx, ext);
+
+        pw_cable_set(rephasorx->out, n, out);
+    }
+}
+
+static void phsdiv_compute(pw_node *node)
+{
+    rephasorx_compute(node, sk_rephasorx_tick_div);
+}
+
+static void phsmul_compute(pw_node *node)
+{
+    rephasorx_compute(node, sk_rephasorx_tick_mul);
+}
+
+static int node_rephasorx(sk_core *core, pw_function comp)
+{
+    pw_patch *patch;
+    pw_node *node;
+    int rc;
+    sk_param ext;
+    sk_param factor;
+    void *ud;
+    struct rephasorx_n *rephasorx;
+
+    rc = sk_param_get(core, &factor);
+    SK_ERROR_CHECK(rc);
+    rc = sk_param_get(core, &ext);
+    SK_ERROR_CHECK(rc);
+
+    patch = sk_core_patch(core);
+
+    rc = pw_memory_alloc(patch, sizeof(struct rephasorx_n), &ud);
+    SK_PW_ERROR_CHECK(rc);
+    rephasorx = (struct rephasorx_n *)ud;
+
+    sk_rephasorx_init(&rephasorx->rpx);
+
+    rc = pw_patch_new_node(patch, &node);
+    SK_PW_ERROR_CHECK(rc);
+
+    rc = pw_node_cables_alloc(node, 3);
+    SK_PW_ERROR_CHECK(rc);
+
+    pw_node_set_block(node, 2);
+
+    pw_node_get_cable(node, 0, &rephasorx->ext);
+    pw_node_get_cable(node, 1, &rephasorx->factor);
+    pw_node_get_cable(node, 2, &rephasorx->out);
+
+    pw_node_set_data(node, rephasorx);
+    pw_node_set_compute(node, comp);
+    pw_node_set_destroy(node, destroy);
+
+    sk_param_set(core, node, &ext, 0);
+    sk_param_set(core, node, &factor, 1);
+    sk_param_out(core, node, 2);
+    return 0;
+}
+
+int sk_node_phsdiv(sk_core *core)
+{
+    return node_rephasorx(core, phsdiv_compute);
+}
+
+int sk_node_phsmul(sk_core *core)
+{
+    return node_rephasorx(core, phsmul_compute);
+}
