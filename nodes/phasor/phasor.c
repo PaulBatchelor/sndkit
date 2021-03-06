@@ -4,7 +4,7 @@
 #include "patchwerk.h"
 #include "core.h"
 #define SK_PHASOR_PRIV
-#include "../../phasor.h"
+#include "dsp/phasor.h"
 
 struct phasor_n {
     pw_cable *freq;

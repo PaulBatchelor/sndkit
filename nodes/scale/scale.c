@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "patchwerk.h"
 #include "core.h"
-#include "../../scale.h"
+#include "dsp/scale.h"
 
 struct scale_n {
     pw_cable *in;

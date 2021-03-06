@@ -14,48 +14,49 @@ CFLAGS += -O3
 CFLAGS += -g
 
 TANGLED=\
-bigverb.c bigverb.h \
-bitnoise.c bitnoise.h \
-chaosnoise.c chaosnoise.h \
-dcblocker.c dcblocker.h \
-fmpair.c fmpair.h \
-modalres.c modalres.h \
-osc.c osc.h \
-peakeq.c peakeq.h \
-phasewarp.c phasewarp.h \
-rline.c rline.h \
-valp1.c valp1.h \
-vardelay.c vardelay.h \
-oscf.c oscf.h \
-bezier.c bezier.h \
-phasor.c phasor.h \
-swell.c swell.h \
-biramp.c biramp.h \
-core.c core.h \
-expmap.c expmap.h \
-scale.c scale.h \
+dsp/bigverb.c dsp/bigverb.h \
+dsp/bitnoise.c dsp/bitnoise.h \
+dsp/chaosnoise.c dsp/chaosnoise.h \
+dsp/dcblocker.c dsp/dcblocker.h \
+dsp/fmpair.c dsp/fmpair.h \
+dsp/modalres.c dsp/modalres.h \
+dsp/osc.c dsp/osc.h \
+dsp/peakeq.c dsp/peakeq.h \
+dsp/phasewarp.c dsp/phasewarp.h \
+dsp/rline.c dsp/rline.h \
+dsp/valp1.c dsp/valp1.h \
+dsp/vardelay.c dsp/vardelay.h \
+dsp/oscf.c dsp/oscf.h \
+dsp/bezier.c dsp/bezier.h \
+dsp/phasor.c dsp/phasor.h \
+dsp/swell.c dsp/swell.h \
+dsp/biramp.c dsp/biramp.h \
+dsp/expmap.c dsp/expmap.h \
+dsp/scale.c dsp/scale.h \
+
+TANGLED+=core.c core.h
 
 OBJ=\
-bigverb.o \
-bitnoise.o \
-chaosnoise.o \
-dcblocker.o \
-fmpair.o \
-modalres.o \
-osc.o \
-peakeq.o \
-phasewarp.o \
-rline.o \
-valp1.o \
-vardelay.o \
-oscf.o \
-bezier.o \
-phasor.o \
-swell.o \
-biramp.o \
+dsp/bigverb.o \
+dsp/bitnoise.o \
+dsp/chaosnoise.o \
+dsp/dcblocker.o \
+dsp/fmpair.o \
+dsp/modalres.o \
+dsp/osc.o \
+dsp/peakeq.o \
+dsp/phasewarp.o \
+dsp/rline.o \
+dsp/valp1.o \
+dsp/vardelay.o \
+dsp/oscf.o \
+dsp/bezier.o \
+dsp/phasor.o \
+dsp/swell.o \
+dsp/biramp.o \
 core.o \
 patchwerk/patchwerk.o \
-scale.o \
+dsp/scale.o \
 
 include nodes/config.mk
 
