@@ -34,6 +34,7 @@ dsp/biramp.c dsp/biramp.h \
 dsp/expmap.c dsp/expmap.h \
 dsp/scale.c dsp/scale.h \
 dsp/rephasor.c dsp/rephasor.h \
+dsp/gen.c dsp/gen.h \
 
 TANGLED+=core.c core.h
 
@@ -59,6 +60,7 @@ core.o \
 patchwerk/patchwerk.o \
 dsp/scale.o \
 dsp/rephasor.o \
+dsp/gen.o \
 
 include nodes/config.mk
 

@@ -1,0 +1,66 @@
+#+TITLE: GEN routines
+* Overview
+This document outlines a set of useful GEN routines.
+* What exactly is a GEN routine?
+A GEN routine is used to describe a function that works
+on table (a =SKFLT= array in C). These are usually used to
+generate wavetables.
+
+The term "GEN routine" (yes, all caps), is borrowed from
+Csound and MUSIC-N languages as
+[[http://www.csounds.com/manual/html/ScoreGenRef.html][GENerators for function tables]],
+affectionately referred to as "f-tables", which are
+essentially just "tables" in the sndkit world.
+* Tangled Files
+=gen.c= and =gen.h=.
+
+#+NAME: gen.h
+#+BEGIN_SRC c :tangle gen.h
+#ifndef SK_GEN_SINE
+#define SK_GEN_SINE
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: gen.c
+#+BEGIN_SRC c :tangle gen.c
+#include <math.h>
+#include <stddef.h>
+#include "gen.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<funcs>>
+#+END_SRC
+* sine wave table
+The function =sk_gen_sine= generates a sampled period
+of a sine wave.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_gen_sine(SKFLT *tab, int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_gen_sine(SKFLT *tab, int sz)
+{
+    int i;
+    SKFLT step;
+
+    if (sz <= 0) return;
+
+    step = 2 * M_PI / sz;
+
+    for (i = 0; i < sz; i++) {
+        tab[i] = sin(i * step);
+    }
+}
+#+END_SRC
