@@ -801,6 +801,17 @@ stack, which allows it to be stored in a register.
 * Tables
 A small abstraction for dealing with tables that are managed
 by patchwerk.
+** TODO Table Struct
+a struct called =sk_table=. Contains a =SKFLT= array and
+it's size.
+** TODO Creating a New Table
+Called =sk_core_table_new=. Allocates a new table and wraps
+it around a patchwerk pointer. This table will be
+automatically freed when the patch is freed.
+** TODO Getting Table Data and Size
+Getter functions =sk_table_size= and =sk_table_data=.
+** TODO Pushing/Popping Table
+=sk_core_pop_table= and =sk_core_push_table=.
 * Error Checking
 =SK_ERROR_CHECK= is a convenient macro used that will
 check an error code and exit if it is non-zero.
