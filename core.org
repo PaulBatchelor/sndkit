@@ -70,6 +70,7 @@ sk_core * sk_core_new(int sr)
     pw_patch_srate_set(patch, sr);
 
     sk_stack_init(&core->stack);
+    sk_regtbl_init(&core->regtbl);
     return core;
 }
 #+END_SRC
@@ -99,6 +100,7 @@ typedef struct sk_core sk_core;
 struct sk_core {
     pw_patch *patch;
     sk_stack stack;
+    sk_regtbl regtbl;
 };
 #+END_SRC
 
@@ -594,27 +596,181 @@ Setting/getting values are done with =sk_core_regget= and
 Values are assumed to be encapsulated in
 a =sk_stacklet=, and registers are addressed by id.
 
+Will return a non-zero value on error.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int sk_core_regget(sk_core *core, int pos, sk_stacklet **s);
-int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet **s);
-int sk_core_regset(sk_core *core, int pos, sk_stacklet **s);
-int sk_register_set(sk_regtbl *rt, int pos, sk_stacklet **s);
+int sk_core_regget(sk_core *core, int pos);
+int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet *s);
+int sk_core_regset(sk_core *core, int pos);
+int sk_register_set(sk_regtbl *rt, int pos, sk_stacklet *s);
 #+END_SRC
-** TODO regmrk
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet *s)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    *s = rt->r[pos].data;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regget(sk_core *core, int pos)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_push(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+    rc = sk_register_get(&core->regtbl, pos, s);
+    SK_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_set(sk_regtbl *rt, int pos, sk_stacklet *s)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    rt->r[pos].data = *s;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regset(sk_core *core, int pos)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+    rc = sk_register_set(&core->regtbl, pos, s);
+    SK_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+** regmrk
 =sk_core_regmrk=, marks a register as being used. this makes
 an underlying call to =sk_register_mark=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regmrk(sk_core *core, int pos);
+int sk_register_mark(sk_regtbl *rt, int pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_mark(sk_regtbl *rt, int pos)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    rt->r[pos].flags |= 1;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regmrk(sk_core *core, int pos)
+{
+    return sk_register_mark(&core->regtbl, pos);
+}
+#+END_SRC
 ** TODO regclr
-=sk_core_clear= clears the register, making it free to be
+=sk_core_regclr= clears the register, making it free to be
 claimed. This makes an underlying call to
 =sk_register_clear=.
-** TODO regnxt
-=sk_core_regnxt= returns the next free register, which
-makes an underlying call to =sk_register_nextfree=
 
-this will iterate through
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regclr(sk_core *core, int pos);
+int sk_register_clear(sk_regtbl *rt, int pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_clear(sk_regtbl *rt, int pos)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    rt->r[pos].flags = 0;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regclr(sk_core *core, int pos)
+{
+    return sk_register_clear(&core->regtbl, pos);
+}
+#+END_SRC
+** regnxt
+=sk_core_regnxt= returns the next free register, which
+makes an underlying call to =sk_register_nextfree=.
+
+=start= indicates which register position to start at. Leave
+this to be 0 if there is no preference.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regnext(sk_core *core, int start, int *pos);
+int sk_register_nextfree(sk_regtbl *rt, int start);
+#+END_SRC
+
+=sk_register_nextfree= will iterate through
 the registers until it finds one that is free. it will
 return the id of this register.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_nextfree(sk_regtbl *rt, int start)
+{
+    int pos;
+    int i;
+    sk_register_entry *reg;
+
+    reg = rt->r;
+
+    if (start < 0 || start >= SK_REGSIZE) start = 0;
+
+    pos = start;
+
+    for (i = 0; i < SK_REGSIZE; i++) {
+        if (!(reg[pos].flags & 1)) return pos;
+        pos = (pos + 1) % SK_REGSIZE;
+    }
+
+    return -1;
+}
+#+END_SRC
+
+=sk_core_regnxt= returns a non-zero error code if there are
+no available registers. This is done to make it play better
+with the =SK_ERROR_CHECK= paradigm.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regnext(sk_core *core, int start, int *pos)
+{
+    *pos = sk_register_nextfree(&core->regtbl, start);
+
+    if (*pos < 0) return 1;
+
+    return 0;
+}
+#+END_SRC
 * Buffer Operations
 Patchwerk works by reading and writing to fixed-size blocks
 of samples known as buffers. Buffers are manipulated using
