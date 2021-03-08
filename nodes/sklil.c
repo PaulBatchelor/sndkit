@@ -4,6 +4,7 @@
 #include "lil/lil.h"
 #include "patchwerk/patchwerk.h"
 #include "core.h"
+#include "sklil.h"
 
 void sklil_param(sk_core *core, lil_value_t arg)
 {

@@ -14,6 +14,7 @@ void sklil_load_rephasor(lil_t lil);
 void sklil_load_tabnew(lil_t lil);
 void sklil_load_gensine(lil_t lil);
 void sklil_load_osc(lil_t lil);
+void sklil_load_reg(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -26,6 +27,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_tabnew(lil);
     sklil_load_gensine(lil);
     sklil_load_osc(lil);
+    sklil_load_reg(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

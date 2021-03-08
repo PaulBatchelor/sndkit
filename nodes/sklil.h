@@ -6,5 +6,11 @@ if (ARGC < NARGS) { \
     return NULL; \
 }
 
+#define SKLIL_ERROR_CHECK(lil, rc, msg) \
+if (rc) { \
+    lil_set_error(lil, msg); \
+    return NULL; \
+}
+
 void sklil_param(sk_core *core, lil_value_t arg);
 #endif
