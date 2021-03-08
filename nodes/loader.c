@@ -11,6 +11,8 @@ void sklil_load_arith(lil_t lil);
 void sklil_load_scale(lil_t lil);
 void sklil_load_phasor(lil_t lil);
 void sklil_load_rephasor(lil_t lil);
+void sklil_load_tabnew(lil_t lil);
+void sklil_load_gensine(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -20,6 +22,8 @@ void sklil_nodes(lil_t lil)
     sklil_load_scale(lil);
     sklil_load_phasor(lil);
     sklil_load_rephasor(lil);
+    sklil_load_tabnew(lil);
+    sklil_load_gensine(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

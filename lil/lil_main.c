@@ -222,6 +222,7 @@ static int nonint(int argc,
     if (lil_error(lil, &err_msg, &pos)) {
         fprintf(stderr, "lil: error at %i: %s\n", (int)pos, err_msg);
     }
+    if (clean != NULL) clean(lil);
     lil_free(lil);
     return exit_code;
 }
