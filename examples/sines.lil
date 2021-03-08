@@ -1,0 +1,33 @@
+# mainly testing out hold/unhold functionality
+# one LFO controls the frequency of 4 oscillators
+
+# function to create a voice
+func voice {min max} {
+    osc [regget 0] \
+        [biscale [regget 1] $min $max] \
+        [param 0.1] [param 0]
+}
+
+# generate sine table in register 0
+regset [gensine [tabnew 8192]] 0
+
+# generate held LFO signal in register 1
+regset [hold [osc [regget 0] 0.1 1 0]] 1
+
+# create 4 voices and add them together
+voice 400 500
+voice 400 600
+add zz zz
+voice 400 300
+add zz zz
+voice 400 200
+add zz zz
+
+# write output to wav file
+wavout zz "sines.wav"
+
+# release LFO signal
+unhold [regget 1]
+
+# compute ~30 seconds of sound
+computes 30
