@@ -45,12 +45,12 @@ of a sine wave.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
-void sk_gen_sine(SKFLT *tab, int sz);
+void sk_gen_sine(SKFLT *tab, unsigned long sz);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
-void sk_gen_sine(SKFLT *tab, int sz)
+void sk_gen_sine(SKFLT *tab, unsigned long sz)
 {
     int i;
     SKFLT step;

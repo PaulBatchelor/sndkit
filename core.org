@@ -36,6 +36,7 @@ Registers are for more persitently used values.
 #+BEGIN_SRC c :tangle core.c
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include "patchwerk.h"
 #define SK_CORE_PRIV
 #include "core.h"
@@ -801,17 +802,133 @@ stack, which allows it to be stored in a register.
 * Tables
 A small abstraction for dealing with tables that are managed
 by patchwerk.
-** TODO Table Struct
+** Table Struct
 a struct called =sk_table=. Contains a =SKFLT= array and
 it's size.
-** TODO Creating a New Table
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_table sk_table;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_table {
+    SKFLT *tab;
+    unsigned long sz;
+};
+#+END_SRC
+** Creating a New Table
 Called =sk_core_table_new=. Allocates a new table and wraps
 it around a patchwerk pointer. This table will be
 automatically freed when the patch is freed.
-** TODO Getting Table Data and Size
+
+The table itself is then pushed to the stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_table_new(sk_core *core, unsigned long sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void free_table(pw_pointer *p)
+{
+    sk_table *tab;
+
+    tab = pw_pointer_data(p);
+
+    free(tab->tab);
+    free(tab);
+}
+
+int sk_core_table_new(sk_core *core, unsigned long sz)
+{
+    sk_table *tab;
+    int rc;
+
+    tab = malloc(sizeof(sk_table));
+
+    if (tab == NULL) return 1;
+
+    tab->tab = malloc(sz * sizeof(SKFLT));
+    memset(tab->tab, 0, sz * sizeof(SKFLT));
+    tab->sz = sz;
+
+    pw_patch_append_userdata(core->patch, free_table, tab);
+
+    rc = sk_core_table_push(core, tab);
+    SK_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+** Getting Table Data and Size
 Getter functions =sk_table_size= and =sk_table_data=.
-** TODO Pushing/Popping Table
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_table_size(sk_table *t);
+SKFLT* sk_table_data(sk_table *t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_table_size(sk_table *t)
+{
+    return t->sz;
+}
+
+SKFLT* sk_table_data(sk_table *t)
+{
+    return t->tab;
+}
+#+END_SRC
+** Pushing/Popping Table
 =sk_core_pop_table= and =sk_core_push_table=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_table_push(sk_core *core, sk_table *tab);
+int sk_core_table_pop(sk_core *core, sk_table **tab);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_table_push(sk_core *core, sk_table *tab)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_push(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_TABLE;
+    s->ptr = tab;
+
+    return rc;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_table_pop(sk_core *core, sk_table **tab)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_TABLE) return 1;
+
+    *tab = (sk_table *)s->ptr;
+
+    return rc;
+}
+#+END_SRC
 * Error Checking
 =SK_ERROR_CHECK= is a convenient macro used that will
 check an error code and exit if it is non-zero.
