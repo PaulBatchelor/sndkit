@@ -331,6 +331,28 @@ int sk_stack_push(sk_stack *stack, sk_stacklet **out)
     return 0;
 }
 #+END_SRC
+** Peak
+The function =sk_stack_peak= will look at the last item on
+the stack, but not pop it off the stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_peak(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_peak(sk_stack *stack, sk_stacklet **out)
+{
+    sk_stacklet *s;
+    if (stack->pos < 0) return 1;
+    if (stack->pos >= SK_STACKSIZE) return 2;
+
+    s = &stack->stack[stack->pos];
+    *out = s;
+    return 0;
+}
+#+END_SRC
 * Parameters and Cables
 =sndkit_param= is an abstraction used to deal with
 patchwerk cables, and is designed to link up with the
@@ -620,7 +642,7 @@ void sk_regtbl_init(sk_regtbl *rs)
     }
 }
 #+END_SRC
-** TODO regset/regget
+** WIP regset/regget
 Setting/getting values are done with =sk_core_regget= and
 =sk_core_regset=, making calls to the underlying functions
 =sk_register_set= and =sk_register_get=.
@@ -649,6 +671,10 @@ int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet *s)
 }
 #+END_SRC
 
+Things get a bit more involved the item in the register
+is a patchwerk cable. This requires pushing the buffer
+contained inside of the cable back onto the buffer stack.
+
 #+NAME: funcs
 #+BEGIN_SRC c
 int sk_core_regget(sk_core *core, int pos)
@@ -660,6 +686,17 @@ int sk_core_regget(sk_core *core, int pos)
     SK_ERROR_CHECK(rc);
     rc = sk_register_get(&core->regtbl, pos, s);
     SK_ERROR_CHECK(rc);
+
+    /* also push to buffer stack if cable */
+    if (s->type == SK_TYPE_CABLE) {
+        pw_cable *c;
+        pw_buffer *b;
+        pw_stack *bstack;
+        c = (pw_cable *) s->ptr;
+        b = pw_cable_get_buffer(c);
+        bstack = pw_patch_stack(core->patch);
+        pw_stack_push_buffer(bstack, b);
+    }
 
     return 0;
 }
@@ -807,29 +844,88 @@ int sk_core_regnext(sk_core *core, int start, int *pos)
 Patchwerk works by reading and writing to fixed-size blocks
 of samples known as buffers. Buffers are manipulated using
 a =stack=, and are managed/queried from a =pool=.
-** TODO bdup
-The function =sk_core_bdup= duplicates a buffer that is on
-the stack. This will perform the dup operation on both the
-patchwerk stack and the sndkit stack.
-** TODO bdrop
-The function =sk_core_bdrop= drops a buffer that is on the
-stack. This will before the drop operation on both the
-patchwerk stack and the sndkit stack.
-** TODO bhold/bunhold
-The functions =sk_core_bhold= and =sk_core_bunhold= pop the
-last item off the stack (which expects to be a cable), and
-marks the internal buffer in the cable to be held or unheld,
-respectively.
+** hold/unholding buffers
+After being used by a node, buffers are usually immediately
+returned to the buffer pool to be re-used. But, sometimes
+signals stored in those buffers need to be saved for later
+on in the patch. In order to do this, one must explicitely
+=hold= the buffer and then =unhold= it when it is done being
+used. If buffers are not unheld, it creates a sort of
+resource leak which will dry up the buffer pool and cause
+patchwerk to lock up.
 
-Holding a buffer tells patchwerk not to re-use it
-in the buffer pool, allowing the signal inside of it to be
-used as many times as needed until the buffer is explicitely
-unheld. If you don't unhold buffers, it makes them
-inaccessible later, thereby causing a sort of resource leak.
-Left unchecked, this eventually causes patchwerk to lock up.
+Holding and unholding buffers can be done with
+=sk_core_hold= and =sk_core_unhold=. These will peak at
+the last item on the stack, presumably a cable, and it will
+hold the buffer contained inside of it. In the case of
+=sk_core_unhold=, the item will be popped from the stack.
 
-The =sk_core_bhold= operation pushes the item back onto the
-stack, which allows it to be stored in a register.
+If something goes wrong, a non-zero value is returned.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_hold(sk_core *core);
+int sk_core_unhold(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_hold(sk_core *core)
+{
+    int rc;
+    sk_stacklet *s;
+    rc = sk_stack_peak(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_CABLE) {
+        /* Wrong type, kiddo */
+        return 2;
+    }
+
+    rc = pw_patch_bhold(core->patch, NULL);
+    SK_PW_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_unhold(sk_core *core)
+{
+    sk_param cable;
+    pw_buffer *buf;
+    pw_cable *c;
+    int rc;
+
+    rc = sk_param_get(core, &cable);
+    SK_ERROR_CHECK(rc);
+
+    if (cable.type != 1) {
+        /* Your princess is is another castle. */
+        return 2;
+    }
+
+    c = cable.data.c;
+    buf = pw_cable_get_buffer(c);
+    rc = pw_patch_bunhold(core->patch, buf);
+    SK_PW_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+** TODO dup
+=dup= is duplicates an item on the stack. If the
+item is a patchwerk cable, a dup operation happens
+on the buffer stack as well.
+** TODO drop
+=drop= drops an item on the stack. If the item is a
+patchwerk cable, a drop operation happens on
+the buffer stack as well.
+** TODO swap
+=swap= swaps the positions of the last two items on the
+stack. If both items are cables, then a swap operation
+on the buffer stack happens as well.
 * Tables
 A small abstraction for dealing with tables that are managed
 by patchwerk.
