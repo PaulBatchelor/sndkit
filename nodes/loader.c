@@ -13,6 +13,7 @@ void sklil_load_phasor(lil_t lil);
 void sklil_load_rephasor(lil_t lil);
 void sklil_load_tabnew(lil_t lil);
 void sklil_load_gensine(lil_t lil);
+void sklil_load_osc(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -24,6 +25,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_rephasor(lil);
     sklil_load_tabnew(lil);
     sklil_load_gensine(lil);
+    sklil_load_osc(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
@@ -37,6 +39,17 @@ static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t param(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "param", argc, 1);
+
+    sklil_param(core, argv[0]);
+    return NULL;
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -44,6 +57,7 @@ void sklil_loader(lil_t lil)
     lil_set_data(lil, core);
     sklil_nodes(lil);
     lil_register(lil, "computes", computes);
+    lil_register(lil, "param", param);
 }
 
 void sklil_clean(lil_t lil)

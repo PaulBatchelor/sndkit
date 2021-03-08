@@ -21,9 +21,16 @@ static lil_value_t gensine(lil_t lil, size_t argc, lil_value_t *argv)
 
     if (rc) {
         /* TODO: error handling */
+        printf("uh oh\n");
     }
 
     sk_gen_sine(sk_table_data(tab), sk_table_size(tab));
+
+    rc = sk_core_table_push(core, tab);
+
+    if (rc) {
+        /* TODO: error handling */
+    }
 
     return NULL;
 }
