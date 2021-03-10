@@ -353,6 +353,70 @@ int sk_stack_peak(sk_stack *stack, sk_stacklet **out)
     return 0;
 }
 #+END_SRC
+** TODO Dup
+=dup= is an operation that duplicates an item on the stack.
+
+The basic operation can be done with =sk_stack_dup=. The
+operation will store the duplicated stack item to =out= if
+the argument is not =NULL=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_dup(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_dup(sk_stack *stack, sk_stacklet **out)
+{
+    int rc;
+    sk_stacklet *a, *b;
+
+    rc = sk_stack_peak(stack, &a);
+    SK_ERROR_CHECK(rc);
+
+    rc = sk_stack_push(stack, &b);
+    SK_ERROR_CHECK(rc);
+
+    *b = *a;
+
+    if (out != NULL) {
+        *out = b;
+    }
+
+    return 0;
+}
+#+END_SRC
+
+
+=sk_core_dup= will call =sk_stack_dup= on the internal
+stack, but also will call a dup operation on the patchwerk
+stack if the item is a patchwerk cable.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_dup(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_dup(sk_core *core)
+{
+    sk_stacklet *s;
+    int rc;
+
+    rc = sk_stack_dup(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CABLE) {
+        pw_stack *stack;
+        stack = pw_patch_stack(core->patch);
+        pw_stack_dup(stack);
+    }
+
+    return 0;
+}
+#+END_SRC
 * Parameters and Cables
 =sndkit_param= is an abstraction used to deal with
 patchwerk cables, and is designed to link up with the
@@ -914,10 +978,6 @@ int sk_core_unhold(sk_core *core)
     return 0;
 }
 #+END_SRC
-** TODO dup
-=dup= is duplicates an item on the stack. If the
-item is a patchwerk cable, a dup operation happens
-on the buffer stack as well.
 ** TODO drop
 =drop= drops an item on the stack. If the item is a
 patchwerk cable, a drop operation happens on
