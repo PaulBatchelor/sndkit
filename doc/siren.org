@@ -22,7 +22,7 @@ Sum the oscillator and the reverb.
 
 Write it to disk.
 * Implementation 1: LIL and sndkit
-Here is the first implementation, written LIL, the
+Here is the first implementation, written in LIL, the
 scripting language embedded in the sndkit repository.
 
 #+NAME: siren.lil
