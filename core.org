@@ -353,7 +353,7 @@ int sk_stack_peak(sk_stack *stack, sk_stacklet **out)
     return 0;
 }
 #+END_SRC
-** TODO Dup
+** Dup
 =dup= is an operation that duplicates an item on the stack.
 
 The basic operation can be done with =sk_stack_dup=. The
@@ -380,9 +380,7 @@ int sk_stack_dup(sk_stack *stack, sk_stacklet **out)
 
     *b = *a;
 
-    if (out != NULL) {
-        *out = b;
-    }
+    if (out != NULL) *out = b;
 
     return 0;
 }
@@ -412,6 +410,63 @@ int sk_core_dup(sk_core *core)
         pw_stack *stack;
         stack = pw_patch_stack(core->patch);
         pw_stack_dup(stack);
+    }
+
+    return 0;
+}
+#+END_SRC
+** Drop
+=drop= is an operation that drops an item on the stack.
+
+The basic operation is done with =sk_stack_drop=.
+
+The dropped value will be saved to =out= if =out= is
+not =NULL=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_drop(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_drop(sk_stack *stack, sk_stacklet **out)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (out != NULL) *out = s;
+    return 0;
+}
+#+END_SRC
+
+The function =sk_core_drop= performs a drop on the stack
+in the core struct. If the item is a patchwerk cable, it
+will also perform a drop on the patchwerk buffer stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_drop(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_drop(sk_core *core)
+{
+    int rc;
+    sk_stacklet *s;
+    rc = sk_stack_drop(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CABLE) {
+        pw_stack *stack;
+        stack = pw_patch_stack(core->patch);
+        pw_stack_pop(stack, NULL);
     }
 
     return 0;
@@ -820,7 +875,7 @@ int sk_core_regmrk(sk_core *core, int pos)
     return sk_register_mark(&core->regtbl, pos);
 }
 #+END_SRC
-** TODO regclr
+** regclr
 =sk_core_regclr= clears the register, making it free to be
 claimed. This makes an underlying call to
 =sk_register_clear=.
@@ -978,10 +1033,6 @@ int sk_core_unhold(sk_core *core)
     return 0;
 }
 #+END_SRC
-** TODO drop
-=drop= drops an item on the stack. If the item is a
-patchwerk cable, a drop operation happens on
-the buffer stack as well.
 ** TODO swap
 =swap= swaps the positions of the last two items on the
 stack. If both items are cables, then a swap operation
