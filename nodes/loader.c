@@ -17,6 +17,7 @@ void sklil_load_osc(lil_t lil);
 void sklil_load_reg(lil_t lil);
 void sklil_load_buffer(lil_t lil);
 void sklil_load_bigverb(lil_t lil);
+void sklil_load_fmpair(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -32,6 +33,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_reg(lil);
     sklil_load_buffer(lil);
     sklil_load_bigverb(lil);
+    sklil_load_fmpair(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

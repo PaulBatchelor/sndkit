@@ -1,0 +1,4 @@
+fmpair [gensine [tabnew 8192]] 440 1 1 1 0
+mul zz 0.5
+wavout zz "test.wav"
+computes 10

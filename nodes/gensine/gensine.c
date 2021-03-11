@@ -18,19 +18,13 @@ static lil_value_t gensine(lil_t lil, size_t argc, lil_value_t *argv)
     SKLIL_ARITY_CHECK(lil, "gensine", argc, 1);
 
     rc = sk_core_table_pop(core, &tab);
-
-    if (rc) {
-        /* TODO: error handling */
-        printf("uh oh\n");
-    }
+    SKLIL_PARAM_CHECK(lil, rc, "gensine");
 
     sk_gen_sine(sk_table_data(tab), sk_table_size(tab));
 
     rc = sk_core_table_push(core, tab);
 
-    if (rc) {
-        /* TODO: error handling */
-    }
+    SKLIL_ERROR_CHECK(lil, rc, "gensine didn't work out.");
 
     return NULL;
 }
