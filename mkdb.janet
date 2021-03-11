@@ -36,6 +36,7 @@
 (ww-add-link "scale" "dsp/scale.org")
 (ww-add-link "rephasor" "dsp/rephasor.org")
 (ww-add-link "gen" "dsp/gen.org")
+(ww-add-link "siren" "doc/siren.org")
 
 # sync and close
 
