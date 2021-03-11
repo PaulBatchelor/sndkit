@@ -1,0 +1,11 @@
+sine 0.2 1
+scale zz 200 300
+sine zz 0.3
+dup
+dup
+bigverb zz zz 0.97 10000
+add zz zz
+mul zz 0.1
+add zz zz
+wavout zz "test.wav"
+computes 10

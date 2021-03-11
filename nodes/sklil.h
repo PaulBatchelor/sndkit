@@ -12,5 +12,11 @@ if (rc) { \
     return NULL; \
 }
 
-void sklil_param(sk_core *core, lil_value_t arg);
+#define SKLIL_PARAM_CHECK(lil, rc, node) \
+if (rc) { \
+    lil_set_error(lil, node " parameter error."); \
+    return NULL; \
+}
+
+int sklil_param(sk_core *core, lil_value_t arg);
 #endif

@@ -34,8 +34,23 @@ static lil_value_t unhold(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t dup(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    rc = sk_core_dup(core);
+
+    SKLIL_ERROR_CHECK(lil, rc, "dup didn't work out.");
+
+    return NULL;
+}
+
 void sklil_load_buffer(lil_t lil)
 {
     lil_register(lil, "hold", hold);
     lil_register(lil, "unhold", unhold);
+    lil_register(lil, "dup", dup);
 }

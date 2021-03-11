@@ -32,6 +32,27 @@ static void add_compute(pw_node *node)
     }
 }
 
+static void mul_compute(pw_node *node)
+{
+    int blksize;
+    int n;
+    struct arith_n *arith;
+
+    blksize = pw_node_blksize(node);
+
+    arith = (struct arith_n *)pw_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        PWFLT a, b, out;
+
+        a = pw_cable_get(arith->a, n);
+        b = pw_cable_get(arith->b, n);
+        out = a * b;
+
+        pw_cable_set(arith->out, n, out);
+    }
+}
+
 static void destroy(pw_node *node)
 {
     pw_patch *patch;
@@ -44,7 +65,7 @@ static void destroy(pw_node *node)
     pw_memory_free(patch, &ud);
 }
 
-int sk_node_add(sk_core *core)
+static int node_arith(sk_core *core, pw_function compute)
 {
     pw_patch *patch;
     pw_node *node;
@@ -78,13 +99,23 @@ int sk_node_add(sk_core *core)
     pw_node_get_cable(node, 2, &arith->out);
 
     pw_node_set_data(node, arith);
-    pw_node_set_compute(node, add_compute);
+    pw_node_set_compute(node, compute);
     pw_node_set_destroy(node, destroy);
 
     sk_param_set(core, node, &a, 0);
     sk_param_set(core, node, &b, 1);
     sk_param_out(core, node, 2);
     return 0;
+}
+
+int sk_node_add(sk_core *core)
+{
+    return node_arith(core, add_compute);
+}
+
+int sk_node_mul(sk_core *core)
+{
+    return node_arith(core, mul_compute);
 }
 
 /* TODO: mul, sub, div */

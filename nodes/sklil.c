@@ -6,14 +6,14 @@
 #include "core.h"
 #include "sklil.h"
 
-void sklil_param(sk_core *core, lil_value_t arg)
+int sklil_param(sk_core *core, lil_value_t arg)
 {
     const char *sarg;
     sarg = lil_to_string(arg);
 
     if (!strcmp(sarg, "zz") || strlen(sarg) == 0) {
-        return;
+        return 0;
     }
 
-    sk_core_constant(core, lil_to_double(arg));
+    return sk_core_constant(core, lil_to_double(arg));
 }

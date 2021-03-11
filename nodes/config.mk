@@ -9,3 +9,4 @@ include nodes/gensine/config.mk
 include nodes/osc/config.mk
 include nodes/reg/config.mk
 include nodes/buffer/config.mk
+include nodes/bigverb/config.mk
