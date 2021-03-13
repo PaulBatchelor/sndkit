@@ -25,7 +25,28 @@ static lil_value_t smoother(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t tsmoother(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "tsmoother", argc, 3);
+
+    rc = sklil_param(core, argv[0]);
+    SKLIL_PARAM_CHECK(lil, rc, "tsmoother");
+    rc = sklil_param(core, argv[1]);
+    SKLIL_PARAM_CHECK(lil, rc, "tsmoother");
+    rc = sklil_param(core, argv[2]);
+    SKLIL_PARAM_CHECK(lil, rc, "tsmoother");
+
+    rc = sk_node_tsmoother(core);
+    SKLIL_ERROR_CHECK(lil, rc, "tsmoother didn't work out.");
+    return NULL;
+}
+
 void sklil_load_smoother(lil_t lil)
 {
     lil_register(lil, "smoother", smoother);
+    lil_register(lil, "tsmoother", tsmoother);
 }

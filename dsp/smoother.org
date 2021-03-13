@@ -159,6 +159,14 @@ it to snap directly to the value =in=.
 #+BEGIN_SRC c
 void sk_smoother_reset(sk_smoother *s, SKFLT in);
 #+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_smoother_reset(sk_smoother *s, SKFLT in)
+{
+    s->y0 = in;
+}
+#+END_SRC
 * Compute
 Compute a sample with =sk_smoother_tick=. This expects an
 input signal, and returns a single output signal.

@@ -18,4 +18,5 @@ int sk_node_div(sk_core *core);
 int sk_node_bigverb(sk_core *core);
 int sk_node_gensine(sk_core *core);
 int sk_node_smoother(sk_core *core);
+int sk_node_tsmoother(sk_core *core);
 #endif
