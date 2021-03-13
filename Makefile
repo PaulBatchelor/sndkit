@@ -62,6 +62,14 @@ dsp/scale.o \
 dsp/rephasor.o \
 dsp/gen.o \
 
+# headers to install
+HEADERS=\
+	lil/lil.h \
+	nodes/sklil.h \
+	nodes/sknodes.h \
+	patchwerk/patchwerk.h \
+	core.h
+
 include nodes/config.mk
 
 OBJ+=lil/lil.c99
@@ -144,6 +152,14 @@ libsndkit.a: $(OBJ)
 
 sndkit: main.o $(OBJ)
 	$(CC) $(CFLAGS) $^ -o $@
+
+install: libsndkit.a sndkit
+	mkdir -p /usr/local/lib
+	mkdir -p /usr/local/bin
+	mkdir -p /usr/local/include/sndkit
+	cp libsndkit.a /usr/local/lib
+	cp $(HEADERS) /usr/local/include/sndkit
+	cp sndkit /usr/local/bin
 
 clean:
 	$(RM) $(TANGLED)
