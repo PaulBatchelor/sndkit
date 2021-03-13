@@ -118,9 +118,20 @@ s->psmooth = -1;
 =a1= and =b0= are filter coefficients computed from the
 =smooth= time parameter, with =y0= being the filter memory.
 
+#+NAME: init
+#+BEGIN_SRC c
+s->a1 = 0;
+s->b0 = 0;
+#+END_SRC
+
 =onedsr= is the constant =1.0/sr=. This might not actually
 be all that helpful since a divide operation is still
 happening. Hmm.
+
+#+NAME: init
+#+BEGIN_SRC c
+s->onedsr = 1.0 / sr;
+#+END_SRC
 * Setting Smoothing Time
 Set the smoothinb time parameter with =sk_smoother_time=.
 
