@@ -12,3 +12,4 @@ include nodes/buffer/config.mk
 include nodes/bigverb/config.mk
 include nodes/fmpair/config.mk
 include nodes/dcblocker/config.mk
+include nodes/smoother/config.mk
