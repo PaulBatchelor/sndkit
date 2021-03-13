@@ -37,6 +37,7 @@
 (ww-add-link "rephasor" "dsp/rephasor.org")
 (ww-add-link "gen" "dsp/gen.org")
 (ww-add-link "siren" "doc/siren.org")
+(ww-add-link "smoother" "dsp/smoother.org")
 
 # sync and close
 

@@ -59,4 +59,18 @@ peakeq_df2_structure.png \
 peakeq_df2_structure2x.png \
 peakeq_tforiginal.png \
 peakeq_tforiginal2x.png \
+smoother_a1.png \
+smoother_a12x.png \
+smoother_a1_eqn.png \
+smoother_a1_eqn2x.png \
+smoother_b0.png \
+smoother_b02x.png \
+smoother_b0_eqn.png \
+smoother_b0_eqn2x.png \
+smoother_eqn.png \
+smoother_eqn2x.png \
+smoother_fs.png \
+smoother_fs2x.png \
+smoother_t.png \
+smoother_t2x.png \
 

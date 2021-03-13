@@ -35,6 +35,7 @@ dsp/expmap.c dsp/expmap.h \
 dsp/scale.c dsp/scale.h \
 dsp/rephasor.c dsp/rephasor.h \
 dsp/gen.c dsp/gen.h \
+dsp/smoother.c dsp/smoother.h \
 
 TANGLED+=core.c core.h
 
@@ -61,6 +62,7 @@ patchwerk/patchwerk.o \
 dsp/scale.o \
 dsp/rephasor.o \
 dsp/gen.o \
+dsp/smoother.o \
 
 # headers to install
 HEADERS=\
