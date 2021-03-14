@@ -677,6 +677,50 @@ int sk_param_out(sk_core *core,
 =sk_param_out= will take an output cable of a node
 (referenced by index), and push it onto the sndkit stack.
 It will also push the cable's buffer onto the stack.
+** Pushing/Popping Generic Pointers
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_generic_push(sk_core *core, void *ptr);
+int sk_core_generic_pop(sk_core *core, void **ptr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_generic_push(sk_core *core, void *ptr)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_push(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_GENERIC;
+    s->ptr = ptr;
+
+    return rc;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_generic_pop(sk_core *core, void **ptr)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_GENERIC) {
+        return 1;
+    }
+
+    if (ptr != NULL) *ptr = s->ptr;
+
+    return rc;
+}
+#+END_SRC
 * Registers
 A register interface is used alongside the stack
 interface to store and retrieve data. A value stored
