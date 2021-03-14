@@ -150,4 +150,10 @@ LILAPI void lil_freemem(void* ptr);
 
 LILAPI void lil_write(lil_t lil, const char* msg);
 
+/* paul: added lil_main */
+
+LILAPI int lil_main(int argc, char *argv[],
+                    void (*loader)(lil_t),
+                    void (*clean)(lil_t));
+
 #endif
