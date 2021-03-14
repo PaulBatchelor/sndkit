@@ -122,6 +122,7 @@ s->psmooth = -1;
 #+BEGIN_SRC c
 s->a1 = 0;
 s->b0 = 0;
+s->y0 = 0;
 #+END_SRC
 
 =onedsr= is the constant =1.0/sr=. This might not actually

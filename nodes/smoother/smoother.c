@@ -31,7 +31,6 @@ static void compute(pw_node *node)
 
         sk_smoother_time(&smoother->smoother, smooth);
         out = sk_smoother_tick(&smoother->smoother, in);
-
         pw_cable_set(smoother->out, n, out);
     }
 }
