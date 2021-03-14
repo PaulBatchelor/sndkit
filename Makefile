@@ -65,6 +65,7 @@ dsp/rephasor.o \
 dsp/gen.o \
 dsp/smoother.o \
 dsp/metro.o \
+dsp/mtof.o \
 
 # headers to install
 HEADERS=\

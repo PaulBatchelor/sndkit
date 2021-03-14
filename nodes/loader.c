@@ -21,6 +21,7 @@ void sklil_load_fmpair(lil_t lil);
 void sklil_load_dcblocker(lil_t lil);
 void sklil_load_smoother(lil_t lil);
 void sklil_load_metro(lil_t lil);
+void sklil_load_mtof(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -40,6 +41,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_dcblocker(lil);
     sklil_load_smoother(lil);
     sklil_load_metro(lil);
+    sklil_load_mtof(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

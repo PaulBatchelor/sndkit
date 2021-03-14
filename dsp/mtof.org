@@ -1,0 +1,132 @@
+#+TITLE: mtof
+* Overview
+=mtof= stands for MIDI-to-frequency. It converts
+something that's a MIDI note number to frequency.
+
+For now, this page will be limited to just 12-tone
+equal temperament. But, with some easy adjustments,
+the equation could be changed to produce a wide range
+of equal temperament scales.
+* Equation
+Here's the mathematical equation that will be used for
+=mtof=, and it's inevitably going to make some people upset:
+
+@!(fig "mtof_eqn" ``
+f = 2^{(d - 69)/12} \cdot 440
+``
+)!@
+
+Despite this being taken from [[https://en.wikipedia.org/wiki/MIDI_tuning_standard][wikipedia]],
+there is still controversy in the music industry about
+if this is the *right* way.
+
+Let's first ignore the woes of equal temperament. That's a
+whole other thing.
+
+This equation is calibrated so that MIDI note number 69 is
+concert A. If you're from Roland, they'll be the ones
+who insist it should be 57. Pay no attention to them.
+
+This equation is tuned to concert A440. This is
+standard, and it's a fine standard. In contemporary
+orchestras, concert A is sometimes tuned sharp to A441,
+A442, or - dare I say it? - A443! Orchestras that specialize
+in period music and/or instruments tend to tune lower. I
+believe it's around A435 or so?
+
+Suffice it so say that pitch and tonality have a beautiful
+elasticity to it that shouldn't be forgotten in the digital
+domain. However, for most practical purpose, this equation
+gets the job done.
+* Tangled Files
+Two files as usual: =mtof.c= and =mtof.h=.
+
+#+NAME: mtof.h
+#+BEGIN_SRC c :tangle mtof.h
+#ifndef SK_MTOF_H
+#define SK_MTOF_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+<<macros>>
+#ifdef SK_MTOF_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+
+#+NAME: mtof.c
+#+BEGIN_SRC c :tangle mtof.c
+#include <math.h>
+#define SK_MTOF_PRIV
+#include "mtof.h"
+<<funcs>>
+#+END_SRC
+* Function
+The macro =SK_MTOF= performs the MIDI-to-frequency equation
+above.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_MTOF(f) (pow(2, (nn - 69.0) / 12.0) * 440.0);
+#+END_SRC
+* mtof with caching
+To save on some CPU cycles, a cached version of =SK_MTOF=
+has been created.
+
+State is stored in =sk_mtof=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_mtof sk_mtof;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_mtof {
+   SKFLT freq;
+   SKFLT nn;
+};
+#+END_SRC
+
+Initialize with =sk_mtof_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_mtof_init(sk_mtof *mf);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_mtof_init(sk_mtof *mf)
+{
+    mf->freq = -1;
+    mf->nn = -1;
+}
+#+END_SRC
+
+Compute with =sk_mtof_tick=:
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_mtof_tick(sk_mtof *mf, SKFLT nn);
+#+END_SRC
+
+The function will only call =SK_MTOF= when the note number
+has changed.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_mtof_tick(sk_mtof *mf, SKFLT nn)
+{
+    if (nn != mf->nn) {
+        mf->nn = nn;
+        mf->freq = SK_MTOF(nn);
+    }
+    return mf->freq;
+}
+#+END_SRC

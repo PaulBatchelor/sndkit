@@ -14,3 +14,4 @@ include nodes/fmpair/config.mk
 include nodes/dcblocker/config.mk
 include nodes/smoother/config.mk
 include nodes/metro/config.mk
+include nodes/mtof/config.mk
