@@ -38,6 +38,7 @@
 (ww-add-link "gen" "dsp/gen.org")
 (ww-add-link "siren" "doc/siren.org")
 (ww-add-link "smoother" "dsp/smoother.org")
+(ww-add-link "metro" "dsp/metro.org")
 
 # sync and close
 

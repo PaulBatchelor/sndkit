@@ -51,3 +51,6 @@ that goes up and down.
 slightly different scaling amount.
 
 @!(ref "smoother")!@ is a one-pole smoothing filter.
+
+@!(ref "metro")!@ produces single-sample impulses at a
+regular rate.
