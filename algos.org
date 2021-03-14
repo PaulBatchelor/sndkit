@@ -49,3 +49,5 @@ that goes up and down.
 
 @!(ref "rephasor")!@ resynthesizes a phasor signal with a
 slightly different scaling amount.
+
+@!(ref "smoother")!@ is a one-pole smoothing filter.
