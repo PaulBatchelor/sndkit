@@ -153,7 +153,7 @@ SKFLT sk_metro_tick(sk_metro *m)
     out = 0;
 
     if (m->init) {
-        m->init = 1;
+        m->init = 0;
         out = 1.0;
     } else {
         phs += freq * m->onedsr;
