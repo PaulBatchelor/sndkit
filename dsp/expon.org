@@ -34,16 +34,9 @@ Note that values *cannot* be exactly 0.
 <<funcs>>
 #+END_SRC
 * Initialization
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void sk_expon_init(sk_expon *e, int sr);
-#+END_SRC
-
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void sk_expon_dur(sk_expon *e, SKFLT dur);
-#+END_SRC
-
+The expon state is managed in a struct called =sk_expon=,
+and initialized  with =sk_expon_init=. The sampling rate
+=sr= must be provided.
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct sk_expon sk_expon;
@@ -59,6 +52,12 @@ struct sk_expon {
     int sr;
 };
 #+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expon_init(sk_expon *e, int sr);
+#+END_SRC
+
 
 #+NAME: funcs
 #+BEGIN_SRC c
@@ -92,6 +91,15 @@ void sk_expon_b(sk_expon *e, SKFLT val)
 {
     if (val != 0) e->b = val;
 }
+#+END_SRC
+
+** Duration
+Set the duration of the segment with =sk_expon_dur=.
+This is in units of seconds.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expon_dur(sk_expon *e, SKFLT dur);
 #+END_SRC
 
 #+NAME: funcs
