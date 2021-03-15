@@ -54,3 +54,6 @@ slightly different scaling amount.
 
 @!(ref "metro")!@ produces single-sample impulses at a
 regular rate.
+
+@!(ref "expon")!@ is a re-triggerable exponential line
+generator.
