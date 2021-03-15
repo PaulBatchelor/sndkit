@@ -37,6 +37,7 @@ dsp/rephasor.c dsp/rephasor.h \
 dsp/gen.c dsp/gen.h \
 dsp/smoother.c dsp/smoother.h \
 dsp/metro.c dsp/metro.h \
+dsp/expon.c dsp/expon.h \
 
 TANGLED+=core.c core.h
 
@@ -66,6 +67,7 @@ dsp/gen.o \
 dsp/smoother.o \
 dsp/metro.o \
 dsp/mtof.o \
+dsp/expon.o \
 
 # headers to install
 HEADERS=\
