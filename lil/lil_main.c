@@ -228,8 +228,7 @@ static int nonint(int argc,
 }
 
 /* Paul: changed main to lil_main, also added callbacks */
-LILAPI int lil_main(int argc,
-             const char* argv[],
+int lil_main(int argc, const char* argv[],
              void (*loader)(lil_t),
              void (*clean)(lil_t))
 {

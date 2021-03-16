@@ -152,7 +152,7 @@ LILAPI void lil_write(lil_t lil, const char* msg);
 
 /* paul: added lil_main */
 
-LILAPI int lil_main(int argc, char *argv[],
+LILAPI int lil_main(int argc, const char *argv[],
                     void (*loader)(lil_t),
                     void (*clean)(lil_t));
 
