@@ -21,4 +21,5 @@ int sk_node_smoother(sk_core *core);
 int sk_node_tsmoother(sk_core *core);
 int sk_node_metro(sk_core *core);
 int sk_node_expon(sk_core *core);
+int sk_node_rline(sk_core *core);
 #endif
