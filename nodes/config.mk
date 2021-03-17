@@ -18,3 +18,4 @@ include nodes/mtof/config.mk
 include nodes/expon/config.mk
 include nodes/rline/config.mk
 include nodes/vardelay/config.mk
+include nodes/expmap/config.mk

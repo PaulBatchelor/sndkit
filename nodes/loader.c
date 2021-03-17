@@ -25,6 +25,7 @@ void sklil_load_mtof(lil_t lil);
 void sklil_load_expon(lil_t lil);
 void sklil_load_rline(lil_t lil);
 void sklil_load_vardelay(lil_t lil);
+void sklil_load_expmap(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -48,6 +49,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_expon(lil);
     sklil_load_rline(lil);
     sklil_load_vardelay(lil);
+    sklil_load_expmap(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

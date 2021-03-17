@@ -1,0 +1,4 @@
+scale [expmap [phasor 0.3 0] 4] 300 500
+sine zz 0.5
+wavout zz "test.wav"
+computes 10

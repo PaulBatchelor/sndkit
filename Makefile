@@ -68,6 +68,7 @@ dsp/smoother.o \
 dsp/metro.o \
 dsp/mtof.o \
 dsp/expon.o \
+dsp/expmap.o \
 
 # headers to install
 HEADERS=\
