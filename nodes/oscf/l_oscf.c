@@ -16,8 +16,10 @@ static lil_value_t oscf(lil_t lil, size_t argc, lil_value_t *argv)
     SKLIL_ARITY_CHECK(lil, "oscf", argc, 3);
 
     /* skip param 0 containing table */
-    sklil_param(core, argv[1]);
-    sklil_param(core, argv[2]);
+    rc = sklil_param(core, argv[1]);
+    SKLIL_PARAM_CHECK(lil, rc, "oscf");
+    rc = sklil_param(core, argv[2]);
+    SKLIL_PARAM_CHECK(lil, rc, "oscf");
 
     rc = sk_node_oscf(core);
 
@@ -25,7 +27,26 @@ static lil_value_t oscf(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t oscfext(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "oscfext", argc, 2);
+
+    /* skip param 0 containing table */
+    rc = sklil_param(core, argv[1]);
+    SKLIL_PARAM_CHECK(lil, rc, "oscfext");
+
+    rc = sk_node_oscfext(core);
+
+    SKLIL_ERROR_CHECK(lil, rc, "There was a problem with oscfext.")
+    return NULL;
+}
+
 void sklil_load_oscf(lil_t lil)
 {
     lil_register(lil, "oscf", oscf);
+    lil_register(lil, "oscfext", oscfext);
 }
