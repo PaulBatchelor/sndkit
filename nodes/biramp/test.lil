@@ -1,0 +1,7 @@
+phasor 1 0
+# slightly steeper uphill than downhill
+biramp zz 0.4
+scale zz 300 600
+sine zz 0.5
+wavout zz "test.wav"
+computes 10

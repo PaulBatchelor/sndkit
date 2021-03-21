@@ -21,3 +21,4 @@ include nodes/vardelay/config.mk
 include nodes/expmap/config.mk
 include nodes/phasewarp/config.mk
 include nodes/oscf/config.mk
+include nodes/biramp/config.mk

@@ -28,6 +28,7 @@ void sklil_load_vardelay(lil_t lil);
 void sklil_load_expmap(lil_t lil);
 void sklil_load_oscf(lil_t lil);
 void sklil_load_phasewarp(lil_t lil);
+void sklil_load_biramp(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -54,6 +55,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_expmap(lil);
     sklil_load_oscf(lil);
     sklil_load_phasewarp(lil);
+    sklil_load_biramp(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
