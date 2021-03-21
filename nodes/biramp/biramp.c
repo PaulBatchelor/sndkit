@@ -10,7 +10,8 @@ struct biramp_n {
     pw_cable *pos;
     pw_cable *out;
     SKFLT lphs;
-    SKFLT lpos;
+    SKFLT lpos; /* used for biramp */
+    int dir; /* used for flipper */
 };
 
 static void compute(pw_node *node)
@@ -31,6 +32,25 @@ static void compute(pw_node *node)
         out = sk_biramp_stateful(in, pos,
                                  &biramp->lphs,
                                  &biramp->lpos);
+        pw_cable_set(biramp->out, n, out);
+    }
+}
+
+static void flipper(pw_node *node)
+{
+    int blksize;
+    int n;
+    struct biramp_n *biramp;
+
+    blksize = pw_node_blksize(node);
+
+    biramp = (struct biramp_n *)pw_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        PWFLT in, out;
+        in = pw_cable_get(biramp->in, n);
+
+        out = sk_biramp_flipper(in, &biramp->lphs, &biramp->dir);
         pw_cable_set(biramp->out, n, out);
     }
 }
@@ -70,6 +90,7 @@ int sk_node_biramp(sk_core *core)
 
     biramp->lpos = -1;
     biramp->lphs = -1;
+    biramp->dir = 0; /* unused for biramp */
 
     rc = pw_patch_new_node(patch, &node);
     SK_PW_ERROR_CHECK(rc);
@@ -90,5 +111,47 @@ int sk_node_biramp(sk_core *core)
     sk_param_set(core, node, &in, 0);
     sk_param_set(core, node, &pos, 1);
     sk_param_out(core, node, 2);
+    return 0;
+}
+
+int sk_node_flipper(sk_core *core)
+{
+    pw_patch *patch;
+    pw_node *node;
+    int rc;
+    sk_param in;
+    void *ud;
+    struct biramp_n *biramp;
+
+    rc = sk_param_get(core, &in);
+    SK_ERROR_CHECK(rc);
+
+    patch = sk_core_patch(core);
+
+    rc = pw_memory_alloc(patch, sizeof(struct biramp_n), &ud);
+    SK_PW_ERROR_CHECK(rc);
+    biramp = (struct biramp_n *)ud;
+
+    biramp->lpos = -1; /* unused for flipper */
+    biramp->lphs = -1;
+    biramp->dir = 0;
+
+    rc = pw_patch_new_node(patch, &node);
+    SK_PW_ERROR_CHECK(rc);
+
+    rc = pw_node_cables_alloc(node, 2);
+    SK_PW_ERROR_CHECK(rc);
+
+    pw_node_set_block(node, 1);
+
+    pw_node_get_cable(node, 0, &biramp->in);
+    pw_node_get_cable(node, 1, &biramp->out);
+
+    pw_node_set_data(node, biramp);
+    pw_node_set_compute(node, flipper);
+    pw_node_set_destroy(node, destroy);
+
+    sk_param_set(core, node, &in, 0);
+    sk_param_out(core, node, 1);
     return 0;
 }
