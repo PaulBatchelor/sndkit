@@ -1,0 +1,4 @@
+# TBD
+phasor [58 mtof] 0
+wavout zz "test.wav"
+computes 10
