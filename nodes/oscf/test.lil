@@ -1,0 +1,4 @@
+oscf [gensine [tabnew 8192]] 300 0
+mul zz 0.3
+wavout zz "test.wav"
+computes 10
