@@ -27,4 +27,5 @@ int sk_node_expmap(sk_core *core);
 int sk_node_biramp(sk_core *core);
 int sk_node_phasewarp(sk_core *core);
 int sk_node_oscf(sk_core *core);
+int sk_node_modalres(sk_core *core);
 #endif
