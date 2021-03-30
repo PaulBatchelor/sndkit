@@ -22,3 +22,4 @@ include nodes/expmap/config.mk
 include nodes/phasewarp/config.mk
 include nodes/oscf/config.mk
 include nodes/biramp/config.mk
+include nodes/modalres/config.mk
