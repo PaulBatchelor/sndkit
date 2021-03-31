@@ -72,7 +72,7 @@ int sk_node_vardelay(sk_core *core)
 
     rc = sk_param_get(core, &delay);
     SK_ERROR_CHECK(rc);
-    
+
     rc = sk_param_get(core, &feedback);
     SK_ERROR_CHECK(rc);
 
