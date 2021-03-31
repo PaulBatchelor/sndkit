@@ -62,10 +62,25 @@ static lil_value_t drop(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t swap(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    rc = sk_core_swap(core);
+
+    SKLIL_ERROR_CHECK(lil, rc, "swap didn't work out.");
+
+    return NULL;
+}
+
 void sklil_load_buffer(lil_t lil)
 {
     lil_register(lil, "hold", hold);
     lil_register(lil, "unhold", unhold);
     lil_register(lil, "dup", dup);
     lil_register(lil, "drop", drop);
+    lil_register(lil, "swap", swap);
 }

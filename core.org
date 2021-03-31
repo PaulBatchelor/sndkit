@@ -472,6 +472,70 @@ int sk_core_drop(sk_core *core)
     return 0;
 }
 #+END_SRC
+** Swap
+=swap= will swap the positions of the last two items on
+the stack.
+
+The basic operation is done with =sk_stack_swap=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_swap(sk_stack *stack,
+                  sk_stacklet **s1,
+                  sk_stacklet **s2);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_swap(sk_stack *stack,
+                  sk_stacklet **out1,
+                  sk_stacklet **out2)
+{
+    sk_stacklet tmp;
+    int pos;
+
+    pos = stack->pos;
+    if (pos < 2) return 1;
+
+    tmp = stack->stack[pos];
+
+    stack->stack[pos] = stack->stack[pos - 1];
+    stack->stack[pos - 1] = tmp;
+
+    if (out1 != NULL) *out1 = &stack->stack[pos - 1];
+    if (out2 != NULL) *out2 = &stack->stack[pos];
+
+    return 0;
+}
+#+END_SRC
+
+The function =sk_core_swap= does a swap, and will also swap
+on the patchwerk buffer stack if both items are cables.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_swap(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_swap(sk_core *core)
+{
+    int rc;
+    sk_stacklet *s[2];
+    rc = sk_stack_swap(&core->stack, &s[0], &s[1]);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s[0]->type == SK_TYPE_CABLE && s[1]->type == SK_TYPE_CABLE) {
+        pw_stack *stack;
+        stack = pw_patch_stack(core->patch);
+        pw_stack_swap(stack);
+    }
+
+    return 0;
+}
+#+END_SRC
 * Parameters and Cables
 =sndkit_param= is an abstraction used to deal with
 patchwerk cables, and is designed to link up with the
