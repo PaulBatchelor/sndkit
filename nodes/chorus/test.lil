@@ -1,0 +1,20 @@
+gensine [tabnew 8192]
+mtof 60
+param 1
+param 1
+param 1
+param 0
+fmpair zz zz zz zz zz zz
+mul zz 0.2
+
+dup; dup
+chorus zz 0.3 1 1 0.007 0
+swap
+chorus zz 0.31 1 1 0.008 0.3
+add zz zz
+mul zz 0.5
+add zz zz
+
+wavout zz "test.wav"
+
+computes 10
