@@ -57,3 +57,5 @@ regular rate.
 
 @!(ref "expon")!@ is a re-triggerable exponential line
 generator.
+
+@!(ref "chorus")!@ implements a classic chorusing effect.
