@@ -61,13 +61,10 @@ int sk_node_chorus(sk_core *core)
     int rc;
     sk_param in, rate, depth, mix;
     SKFLT delay;
-    SKFLT iphs;
-    void *ud;
     struct chorus_n *chorus;
     int sr;
+    void *ud;
 
-    rc = sk_param_get_constant(core, &iphs);
-    SK_ERROR_CHECK(rc);
     rc = sk_param_get_constant(core, &delay);
     SK_ERROR_CHECK(rc);
     rc = sk_param_get(core, &mix);
@@ -86,7 +83,7 @@ int sk_node_chorus(sk_core *core)
     chorus = (struct chorus_n *)ud;
 
     sr = pw_patch_srate_get(patch);
-    chorus->chorus = sk_chorus_new(sr, delay, iphs);
+    chorus->chorus = sk_chorus_new(sr, delay);
 
     rc = pw_patch_new_node(patch, &node);
     SK_PW_ERROR_CHECK(rc);

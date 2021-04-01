@@ -88,28 +88,27 @@ struct sk_chorus {
 * Setup and Cleanup
 The function =sk_chorus_new= and =sk_chorus_del= will
 dynamically allocate and free an instance of =chorus=.
-The sample rate =sr=, size of the delay line in units
-of seconds =delay=, and initial phase of the LFO
-(normalized 0-1) must be provided.
+The sample rate =sr=, and size of the delay line in units
+of seconds =delay=.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
-sk_chorus * sk_chorus_new(int sr, SKFLT delay, SKFLT iphs);
+sk_chorus * sk_chorus_new(int sr, SKFLT delay);
 void sk_chorus_del(sk_chorus *c);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
-sk_chorus * sk_chorus_new(int sr, SKFLT delay, SKFLT iphs)
+sk_chorus * sk_chorus_new(int sr, SKFLT delay)
 {
     sk_chorus *c;
     SKFLT *buf;
-    size_t sz;
+    long sz;
 
     c = malloc(sizeof(sk_chorus));
     sz = floor(delay * sr);
     buf = malloc(sizeof(SKFLT) * sz);
-    sk_chorus_init(c, sr, iphs, buf, sz);
+    sk_chorus_init(c, sr, buf, sz);
 
     return c;
 }
@@ -130,18 +129,16 @@ and the buffer size =sz= (in samples) is provided.
 #+BEGIN_SRC c
 void sk_chorus_init(sk_chorus *c,
                     int sr,
-                    SKFLT iphs,
                     SKFLT *buf,
-                    size_t sz);
+                    long sz);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
 void sk_chorus_init(sk_chorus *c,
                     int sr,
-                    SKFLT iphs,
                     SKFLT *buf,
-                    size_t sz)
+                    long sz)
 {
     <<init>>
 }
@@ -258,7 +255,7 @@ SKFLT sk_chorus_tick(sk_chorus *c, SKFLT in)
     SKFLT lfo;
     SKFLT t;
     SKFLT frac;
-    size_t p1, p2;
+    long p1, p2;
     out = 0;
 
     <<update_magic_circle>>
@@ -297,8 +294,8 @@ total buffer size =sz= is used for bounds checking.
 #+NAME: sk_chorus
 #+BEGIN_SRC c
 SKFLT *buf;
-size_t sz;
-size_t wpos;
+long sz;
+long wpos;
 #+END_SRC
 
 #+NAME: init
@@ -307,7 +304,7 @@ c->buf = buf;
 c->sz = sz;
 c->wpos = sz - 1;
 {
-    size_t i;
+    long i;
     for (i = 0; i < sz; i++) c->buf[i] = 0;
 }
 #+END_SRC
@@ -453,7 +450,6 @@ Write input sample to buffer.
 #+NAME: write_input_sample
 #+BEGIN_SRC c
 c->buf[c->wpos] = in;
-c->wpos++;
 #+END_SRC
 
 Update write position. Wrap around if needed.

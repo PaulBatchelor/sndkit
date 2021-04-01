@@ -14,9 +14,9 @@ static lil_value_t chorus(lil_t lil, size_t argc, lil_value_t *argv)
     int i;
     core = lil_get_data(lil);
 
-    SKLIL_ARITY_CHECK(lil, "chorus", argc, 6);
+    SKLIL_ARITY_CHECK(lil, "chorus", argc, 5);
 
-    for (i = 0; i < 6; i++) {
+    for (i = 0; i < 5; i++) {
         rc = sklil_param(core, argv[i]);
         SKLIL_PARAM_CHECK(lil, rc, "chorus");
     }
