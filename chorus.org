@@ -1,0 +1,115 @@
+#+TITLE: Chorus
+* Overview
+This documents outlines an implementation for a =chorus=
+effect.
+
+A [[https://ccrma.stanford.edu/~jos/pasp/Chorus_Effect.html][chorus]] can be generally described
+as an effect that takes some sound somehow
+makes it sound like multiple sounds playing
+the same note in unison.
+
+A chorus is usually done with some kind of modulating
+delay line. This particular implementation will be no
+different. When the delay time is modulated, it results
+in an audible pitch shift due to the interpolation. This
+slight warbling pitch-shifted version of the signal is
+then added back to the original signal to create the
+illusion of two voices playing in unison.
+
+A low-frequence oscillator (LFO) is typically used to
+modulate the delay time. Some implementations I've seen
+use a triangle wave, as they are computationally cheap and
+simple to implement. However, the sharp edges when it
+changes slope can cause a very unwanted artifact in the
+chorus. In place of a triangle wave LFO, this implementation
+will be using a sine wave. Normally, using a sine wave
+modulator means either choosing between taking up memory
+(via a @!(ref "oscf" "table lookup oscillator")!@), or
+CPU cyles using =sin= directly, but if the frequency is
+expected to be fixed, a so-called
+[[https://ccrma.stanford.edu/~jos/pasp/Digital_Sinusoid_Generators.html][magic circle]] algorithm
+can be used to produce a sinusoid requiring only 2 samples
+of memory, 2 multiplies, and 2 adds. This magic circle
+sinusoid will be used in the implementation to modulate
+our chorus.
+
+Before being mixed in with the input signal, the delay line
+output is filted with a one-pole low pass IIR filter. What
+this does is adds a bit more presence to the dry signal.
+* Tangled files
+=chorus.c= and =chorus.h=. Defining =SK_CHORUS_PRIV= will
+expose the =sk_chorus= struct.
+* The Core Struct
+All data is contained in a struct called =sk_chorus=.
+* Setup and Cleanup
+The function =sk_chorus_new= and =sk_chorus_del= will
+dynamically allocate and free an instance of =chorus=.
+The sample rate =sr=, size of the delay line in units
+of seconds =delay=, and initial phase of the LFO
+(normalized 0-1) must be provided.
+
+=sk_chorus_init= can be called directly if the memory
+is intended to be managed externally. The buffer =buf=
+and the buffer size =sz= (in samples) is provided.
+* Setting Parameters
+** Rate
+The rate of the LFO, in Hertz. Set it with
+=sk_chorus_rate=. This uses parameter caching to prevent
+coefficients from being needlessly updated.
+** Depth
+=Depth= controls how much the LFO modulates the delay line.
+This is a value in range 0-1. Set it with =sk_chorus_depth=.
+** Mix
+=mix= controls the mix between the dry/wet signal. 1 is
+all wet. 0 is all dry. 0.5 is a mix between the two. It
+is helpful to have an all wet mix for chaining choruses
+together.
+* Computing A Sample
+A single sample is computed with =sk_chorus_tick=, it will
+take in a single sample as input, and return a single sample
+of output.
+* Components
+** Sample Rate
+A copy of the sample rate is needed to compute coefficients.
+** Delay
+The delay line is buffer of floating-point samples.
+The write position =wpos= is stored in an integer.
+
+For interpolation, a unit delay is used storing the previous
+sample. This will be a variable called =z1=, appropriately
+labled since it is a 1-sample delay in the z-plane.
+** 1-pole lowpass filter
+This one pole lowpass filter has 1-sample filter memory
+of the previous sample =ym1= (y minus 1), and alpha
+coefficient =a=.
+
+The =a= filter coefficient is computed at init time to have
+a cutoff frequency of =2.02kHz=. This was found empirically.
+** Magic Circle Sinusoid
+The magic circle requires 2 samples of memory =mc_x1= and
+=mc_x2=, in addition to a constant =mc_eps=, where the =eps=
+is short for epsilon.
+* The Process
+Update magic circle.
+
+Compute the LFO.
+
+Calculate the delay time (in samples).
+
+Get first read pointer. Wrap around if needed.
+
+Get second read pointer (used for linear interpolation).
+Wrap around if needed.
+
+Get fractional component from delay time.
+
+Interpolate and update memory.
+
+Apply low pass filter.
+
+Write input sample to buffer.
+
+Update write position. Wrap around if needed.
+
+Mix the input signal with delay line signal and
+return.
