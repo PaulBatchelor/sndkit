@@ -41,6 +41,7 @@
 (ww-add-link "metro" "dsp/metro.org")
 (ww-add-link "mtof" "dsp/mtof.org")
 (ww-add-link "expon" "dsp/expon.org")
+(ww-add-link "chorus" "dsp/chorus.org")
 
 # sync and close
 
