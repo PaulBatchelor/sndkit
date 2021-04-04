@@ -24,3 +24,4 @@ include nodes/oscf/config.mk
 include nodes/biramp/config.mk
 include nodes/modalres/config.mk
 include nodes/chorus/config.mk
+include nodes/bezier/config.mk
