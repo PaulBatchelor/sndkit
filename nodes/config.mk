@@ -26,3 +26,4 @@ include nodes/modalres/config.mk
 include nodes/chorus/config.mk
 include nodes/bezier/config.mk
 include nodes/bitnoise/config.mk
+include nodes/chaosnoise/config.mk
