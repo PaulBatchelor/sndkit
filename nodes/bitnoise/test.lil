@@ -1,0 +1,4 @@
+bitnoise 8000 0
+mul zz 0.3
+wavout zz "test.wav"
+computes 10

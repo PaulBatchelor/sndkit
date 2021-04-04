@@ -30,4 +30,5 @@ int sk_node_oscf(sk_core *core);
 int sk_node_modalres(sk_core *core);
 int sk_node_chorus(sk_core *core);
 int sk_node_bezier(sk_core *core);
+int sk_node_bitnoise(sk_core *core);
 #endif
