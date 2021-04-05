@@ -34,6 +34,7 @@ void sklil_load_chorus(lil_t lil);
 void sklil_load_bezier(lil_t lil);
 void sklil_load_bitnoise(lil_t lil);
 void sklil_load_chaosnoise(lil_t lil);
+void sklil_load_peakeq(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -66,6 +67,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_bezier(lil);
     sklil_load_bitnoise(lil);
     sklil_load_chaosnoise(lil);
+    sklil_load_peakeq(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

@@ -1,0 +1,6 @@
+# TODO: we really need a real noise module
+chaosnoise 1.9 4000 0.141
+mul zz 0.5
+peakeq zz 2000 300 5
+wavout zz "test.wav"
+computes 10
