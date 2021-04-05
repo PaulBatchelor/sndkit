@@ -33,4 +33,5 @@ int sk_node_bezier(sk_core *core);
 int sk_node_bitnoise(sk_core *core);
 int sk_node_chaosnoise(sk_core *core);
 int sk_node_peakeq(sk_core *core);
+int sk_node_valp1(sk_core *core);
 #endif
