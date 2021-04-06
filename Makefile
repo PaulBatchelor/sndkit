@@ -39,6 +39,7 @@ dsp/smoother.c dsp/smoother.h \
 dsp/metro.c dsp/metro.h \
 dsp/expon.c dsp/expon.h \
 dsp/chorus.c dsp/chorus.h \
+dsp/bitosc.c dsp/bitosc.h \
 
 TANGLED+=core.c core.h
 
@@ -71,6 +72,7 @@ dsp/mtof.o \
 dsp/expon.o \
 dsp/expmap.o \
 dsp/chorus.o \
+dsp/bitosc.o \
 
 # headers to install
 HEADERS=\

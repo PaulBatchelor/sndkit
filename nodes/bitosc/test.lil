@@ -1,0 +1,8 @@
+scale [phasor 8 0] 0 12
+add zz 72
+mtof zz
+phasor zz 0
+bitosc zz 3 6
+mul zz 0.3
+wavout zz "test.wav"
+computes 2

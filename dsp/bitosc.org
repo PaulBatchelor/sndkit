@@ -1,0 +1,54 @@
+#+TITLE: bitosc
+=Bitosc= is a stateless 1-bit table-lookup oscillator.
+
+The oscillator takes in 3 parameters as inputs:
+
+position, a normalized value between 0-1. This is
+assumed to be a phasor signal.
+
+table, a polypulse "wavetable" stored as an integer.
+
+The table size. Something between 1 and 32.
+
+The output of bitosc will either be -1 or 1. This allows it
+to be muted at DC.
+
+#+NAME: bitosc.h
+#+BEGIN_SRC c :tangle bitosc.h
+#ifndef SK_BITOSC_H
+#define SK_BITOSC_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: bitosc.c
+#+BEGIN_SRC c :tangle bitosc.c
+#include <math.h>
+#include "bitosc.h"
+<<funcs>>
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_bitosc_tick(SKFLT phs, unsigned long wt, int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_bitosc_tick(SKFLT phs, unsigned long wt, int sz)
+{
+    SKFLT out;
+    int pos;
+
+    if (phs == 1) pos = sz - 1;
+    else pos = floor(phs * sz);
+
+    out = (wt & (1 << pos)) >> pos;
+    out = (out * 2) - 1;
+
+    return out;
+}
+#+END_SRC
