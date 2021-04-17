@@ -43,6 +43,7 @@
 (ww-add-link "expon" "dsp/expon.org")
 (ww-add-link "chorus" "dsp/chorus.org")
 (ww-add-link "bitosc" "dsp/bitosc.org")
+(ww-add-link "normalized_range" "doc/normalized_range.org")
 
 # sync and close
 

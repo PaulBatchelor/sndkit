@@ -1,0 +1,21 @@
+#+TITLE: Normalized Range
+In =sndkit=, a =normalized range= is any real number within
+the inclusive range 0 and 1.
+
+Normalized ranges are ideal ways to abstract away units when
+you don't want to think about them.
+
+Usually, values in a normalized range are destined to be
+@!(ref "scale" "rescaled later")!@, such as @!(ref "oscf"
+"table lookup oscillators")!@.
+
+In IEEE floating point, there are sometimes some numerical
+advantages to keeping things in a smaller range, as values
+in this range have more equidistance spacing compared to
+using relatively larger values. This spacing is referred
+to as the magnitude of a
+[[https://en.wikipedia.org/wiki/Unit_in_the_last_place][unit in last place, or "ulp"]].
+More information about the nuances of floating point
+precision can be found in =Physically Based Rendering= by
+Pharr, Jakob, and Humphreys in Chapter 3.9 (Managing
+Rounding Error).
