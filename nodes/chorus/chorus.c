@@ -1,6 +1,5 @@
-#include <sndkit/patchwerk.h>
-#include <sndkit/core.h>
-
+#include "patchwerk.h"
+#include "core.h"
 #include "dsp/chorus.h"
 
 struct chorus_n {
