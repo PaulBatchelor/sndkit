@@ -3,6 +3,7 @@
 int sk_node_biscale(sk_core *core);
 int sk_node_scale(sk_core *core);
 int sk_node_wavout(sk_core *core, const char *filename);
+int sk_node_wavin(sk_core *core, const char *filename);
 int sk_node_sine(sk_core *core);
 int sk_node_dcblocker(sk_core *core);
 int sk_node_rephasor(sk_core *core);
