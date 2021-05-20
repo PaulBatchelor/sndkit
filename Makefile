@@ -163,7 +163,8 @@ libsndkit.a: $(OBJ)
 	@$(AR) rcs $@ $(OBJ)
 
 sndkit: main.o $(OBJ)
-	$(CC) $(CFLAGS) $^ -o $@
+	@echo "Building $@"
+	@$(CC) $(CFLAGS) $^ -o $@
 
 install: libsndkit.a sndkit
 	mkdir -p /usr/local/lib
