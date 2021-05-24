@@ -61,3 +61,6 @@ generator.
 @!(ref "chorus")!@ implements a classic chorusing effect.
 
 @!(ref "bitosc")!@ is a 1-bit stateless oscillator.
+
+@!(ref "env")!@ is a triggerable attack, hold, release
+envelope generator.

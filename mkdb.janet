@@ -44,6 +44,7 @@
 (ww-add-link "chorus" "dsp/chorus.org")
 (ww-add-link "bitosc" "dsp/bitosc.org")
 (ww-add-link "normalized_range" "doc/normalized_range.org")
+(ww-add-link "env" "dsp/env.org")
 
 # sync and close
 
