@@ -40,6 +40,7 @@ dsp/metro.c dsp/metro.h \
 dsp/expon.c dsp/expon.h \
 dsp/chorus.c dsp/chorus.h \
 dsp/bitosc.c dsp/bitosc.h \
+dsp/env.c dsp/env.h \
 
 TANGLED+=core.c core.h
 
@@ -73,6 +74,7 @@ dsp/expon.o \
 dsp/expmap.o \
 dsp/chorus.o \
 dsp/bitosc.o \
+dsp/env.o \
 
 # headers to install
 HEADERS=\

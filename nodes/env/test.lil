@@ -1,0 +1,6 @@
+metro 0.5
+env zz 0.1 0.01 0.01
+sine 880 0.5
+mul zz zz
+wavout zz "test.wav"
+computes 10
