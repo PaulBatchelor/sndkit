@@ -72,6 +72,8 @@ sk_core * sk_core_new(int sr)
 
     sk_stack_init(&core->stack);
     sk_regtbl_init(&core->regtbl);
+
+    sk_core_srand(core, 0);
     return core;
 }
 #+END_SRC
@@ -102,6 +104,7 @@ struct sk_core {
     pw_patch *patch;
     sk_stack stack;
     sk_regtbl regtbl;
+    unsigned long rng;
 };
 #+END_SRC
 
@@ -1293,5 +1296,47 @@ check an error code and exit if it is non-zero.
 #define SK_PW_ERROR_CHECK(rc) if(rc != PW_OK) {\
     fprintf(stderr, "Error: %s\n", pw_error(rc));\
     return 1;\
+}
+#+END_SRC
+* Random Number Generator
+A simple random number generator (RNG)
+is included with the core API, based
+on the LCG found in Soundpipe.
+
+Seed the RNG with =sk_core_srand=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_core_srand(sk_core *core, unsigned long val);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_core_srand(sk_core *core, unsigned long val)
+{
+    core->rng = val;
+}
+#+END_SRC
+
+A random number is generated with =sk_core_rand=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+unsigned long sk_core_rand(sk_core *core);
+#+END_SRC
+
+This will return a value between 0 and =SK_CORE_RANDMAX=.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_CORE_RANDMAX 2147483648
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+unsigned long sk_core_rand(sk_core *core)
+{
+    core->rng = (1103515245 * core->rng + 12345) % SK_CORE_RANDMAX;
+    return core->rng;
 }
 #+END_SRC
