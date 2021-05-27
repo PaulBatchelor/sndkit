@@ -13,6 +13,8 @@ CFLAGS += -Wall
 CFLAGS += -O3
 CFLAGS += -g
 
+LDFLAGS += -lm
+
 TANGLED=\
 dsp/bigverb.c dsp/bigverb.h \
 dsp/bitnoise.c dsp/bitnoise.h \
@@ -166,7 +168,7 @@ libsndkit.a: $(OBJ)
 
 sndkit: main.o $(OBJ)
 	@echo "Building $@"
-	@$(CC) $(CFLAGS) $^ -o $@
+	@$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
 
 install: libsndkit.a sndkit
 	mkdir -p /usr/local/lib

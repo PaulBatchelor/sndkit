@@ -55,6 +55,10 @@ expose the =sk_chorus= struct.
 #endif
 
 <<funcdefs>>
+
+#ifdef __plan9__
+#pragma incomplete sk_chorus
+#endif
 #endif
 #+END_SRC
 

@@ -6,7 +6,7 @@
 #include <stdio.h> 
 #include <stdarg.h>  
 /*6:*/
-#line 15 "./header.w"
+#line 23 "./header.w"
 
 #ifndef PWFLT
 #define PWFLT float
@@ -100,11 +100,11 @@ typedef int(*pw_mallocfun)(pw_patch*,size_t,void**);
 typedef int(*pw_freefun)(pw_patch*,void**);
 
 /*:393*/
-#line 24 "./header.w"
+#line 32 "./header.w"
 
 
 /*:6*//*7:*/
-#line 27 "./header.w"
+#line 35 "./header.w"
 
 /*55:*/
 #line 14 "./cable.w"
@@ -148,7 +148,7 @@ pw_buffer*buf;
 };
 
 /*:55*/
-#line 28 "./header.w"
+#line 36 "./header.w"
 
 #line 1 "./node.w"
 /*:7*//*22:*/
@@ -653,7 +653,7 @@ pw_cable*pw_patch_get_out(pw_patch*patch);
 /*:280*//*282:*/
 #line 298 "./patch.w"
 
-size_t pw_patch_size();
+size_t pw_patch_size(void);
 
 /*:282*//*285:*/
 #line 314 "./patch.w"
@@ -907,6 +907,14 @@ void pw_print_set(pw_patch*p,void(*print)(pw_patch*,const char*,va_list));
 /*:405*/
 #line 9 "./header.w"
 
+
+#ifdef __plan9__
+#pragma incomplete pw_buffer
+#pragma incomplete pw_patch
+#pragma incomplete pw_node
+#pragma incomplete pw_pointer
+#pragma incomplete pw_stack
+#endif
 #endif
 
 /*:5*/

@@ -183,6 +183,12 @@ typedef drwav_uint32            drwav_bool32;
 #define DRWAV_TRUE              1
 #define DRWAV_FALSE             0
 
+#ifdef __plan9__
+#define WFMODE(m) m
+#else
+#define WFMODE(m) L##m
+#endif
+
 #if !defined(DRWAV_API)
     #if defined(DRWAV_DLL)
         #if defined(_WIN32)
@@ -3094,7 +3100,7 @@ DRWAV_API drwav_bool32 drwav_init_file_w(drwav* pWav, const wchar_t* filename, c
 DRWAV_API drwav_bool32 drwav_init_file_ex_w(drwav* pWav, const wchar_t* filename, drwav_chunk_proc onChunk, void* pChunkUserData, drwav_uint32 flags, const drwav_allocation_callbacks* pAllocationCallbacks)
 {
     FILE* pFile;
-    if (drwav_wfopen(&pFile, filename, L"rb", pAllocationCallbacks) != DRWAV_SUCCESS) {
+    if (drwav_wfopen(&pFile, filename, WFMODE("rb"), pAllocationCallbacks) != DRWAV_SUCCESS) {
         return DRWAV_FALSE;
     }
 
@@ -3136,7 +3142,7 @@ DRWAV_PRIVATE drwav_bool32 drwav_init_file_write__internal(drwav* pWav, const ch
 DRWAV_PRIVATE drwav_bool32 drwav_init_file_write_w__internal(drwav* pWav, const wchar_t* filename, const drwav_data_format* pFormat, drwav_uint64 totalSampleCount, drwav_bool32 isSequential, const drwav_allocation_callbacks* pAllocationCallbacks)
 {
     FILE* pFile;
-    if (drwav_wfopen(&pFile, filename, L"wb", pAllocationCallbacks) != DRWAV_SUCCESS) {
+    if (drwav_wfopen(&pFile, filename, WFMODE("wb"), pAllocationCallbacks) != DRWAV_SUCCESS) {
         return DRWAV_FALSE;
     }
 

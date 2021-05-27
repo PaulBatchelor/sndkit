@@ -77,6 +77,14 @@ typedef struct _lil_var_t* lil_var_t;
 typedef struct _lil_env_t* lil_env_t;
 typedef struct _lil_list_t* lil_list_t;
 typedef struct _lil_t* lil_t;
+#ifdef __plan9__
+#pragma incomplete struct _lil_value_t;
+#pragma incomplete struct _lil_func_t;
+#pragma incomplete struct _lil_var_t;
+#pragma incomplete struct _lil_env_t;
+#pragma incomplete struct _lil_list_t;
+#pragma incomplete struct _lil_t;
+#endif
 typedef LILCALLBACK lil_value_t (*lil_func_proc_t)(lil_t lil, size_t argc, lil_value_t* argv);
 typedef LILCALLBACK void (*lil_exit_callback_proc_t)(lil_t lil, lil_value_t arg);
 typedef LILCALLBACK void (*lil_write_callback_proc_t)(lil_t lil, const char* msg);
