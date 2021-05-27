@@ -1,0 +1,24 @@
+</$objtype/mkfile
+
+TARGET=worgle.$cputype
+CFLAGS=$CFLAGS -DWORGLITE -p -I/sys/include/npe
+
+HFILES=\
+	parg.h\
+	worgle.h\
+	worgle_private.h\
+
+OFILES=\
+	parg.$O\
+	worgle.$O\
+
+$TARGET: $OFILES
+	$LD $LDFLAGS -o $target $prereq
+
+CLEANFILES=$TARGET
+
+</sys/src/cmd/mkone
+
+default:V: all
+
+all:V: $TARGET

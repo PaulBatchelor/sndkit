@@ -29,6 +29,13 @@ Registers are for more persitently used values.
 #endif
 <<macros>>
 <<funcdefs>>
+
+#ifdef __plan9__
+#pragma incomplete sk_core
+#pragma incomplete sk_stack
+#pragma incomplete sk_regtbl
+#pragma incomplete sk_table
+#endif
 #endif
 #+END_SRC
 

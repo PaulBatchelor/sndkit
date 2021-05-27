@@ -1572,7 +1572,7 @@ return patch->out;
 /*:281*//*283:*/
 #line 301 "./patch.w"
 
-size_t pw_patch_size()
+size_t pw_patch_size(void)
 {
 return sizeof(pw_patch);
 }

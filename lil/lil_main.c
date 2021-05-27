@@ -48,7 +48,7 @@ static LILCALLBACK void do_exit(lil_t lil, lil_value_t val)
 
 static char* do_system(size_t argc, char** argv)
 {
-    #if defined(WIN32) || defined(WATCOMC)
+    #if defined(WIN32) || defined(WATCOMC) || defined(__plan9__)
     return NULL;
     #else
     char* cmd = NULL;
