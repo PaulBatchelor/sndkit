@@ -1401,18 +1401,18 @@ void*ud;
 
 int err;
 
-/*:262*//*392:*/
+/*:262*//*394:*/
 #line 49 "./memory.w"
 
 pw_mallocfun malloc;
 pw_freefun free;
 
-/*:392*//*401:*/
+/*:394*//*403:*/
 #line 35 "./print.w"
 
 void(*print)(pw_patch*,const char*fmt,va_list);
 
-/*:401*/
+/*:403*/
 #line 14 "./patch.w"
 
 };
@@ -1794,8 +1794,16 @@ void pw_patch_err(pw_patch*patch,int rc)
 {
 patch->err= rc;
 }
+
+/*:309*//*311:*/
+#line 615 "./patch.w"
+
+pw_node*pw_patch_last_node(pw_patch*patch)
+{
+return patch->last;
+}
 #line 1 "./subpatch.w"
-/*:309*//*400:*/
+/*:311*//*402:*/
 #line 23 "./print.w"
 
 void pw_print(pw_patch*p,const char*fmt,...)
@@ -1806,10 +1814,10 @@ p->print(p,fmt,args);
 va_end(args);
 }
 
-/*:400*//*403:*/
+/*:402*//*405:*/
 #line 45 "./print.w"
 
-/*404:*/
+/*406:*/
 #line 55 "./print.w"
 
 static void pw_print_default(pw_patch*p,const char*str,va_list args)
@@ -1818,7 +1826,7 @@ vprintf(str,args);
 }
 
 
-/*:404*/
+/*:406*/
 #line 46 "./print.w"
 
 void pw_print_init(pw_patch*p)
@@ -1826,20 +1834,20 @@ void pw_print_init(pw_patch*p)
 p->print= pw_print_default;
 }
 
-/*:403*//*406:*/
+/*:405*//*408:*/
 #line 69 "./print.w"
 
 void pw_print_set(pw_patch*p,void(*print)(pw_patch*,const char*,va_list))
 {
 p->print= print;
-}/*:406*/
+}/*:408*/
 #line 8 "./patch.w"
 
 
-/*:249*//*310:*/
+/*:249*//*312:*/
 #line 9 "./subpatch.w"
 
-/*316:*/
+/*318:*/
 #line 48 "./subpatch.w"
 
 void pw_subpatch_init(pw_subpatch*subpatch)
@@ -1848,7 +1856,7 @@ subpatch->nnodes= 0;
 pw_pointerlist_init(&subpatch->plist);
 }
 
-/*:316*//*319:*/
+/*:318*//*321:*/
 #line 63 "./subpatch.w"
 
 void pw_subpatch_save(pw_patch*patch,pw_subpatch*subpatch)
@@ -1860,7 +1868,7 @@ subpatch->out= patch->out;
 subpatch->plist= patch->plist;
 }
 
-/*:319*//*322:*/
+/*:321*//*324:*/
 #line 79 "./subpatch.w"
 
 void pw_subpatch_restore(pw_patch*patch,pw_subpatch*subpatch)
@@ -1872,7 +1880,7 @@ patch->out= subpatch->out;
 patch->plist= subpatch->plist;
 }
 
-/*:322*//*324:*/
+/*:324*//*326:*/
 #line 94 "./subpatch.w"
 
 void pw_subpatch_compute(pw_subpatch*subpatch)
@@ -1888,7 +1896,7 @@ node= next;
 }
 }
 
-/*:324*//*326:*/
+/*:326*//*328:*/
 #line 113 "./subpatch.w"
 
 void pw_subpatch_destroy(pw_subpatch*subpatch)
@@ -1904,7 +1912,7 @@ node= next;
 }
 }
 
-/*:326*//*328:*/
+/*:328*//*330:*/
 #line 133 "./subpatch.w"
 
 void pw_subpatch_free(pw_subpatch*subpatch)
@@ -1923,7 +1931,7 @@ pw_pointerlist_free(&subpatch->plist);
 pw_pointerlist_init(&subpatch->plist);
 }
 
-/*:328*//*330:*/
+/*:330*//*332:*/
 #line 155 "./subpatch.w"
 
 pw_cable*pw_subpatch_out(pw_subpatch*subpatch)
@@ -1931,14 +1939,14 @@ pw_cable*pw_subpatch_out(pw_subpatch*subpatch)
 return subpatch->out;
 }
 #line 1 "./egraph.w"
-/*:330*/
+/*:332*/
 #line 10 "./subpatch.w"
 
 
-/*:310*//*331:*/
+/*:312*//*333:*/
 #line 8 "./egraph.w"
 
-/*335:*/
+/*337:*/
 #line 52 "./egraph.w"
 
 struct pw_evnode{
@@ -1950,7 +1958,7 @@ pw_evnode*prev;
 pw_evnode*next;
 };
 
-/*:335*//*338:*/
+/*:337*//*340:*/
 #line 76 "./egraph.w"
 
 int pw_evnode_new(pw_patch*patch,pw_evnode**evn)
@@ -1971,10 +1979,10 @@ int pw_evnode_bye(pw_patch*patch,pw_evnode**evn)
 return pw_memory_free(patch,(void**)evn);
 }
 
-/*:338*//*340:*/
+/*:340*//*342:*/
 #line 100 "./egraph.w"
 
-/*334:*/
+/*336:*/
 #line 28 "./egraph.w"
 
 static pw_evnode*empty_event(pw_evnode*evn,int pos)
@@ -1982,10 +1990,10 @@ static pw_evnode*empty_event(pw_evnode*evn,int pos)
 return pw_evnode_next(evn);
 }
 
-/*:334*/
+/*:336*/
 #line 101 "./egraph.w"
 
-/*341:*/
+/*343:*/
 #line 115 "./egraph.w"
 
 static void empty_clean(pw_evnode*evn)
@@ -1993,7 +2001,7 @@ static void empty_clean(pw_evnode*evn)
 
 }
 
-/*:341*/
+/*:343*/
 #line 102 "./egraph.w"
 
 void pw_evnode_init(pw_evnode*evn)
@@ -2006,7 +2014,7 @@ evn->prev= NULL;
 evn->next= NULL;
 }
 
-/*:340*//*343:*/
+/*:342*//*345:*/
 #line 126 "./egraph.w"
 
 pw_evnode*pw_evnode_fire(pw_evnode*evn,int pos)
@@ -2014,7 +2022,7 @@ pw_evnode*pw_evnode_fire(pw_evnode*evn,int pos)
 return evn->event(evn,pos);
 }
 
-/*:343*//*345:*/
+/*:345*//*347:*/
 #line 136 "./egraph.w"
 
 void pw_evnode_callback(pw_evnode*evn,pw_evnode_cb cb)
@@ -2022,7 +2030,7 @@ void pw_evnode_callback(pw_evnode*evn,pw_evnode_cb cb)
 evn->event= cb;
 }
 
-/*:345*//*347:*/
+/*:347*//*349:*/
 #line 147 "./egraph.w"
 
 void pw_evnode_clean(pw_evnode*evn)
@@ -2030,7 +2038,7 @@ void pw_evnode_clean(pw_evnode*evn)
 evn->clean(evn);
 }
 
-/*:347*//*349:*/
+/*:349*//*351:*/
 #line 157 "./egraph.w"
 
 void pw_evnode_clean_set(pw_evnode*evn,void(*cb)(pw_evnode*))
@@ -2038,7 +2046,7 @@ void pw_evnode_clean_set(pw_evnode*evn,void(*cb)(pw_evnode*))
 evn->clean= cb;
 }
 
-/*:349*//*351:*/
+/*:351*//*353:*/
 #line 180 "./egraph.w"
 
 void pw_evnode_data_set(pw_evnode*evn,void*ud)
@@ -2051,7 +2059,7 @@ void*pw_evnode_data_get(pw_evnode*evn)
 return evn->ud;
 }
 
-/*:351*//*353:*/
+/*:353*//*355:*/
 #line 197 "./egraph.w"
 
 pw_evnode*pw_evnode_next(pw_evnode*evn)
@@ -2059,7 +2067,7 @@ pw_evnode*pw_evnode_next(pw_evnode*evn)
 return evn->next;
 }
 
-/*:353*//*355:*/
+/*:355*//*357:*/
 #line 208 "./egraph.w"
 
 void pw_evnode_dur(pw_evnode*evn,int dur)
@@ -2067,7 +2075,7 @@ void pw_evnode_dur(pw_evnode*evn,int dur)
 evn->dur= dur;
 }
 
-/*:355*//*357:*/
+/*:357*//*359:*/
 #line 218 "./egraph.w"
 
 int pw_evnode_dur_get(pw_evnode*evn)
@@ -2075,7 +2083,7 @@ int pw_evnode_dur_get(pw_evnode*evn)
 return evn->dur;
 }
 
-/*:357*//*359:*/
+/*:359*//*361:*/
 #line 232 "./egraph.w"
 
 int pw_evnode_is_terminal(pw_evnode*evn)
@@ -2083,7 +2091,7 @@ int pw_evnode_is_terminal(pw_evnode*evn)
 return evn->next==NULL;
 }
 
-/*:359*//*361:*/
+/*:361*//*363:*/
 #line 245 "./egraph.w"
 
 void pw_evnode_set_next(pw_evnode*evn,pw_evnode*next)
@@ -2091,10 +2099,10 @@ void pw_evnode_set_next(pw_evnode*evn,pw_evnode*next)
 evn->next= next;
 }
 
-/*:361*//*362:*/
+/*:363*//*364:*/
 #line 256 "./egraph.w"
 
-/*367:*/
+/*369:*/
 #line 297 "./egraph.w"
 
 void pw_evwalker_reset(pw_evwalker*walker)
@@ -2104,7 +2112,7 @@ walker->count= 0;
 walker->terminal= 1;
 }
 
-/*:367*//*369:*/
+/*:369*//*371:*/
 #line 335 "./egraph.w"
 
 void pw_evwalker_init(pw_evwalker*walker,pw_evnode*start,int delay)
@@ -2117,7 +2125,7 @@ walker->terminal= 1;
 }
 }
 
-/*:369*//*371:*/
+/*:371*//*373:*/
 #line 403 "./egraph.w"
 
 int pw_evwalker_walk(pw_evwalker*walker,int pos)
@@ -2149,18 +2157,18 @@ return!walker->terminal;
 return 0;
 }
 #line 1 "./dump.w"
-/*:371*/
+/*:373*/
 #line 257 "./egraph.w"
 
 
-/*:362*/
+/*:364*/
 #line 9 "./egraph.w"
 
 
-/*:331*//*372:*/
+/*:333*//*374:*/
 #line 9 "./dump.w"
 
-/*374:*/
+/*376:*/
 #line 16 "./dump.w"
 
 void pw_dump_cable(FILE*fp,pw_cable*c)
@@ -2194,7 +2202,7 @@ fprintf(fp,"{}");
 fprintf(fp,"}");
 }
 
-/*:374*//*376:*/
+/*:376*//*378:*/
 #line 51 "./dump.w"
 
 void pw_dump_node(FILE*fp,pw_node*n,int print_cables)
@@ -2218,7 +2226,7 @@ fprintf(fp,"]");
 fprintf(fp,"}");
 }
 
-/*:376*//*378:*/
+/*:378*//*380:*/
 #line 78 "./dump.w"
 
 void pw_dump_nodes(FILE*fp,pw_node*nodes,int nnodes,int print_cables)
@@ -2242,7 +2250,7 @@ fprintf(fp,"]");
 fprintf(fp,"}");
 }
 
-/*:378*//*380:*/
+/*:380*//*382:*/
 #line 104 "./dump.w"
 
 void pw_dump_nodelist(FILE*fp,pw_patch*p,int print_cables)
@@ -2251,7 +2259,7 @@ pw_dump_nodes(fp,p->nodes,p->nnodes,print_cables);
 }
 
 
-/*:380*//*382:*/
+/*:382*//*384:*/
 #line 115 "./dump.w"
 
 void pw_dump_subpatch(FILE*fp,pw_subpatch*s,int print_cables)
@@ -2259,7 +2267,7 @@ void pw_dump_subpatch(FILE*fp,pw_subpatch*s,int print_cables)
 pw_dump_nodes(fp,s->nodes,s->nnodes,print_cables);
 }
 
-/*:382*//*384:*/
+/*:384*//*386:*/
 #line 124 "./dump.w"
 
 void pw_dump_bufferpool(FILE*fp,pw_bufferpool*bp,int print_buffers)
@@ -2286,7 +2294,7 @@ fprintf(fp,"]");
 fprintf(fp,"}");
 }
 
-/*:384*//*386:*/
+/*:386*//*388:*/
 #line 152 "./dump.w"
 
 void pw_dump_stack(FILE*fp,pw_stack*s,int print_buffers)
@@ -2308,7 +2316,7 @@ fprintf(fp,"]");
 fprintf(fp,"}");
 }
 
-/*:386*//*388:*/
+/*:388*//*390:*/
 #line 175 "./dump.w"
 
 void pw_dump_buffer(FILE*fp,pw_buffer*b)
@@ -2319,14 +2327,14 @@ fprintf(fp,"\"read\": %d",b->read);
 fprintf(fp,"}");
 }
 #line 1 "./memory.w"
-/*:388*/
+/*:390*/
 #line 10 "./dump.w"
 
 
-/*:372*//*389:*/
+/*:374*//*391:*/
 #line 10 "./memory.w"
 
-/*391:*/
+/*393:*/
 #line 27 "./memory.w"
 
 int pw_memory_alloc(pw_patch*p,size_t size,void**ud)
@@ -2347,7 +2355,7 @@ free(*ud);
 return PW_OK;
 }
 
-/*:391*//*395:*/
+/*:393*//*397:*/
 #line 66 "./memory.w"
 
 void pw_memory_override(pw_patch*p,pw_mallocfun m,pw_freefun f)
@@ -2356,7 +2364,7 @@ p->malloc= m;
 p->free= f;
 }
 
-/*:395*//*397:*/
+/*:397*//*399:*/
 #line 81 "./memory.w"
 
 static int default_malloc(pw_patch*p,size_t size,void**ud)
@@ -2383,11 +2391,11 @@ void pw_memory_defaults(pw_patch*p)
 pw_memory_override(p,default_malloc,default_free);
 }
 #line 1 "./print.w"
-/*:397*/
+/*:399*/
 #line 11 "./memory.w"
 
 
-/*:389*/
+/*:391*/
 #line 121 "./patchwerk.w"
 
 #line 1 "./header.w"
