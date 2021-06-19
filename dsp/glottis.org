@@ -2,10 +2,10 @@
 * Overview
 =glottis= implements an analytical model that approximates
 a signal that the human glottis makes. It is based on the
-works of Fant. Unlike the corresponding vocal tract that
-usually accompanies this vocla tract, the glottis is an
-anlytical model rather than physically based. This
-undelrying waveform is generated via a mathematical
+works of Liljencrants and Fant. Unlike the corresponding
+vocal tract that usually accompanies this vocla tract, the
+glottis is an anlytical model rather than physically based.
+This undelrying waveform is generated via a mathematical
 equation derived emprically rather than from physical
 principles.
 * Tangled Files
@@ -339,35 +339,70 @@ SKFLT sk_glottis_tick(sk_glottis *glot)
     SKFLT aspiration;
     SKFLT noise;
     SKFLT t;
-    SKFLT intensity;
 
     out = 0;
-    intensity = 1.0;
-    glot->time_in_waveform += glot->T;
 
-    if (glot->time_in_waveform > glot->waveform_length) {
-        glot->time_in_waveform -= glot->waveform_length;
-        setup_waveform(glot);
+    <<increment_waveform_timer>>
+    <<update_waveform_if_needed>>
 
-    }
-
-    t = (glot->time_in_waveform / glot->waveform_length);
-
-    if (t > glot->Te) {
-        out = (-exp(-glot->epsilon * (t-glot->Te)) + glot->shift) / glot->delta;
-    } else {
-        out = glot->E0 * exp(glot->alpha * t) * sin(glot->omega * t);
-    }
-
-    /* TODO: build more portable RNG */
-    noise = 2.0 * ((SKFLT) rand() / RAND_MAX) - 1;
-
-    aspiration = intensity * (1 - sqrt(glot->tenseness)) * 0.3 * noise;
-
-    aspiration *= 0.2;
-
-    out += aspiration;
+    <<compute_waveform>>
+    <<compute_aspiration_noise>>
 
     return out;
 }
+#+END_SRC
+
+The waveform timer is incremented. This measures the
+duration in the period.
+
+#+NAME: increment_waveform_timer
+#+BEGIN_SRC c
+glot->time_in_waveform += glot->T;
+#+END_SRC
+
+If the waveform reaches the end of the period,
+update the parameters for the next period.
+
+#+NAME: update_waveform_if_needed
+#+BEGIN_SRC c
+if (glot->time_in_waveform > glot->waveform_length) {
+    glot->time_in_waveform -= glot->waveform_length;
+    setup_waveform(glot);
+
+}
+#+END_SRC
+
+Compute the glottal waveform component. This varies
+depending on where it is in the period. This presumably
+comes from the LF model, but I'll need to check the papers
+again because I forget.
+
+#+NAME: compute_waveform
+#+BEGIN_SRC c
+t = (glot->time_in_waveform / glot->waveform_length);
+
+if (t > glot->Te) {
+    out = (-exp(-glot->epsilon * (t-glot->Te)) + glot->shift) / glot->delta;
+} else {
+    out = glot->E0 * exp(glot->alpha * t) * sin(glot->omega * t);
+}
+#+END_SRC
+
+Aspiration noise is approximated using white noise, and
+mixed into the glottal signal. How much is mixed in is
+inversely proportionally to the tenseness amount.
+
+At the time of writing, the built-in =rand= function is used
+to produce the noise. It works well enough, but varies from
+platform to platform slightly. The hope is to later build an
+internal random number generator that is more consistent
+and portable.
+
+#+NAME: compute_aspiration_noise
+#+BEGIN_SRC c
+/* TODO: build more portable RNG */
+noise = 2.0 * ((SKFLT) rand() / RAND_MAX) - 1;
+aspiration = (1 - sqrt(glot->tenseness)) * 0.3 * noise;
+aspiration *= 0.2;
+out += aspiration;
 #+END_SRC

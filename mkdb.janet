@@ -46,6 +46,7 @@
 (ww-add-link "normalized_range" "doc/normalized_range.org")
 (ww-add-link "env" "dsp/env.org")
 (ww-add-link "parameter_caching" "doc/parameter_caching.org")
+(ww-add-link "glottis" "dsp/glottis.org")
 
 # sync and close
 
