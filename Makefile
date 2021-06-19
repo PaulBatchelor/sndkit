@@ -43,6 +43,7 @@ dsp/expon.c dsp/expon.h \
 dsp/chorus.c dsp/chorus.h \
 dsp/bitosc.c dsp/bitosc.h \
 dsp/env.c dsp/env.h \
+dsp/glottis.c dsp/glottis.h \
 
 TANGLED+=core.c core.h
 
@@ -77,6 +78,7 @@ dsp/expmap.o \
 dsp/chorus.o \
 dsp/bitosc.o \
 dsp/env.o \
+dsp/glottis.o \
 
 # headers to install
 HEADERS=\
