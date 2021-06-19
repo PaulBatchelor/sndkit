@@ -31,3 +31,4 @@ include nodes/peakeq/config.mk
 include nodes/valp1/config.mk
 include nodes/bitosc/config.mk
 include nodes/env/config.mk
+include nodes/glottis/config.mk

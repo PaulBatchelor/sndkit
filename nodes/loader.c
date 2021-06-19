@@ -39,6 +39,7 @@ void sklil_load_valp1(lil_t lil);
 void sklil_load_bitosc(lil_t lil);
 void sklil_load_wavin(lil_t lil);
 void sklil_load_env(lil_t lil);
+void sklil_load_glottis(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -76,6 +77,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_bitosc(lil);
     sklil_load_wavin(lil);
     sklil_load_env(lil);
+    sklil_load_glottis(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

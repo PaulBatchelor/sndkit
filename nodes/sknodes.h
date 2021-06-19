@@ -37,4 +37,5 @@ int sk_node_peakeq(sk_core *core);
 int sk_node_valp1(sk_core *core);
 int sk_node_bitosc(sk_core *core);
 int sk_node_env(sk_core *core);
+int sk_node_glottis(sk_core *core);
 #endif
