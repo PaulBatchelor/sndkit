@@ -43,6 +43,24 @@ expmap_s.png \
 expmap_s2x.png \
 expmap_x.png \
 expmap_x2x.png \
+glottis_r_kp_eqn.png \
+glottis_r_kp_eqn2x.png \
+glottis_ra.png \
+glottis_ra2x.png \
+glottis_ra_rk_eqn.png \
+glottis_ra_rk_eqn2x.png \
+glottis_rd.png \
+glottis_rd2x.png \
+glottis_rd_fant.png \
+glottis_rd_fant2x.png \
+glottis_rg.png \
+glottis_rg2x.png \
+glottis_rg_derivation.png \
+glottis_rg_derivation2x.png \
+glottis_timing_coefficients.png \
+glottis_timing_coefficients2x.png \
+mtof_eqn.png \
+mtof_eqn2x.png \
 osc_lerp.png \
 osc_lerp2x.png \
 osc_lerp_simp.png \
@@ -73,4 +91,6 @@ smoother_fs.png \
 smoother_fs2x.png \
 smoother_t.png \
 smoother_t2x.png \
+smoother_xn.png \
+smoother_xn2x.png \
 

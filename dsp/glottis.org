@@ -166,29 +166,13 @@ static void setup_waveform(sk_glottis *glot)
     SKFLT alpha;
     SKFLT E0;
 
-    glot->Rd = 3 * (1 - glot->tenseness);
-    glot->waveform_length = 1.0 / glot->freq;
-
-    Rd = glot->Rd;
-    if (Rd < 0.5) Rd = 0.5;
-    if (Rd > 2.7) Rd = 2.7;
-
-    Ra = -0.01 + 0.048*Rd;
-    Rk = 0.224 + 0.118*Rd;
-    Rg = (Rk/4)*(0.5 + 1.2*Rk)/(0.11*Rd-Ra*(0.5+1.2*Rk));
-
-    Ta = Ra;
-    Tp = (SKFLT)1.0 / (2*Rg);
-    Te = Tp + Tp*Rk;
-
-    epsilon = (SKFLT)1.0 / Ta;
-    shift = exp(-epsilon * (1 - Te));
-    delta = 1 - shift;
-
-    rhs_integral = (SKFLT)(1.0/epsilon) * (shift-1) + (1-Te)*shift;
-    rhs_integral = rhs_integral / delta;
-    lower_integral = - (Te - Tp) / 2 + rhs_integral;
-    upper_integral = -lower_integral;
+    <<calculate_waveform_length>>
+    <<calculate_rd>>
+    <<calculate_ra_rk>>
+    <<calculate_rg>>
+    <<calculate_timing_parameters>>
+    <<calculate_epsilon_shift_delta>>
+    <<calculate_integrals>>
 
     omega = M_PI / Tp;
     s = sin(omega * Te);
@@ -198,87 +182,108 @@ static void setup_waveform(sk_glottis *glot)
     alpha = z / (Tp/2 - Te);
     E0 = -1 / (s * exp(alpha*Te));
 
-    glot->alpha = alpha;
-    glot->E0 = E0;
-    glot->epsilon = epsilon;
-    glot->shift = shift;
-    glot->delta = delta;
-    glot->Te = Te;
-    glot->omega = omega;
-
-    <<calculate_waveform_length>>
-    <<calculate_ra_rk>>
-    <<calculate_rg>>
-    <<calculate_timing_parameters>>
-    <<calculate_epsilon_shift_delta>>
-    <<calculate_integrals>>
     <<update_variables_in_struct>>
 }
 #+END_SRC
 
-To begin, both =waveform_length= and =R_d= are calcuated.
+To begin, both =waveform_length= and
+@!(smallfig "glottis_rd")!@ (=Rd=) are calcuated.
 
 The variable =waveform_length= is the period of the waveform
 based on the current frequency.
 
 #+NAME: calculate_waveform_length
 #+BEGIN_SRC c
-
+glot->waveform_length = 1.0 / glot->freq;
 #+END_SRC
 
-=R_d= is part of a set of normalized timing parameters used
-to calculate the time coefficients described in the LF model,
-as described in a 1997 Fant paper.
+@!(smallfig "glottis_rd")!@ is part of a set of normalized
+timing parameters used
+to calculate the time coefficients described in the LF
+model, as described in a 1997 Fant paper.
 
-=R_d= is derived from the =tenseness= parameter.
-
-=R_d= is then clamped to be in between 0.5 and 2.7, as these
+@!(smallfig "glottis_rd")!@ is derived from the
+=tenseness= parameter, and then clamped to be in between
+0.5 and 2.7, as these
 are good approximations (as observed in a paper titled
 "Glottal Source Modelling for Singing Voice Synthesis" by
 Hui-Ling Lu and Julius O Smith in 2000).
 
-The other timing parameters =R_a=, =R_g=, and =R_k= can
-be computed in terms of =R_d=, which is why this gets
+#+NAME: calculate_rd
+#+BEGIN_SRC c
+glot->Rd = 3 * (1 - glot->tenseness);
+Rd = glot->Rd;
+if (Rd < 0.5) Rd = 0.5;
+if (Rd > 2.7) Rd = 2.7;
+#+END_SRC
+
+The other timing parameters
+@!(smallfig "glottis_ra" "R_{ap}")!@ (=Ra=),
+@!(smallfig "glottis_rg" "R_{gp}")!@ (=Rg=),
+and @!(smallfig "glottis_rg" "R_{kp}")!@ (=Rk=)
+can be computed in terms of @!(smallfig "glottis_rd" "R_d")!@
+(=Rd=), which is why this gets
 computed first. The equations described below have been
 derived using linear regression:
 
-# $$R_{ap} = {(-1 + 4.8R_d) \over 100}$$
-# $$R_{kp} = {(22.4 + 11.8R_d) \over 100}$$
+@!(fig "glottis_ra_rk_eqn"
+``
+\eqalign{
+R_{ap} &= {(-1 + 4.8R_d) \over 100} \cr
+R_{kp} &= {(22.4 + 11.8R_d) \over 100} \cr
+}
+``)!@
 
 In code, these have been worked out to shave off a division
 operation.
 
 #+NAME: calculate_ra_rk
 #+BEGIN_SRC c
-
+Ra = -0.01 + 0.048*Rd;
+Rk = 0.224 + 0.118*Rd;
 #+END_SRC
 
-=R_{gp}= is derived using the results from =R_{ap}= and
-=R_{kp}= in the following equation described in the Fant
-1997 paper:
+@!(smallfig "glottis_rg")!@ (=Rg=) is derived using the
+results from @!(smallfig "glottis_ra")!@ and
+@!(smallfig "glottis_rk")!@ in the following equation
+described in the Fant 1997 paper:
 
-# $$R_d = (1/0.11)(0.5 + 1.2R_{k})(R_k / 4R_g + R_a)$$
+@!(fig "glottis_rd_fant"
+`
+R_d = (1/0.11)(0.5 + 1.2R_{kp})(R_{kp} / 4R_{gp} + R_{ap})
+`)!@
 
 Which yields:
-# $$R_{gp} = {(R_{kp}/4)(0.5 + 1.2R_{kp})\over
-# (0.11R_d - R_{ap}*(0.5+1.2R_{kp}))}$$
+
+@!(fig "glottis_rg_derivation"
+`
+R_{gp} = {(R_{kp}/4)(0.5 + 1.2R_{kp})\over
+(0.11R_d - R_{ap}*(0.5+1.2R_{kp}))}
+`)!@
 
 #+NAME: calculate_rg
 #+BEGIN_SRC c
-
+Rg = (Rk/4)*(0.5 + 1.2*Rk)/(0.11*Rd-Ra*(0.5+1.2*Rk));
 #+END_SRC
 
 The parameters approximating =R_a=, =R_g=, and =R_k=
 can be used to calculate the timing parameters
 =T_a=, =T_p=, and =T_e= in the LF model:
 
-# $$T_a = R_{ap}$$
-# $$T_p = 2R_{gp}^{-1}$$
-# $$T_e = T_p + T_pR_{kp}$$
+@!(fig "glottis_timing_coefficients"
+``
+\eqalign {
+T_a &= R_{ap} \cr
+T_p &= 2R_{gp}^{-1} \cr
+T_e &= T_p + T_pR_{kp}
+}
+``)!@
 
 #+NAME: calculate_timing_parameters
 #+BEGIN_SRC c
-
+Ta = Ra;
+Tp = (SKFLT)1.0 / (2*Rg);
+Te = Tp + Tp*Rk;
 #+END_SRC
 
 At this point, the timing variables can be used
@@ -287,59 +292,37 @@ to calculate three more variables needed: =epsilon=,
 
 #+NAME: calculate_epsilon_shift_delta
 #+BEGIN_SRC c
-
+epsilon = (SKFLT)1.0 / Ta;
+shift = exp(-epsilon * (1 - Te));
+delta = 1 - shift;
 #+END_SRC
-
-# @ @<Calculate epsilon, shift, and delta@>=
-# epsilon = (SPFLOAT)1.0 / Ta;
-# shift = exp(-epsilon * (1 - Te));
-# delta = 1 - shift;
 
 These are then used to calculate the integrals (TODO:
 understand this a bit better).
 
 #+NAME: calculate_integrals
 #+BEGIN_SRC c
-
+rhs_integral = (SKFLT)(1.0/epsilon) * (shift-1) + (1-Te)*shift;
+rhs_integral = rhs_integral / delta;
+lower_integral = - (Te - Tp) / 2 + rhs_integral;
+upper_integral = -lower_integral;
 #+END_SRC
-
-# @ @<Calculate Integrals@>=
-# rhs_integral = (SPFLOAT)(1.0/epsilon) * (shift-1) + (1-Te)*shift;
-# rhs_integral = rhs_integral / delta;
-# lower_integral = - (Te - Tp) / 2 + rhs_integral;
-# upper_integral = -lower_integral;
 
 More components here. The original Voc program didn't
 describe these in much detail, so...
-# @
-#
-# $$E_0 = -{E_e \over e^{\alpha T}\sin{\omega_g T_e}}$$
-# $$\omega = {\pi \over T_p}$$
-# $$\epsilon T_a = 1 - e^{-\epsilon(T_c - T_e)}$$
-# @<Calculate $E_0$@>=
-# omega = M_PI / Tp;
-# s = sin(omega * Te);
-#
-# y = -M_PI * s * upper_integral / (Tp*2);
-# z = log(y);
-# alpha = z / (Tp/2 - Te);
-# E0 = -1 / (s * exp(alpha*Te));
 
 Finally, update the variables in the struct.
 
 #+NAME: update_variables_in_struct
 #+BEGIN_SRC c
-
+glot->alpha = alpha;
+glot->E0 = E0;
+glot->epsilon = epsilon;
+glot->shift = shift;
+glot->delta = delta;
+glot->Te = Te;
+glot->omega = omega;
 #+END_SRC
-
-# @ @<Update variables in glottis data structure@>=
-# glot->alpha = alpha;
-# glot->E0 = E0;
-# glot->epsilon = epsilon;
-# glot->shift = shift;
-# glot->delta = delta;
-# glot->Te = Te;
-# glot->omega = omega;
 * Computation
 A single sample of audio is computed with =sk_glottis_tick=.
 
@@ -386,25 +369,5 @@ SKFLT sk_glottis_tick(sk_glottis *glot)
     out += aspiration;
 
     return out;
-}
-#+END_SRC
-* Sampled Waveform Generator
-Alternatively, a single waveform period can be rendered to
-a buffer with =sk_glottis_waveform=. This can be loaded
-into a table-lookup oscillator, which will end up being
-cheaper to compute than the full model.
-
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void sk_glottis_waveform(SKFLT *buf, int sz);
-#+END_SRC
-
-Not yet implemented!
-
-#+NAME: funcs
-#+BEGIN_SRC c
-void sk_glottis_waveform(SKFLT *buf, int sz)
-{
-    /* TODO: implement */
 }
 #+END_SRC
