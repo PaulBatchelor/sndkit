@@ -1,0 +1,87 @@
+#+TITLE: TeX equations in sndkit
+This aims to provide a brief overview on generating
+inline equations in TeX.
+* Writing TeX Equations
+The =fig= function in janet is used to generate an
+equation.
+
+For example, this markup code:
+
+#+BEGIN_SRC text
+@!(fig "tex_example" "y = mx + b")!@
+#+END_SRC
+
+Will produce the following equation:
+
+@!(fig "tex_example" "y = mx + b")!@
+
+The first argument is the name of the equation. This
+is used as the filename, so it should be unique (and
+without spaces). Typically the convention is to prefix
+it with the name of the algorithm it is in.
+
+The second argument is the actual TeX code, written
+in math mode.
+* Small Equations
+The =smallfig= function is used to render smaller equations,
+and is usually used for coefficients of an equation.
+
+For example, the following markup code:
+
+#+BEGIN_SRC text
+The equation above has the variables,
+@!(smallfig "tex_y" "y")!@, @!(smallfig "tex_m" "m")!@,
+@!(smallfig "tex_x" "x")!@, and @!(smallfig "tex_b" "b")!@.
+
+This is the formula for a linear equation in algebra where
+@!(smallfig "tex_y")!@ is the output,
+@!(smallfig "tex_x")!@ is the input, @!(smallfig "tex_m")!@
+is the slope of the line, and @!(smallfig "tex_b")!@ is
+the offset.
+#+END_SRC
+
+Looks like this:
+
+The equation above has the variables,
+@!(smallfig "tex_y" "y")!@, @!(smallfig "tex_m" "m")!@,
+@!(smallfig "tex_x" "x")!@, and @!(smallfig "tex_b" "b")!@.
+
+This is the formula for a linear equation in algebra where
+@!(smallfig "tex_y")!@ is the output,
+@!(smallfig "tex_x")!@ is the input, @!(smallfig "tex_m")!@
+is the slope of the line, and @!(smallfig "tex_b")!@ is
+the offset.
+
+Note that the second argument in =smallfig= is optional,
+allowing figures to be easily re-used as seen above.
+* Rendering Equations
+The next time weewiki exports HTML it will generate
+individual TeX code for all the equations in all the
+pages. These are located in the =_figs= directory.
+
+The diagrams for this page can be explicitely generated
+running the following command in the top-level sndkit
+directory:
+
+#+BEGIN_SRC sh
+weewiki export tex > /dev/null
+#+END_SRC
+
+Then, go into the =_figs= folder.
+
+Any time new figures are added, the figure list needs to be
+manually regenerated again with:
+
+#+BEGIN_SRC sh
+./mkfiglist > figs.mk
+#+END_SRC
+
+Running =make= without any arguments will generate all PNGs
+using TeX and the dvipng utility, which should be included
+with any texlive distribution. Two versions of the file will
+be included: a regular PNG file, and version with 2x the
+resolution for computers with HD displays.
+* Removing Figures
+If a named figure gets removed, the corresponding TeX file
+must be removed from the =_figs= directory, and =figs.mk=
+regenerated with =mkfiglist=.

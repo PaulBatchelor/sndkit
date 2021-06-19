@@ -93,4 +93,14 @@ smoother_t.png \
 smoother_t2x.png \
 smoother_xn.png \
 smoother_xn2x.png \
+tex_b.png \
+tex_b2x.png \
+tex_example.png \
+tex_example2x.png \
+tex_m.png \
+tex_m2x.png \
+tex_x.png \
+tex_x2x.png \
+tex_y.png \
+tex_y2x.png \
 

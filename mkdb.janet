@@ -47,6 +47,7 @@
 (ww-add-link "env" "dsp/env.org")
 (ww-add-link "parameter_caching" "doc/parameter_caching.org")
 (ww-add-link "glottis" "dsp/glottis.org")
+(ww-add-link "tex" "doc/tex.org")
 
 # sync and close
 
