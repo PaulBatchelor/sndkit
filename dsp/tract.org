@@ -1,0 +1,122 @@
+#+TITLE: Tract
+* Overview
+=Tract= implements a rudimentary physical model of the
+vocal tract for use in articulatory synthesis. It is based
+on the classic kelly-lochbaum model developed at Bell Labs
+in the early 60s. In recent years, such a model has gotten
+new breath (so to speak) in programs like Pink Trombone,
+from which this particular was derived from.
+
+In order to be both "physically based" and practically
+computable, the model crudely pretends that our vocal tract
+is a series of cylindrical tubes with varying diameters. In
+this model, 44 such diameters are used. Changing the
+diameters in various ways will result in different phonemes
+to come out the other side. Almost by magic.
+
+What combinations of diameters produce what kind of
+phonemes? It's not a straightforward answer, and new
+methods for finding ideal shapes are still an ongoing area
+of research. Initially, measurements were obtained by
+measuring the diameters of real vocal tracts performing
+different vowel sounds!
+
+This vocal tract is a filter, expecting an input signal to
+process. Some inputs are (much better) than others. The
+closer the input resembles the kind of sound our glottis
+makes, the more vocal-like the output sounds will turn out.
+In programs like pink trombone, an analytical model of the
+glottis was used to produce an input signal for it's vocal
+tract.
+
+This is a ladder (or lattice?) filter, consisting of a series
+of classic Kelly-Lochbaum scattering junctions.
+https://ccrma.stanford.edu/~jos/pasp/Kelly_Lochbaum_Scattering_Junctions.html
+* Tangled files
+=Tract= tangles into two main files: =tract=.c and
+=tract.h=. Defining =SK_TRACT_PRIV= will expose the struct.
+* Struct and Initialization
+The core struct is defined as =sk_tract=. It is initialized
+with =sk_tract_init=.
+* Components and Variables
+Glottal and lip reflection constants. These are set to be
+=0.75= and =-0.85=, respectively.
+
+There are a great deal of buffers her of size 44. This
+variable is stored, as it might be nice to change the size
+at some point.
+
+First are the diameters, which are the inputs available
+to manipulate the vocal tract.
+
+Diameters get converted into areas, and areas get
+converted into reflection coefficients.
+
+Each scattering junction has an left and right output
+corresponding to the direction of pressure, as well
+as filter memory.
+
+A user-supplied =shape= callback can be used to shape
+the diameters at audio-rate, allowing for things like
+@!(ref "smoother" "smoothing filters")!@. A user-data void
+struct is also included here.
+* Diameter Manipulation
+The vocal tract is controlled by mainpulating the
+underlying diameter sizes. These can be directly accessed
+via =sk_tract_diameters=.
+
+The number of diameters can be retrieved with
+=sk_tract_size=. Usually, this is 44.
+
+More often than not, one wants to apply sample-accurate
+smoothing to the diameters rather than work them directly.
+This is done using a callback interface, known as a
+=shaper=.
+
+The function =sk_tract_shaper= sets up a shaper callback.
+It takes in the shaper callback as well as any external
+user data needed to manage state in that callback.
+
+This function gets called at every sample, and takes in
+three arguments: the =sk_tract= struct, the output array to
+write to, and the externally managed user data.
+
+In practice, one potential approach is to use a filterbank
+of 44 @!(ref "smoother" "smoothing filters")!@ to control
+the diameter shapes. This allows diameters to be controlled
+without producing any artificats caused by large
+discontinuities.
+* Computing Audio
+** Tick Function
+A single sample of audio is computed with =sk_tract_tick=.
+It expects an input signal =in=, and returns a single
+sample.
+
+There are two main things that happen here. First, the
+reflection coefficients for the ladder filter are
+calculated. Then, the input is computed. The output is then
+scaled and returned.
+** Calculate Reflections
+If the =shape= function exists, call it.
+
+The cross-sectional areas are calculated by squaring
+the input diameters.
+
+The reflection coefficients are calculated from the computed
+areas. This is the difference between neighboring areas over
+their sum. To prevent numerical issues, reflections are sent
+to a close-to-1 value if the area is exactly 0.
+
+See:
+https://ccrma.stanford.edu/~jos/pasp/Kelly_Lochbaum_Scattering_Junctions.html
+
+This is a kelly-lochbaum scattering junction. more word
+here.
+** Tract Compute
+The tract has air flow moving in two directions. The right
+direction is glottis. The left direction are the lips.
+
+First, the left/right junction outputs are computed.
+
+Those junction outputs are then stored in left/right
+outputs and attenuated (as a sort of previous sample?).
