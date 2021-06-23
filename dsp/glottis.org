@@ -8,6 +8,9 @@ glottis is an anlytical model rather than physically based.
 This undelrying waveform is generated via a mathematical
 equation derived emprically rather than from physical
 principles.
+
+The implementation used here is based off of the one found
+in Pink Trombone by Neil Thapen.
 * Tangled Files
 This tangles to two files: =glottis.c= and =glottis.h=.
 Defining =SK_GLOTTIS= will expose the contents in the
