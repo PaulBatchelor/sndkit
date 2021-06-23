@@ -67,4 +67,7 @@ envelope generator.
 
 @!(ref "glottis")!@ implements an analytically derived
 Liljencrants-Fant (LF) model of the human glottis, suitable
-for vocal synthesis techniques.
+for vocal synthesis techniques such as @!(ref "tract")!@.
+
+@!(ref "tract")!@ is a simple physical model of the vocal
+tract, should be used with @!(ref "glottis")!@.

@@ -48,6 +48,7 @@
 (ww-add-link "parameter_caching" "doc/parameter_caching.org")
 (ww-add-link "glottis" "dsp/glottis.org")
 (ww-add-link "tex" "doc/tex.org")
+(ww-add-link "tract" "dsp/tract.org")
 
 # sync and close
 
