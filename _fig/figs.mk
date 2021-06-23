@@ -103,4 +103,12 @@ tex_x.png \
 tex_x2x.png \
 tex_y.png \
 tex_y2x.png \
+tract_A.png \
+tract_A2x.png \
+tract_kn.png \
+tract_kn2x.png \
+tract_mullen_KL_eqn.png \
+tract_mullen_KL_eqn2x.png \
+tract_reflection_coefficient.png \
+tract_reflection_coefficient2x.png \
 

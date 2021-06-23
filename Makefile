@@ -44,6 +44,7 @@ dsp/chorus.c dsp/chorus.h \
 dsp/bitosc.c dsp/bitosc.h \
 dsp/env.c dsp/env.h \
 dsp/glottis.c dsp/glottis.h \
+dsp/tract.c dsp/tract.h \
 
 TANGLED+=core.c core.h
 
@@ -79,6 +80,7 @@ dsp/chorus.o \
 dsp/bitosc.o \
 dsp/env.o \
 dsp/glottis.o \
+dsp/tract.o \
 
 # headers to install
 HEADERS=\
