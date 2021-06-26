@@ -39,6 +39,7 @@ dsp/rephasor.c dsp/rephasor.h \
 dsp/gen.c dsp/gen.h \
 dsp/smoother.c dsp/smoother.h \
 dsp/metro.c dsp/metro.h \
+dsp/mtof.c dsp/mtof.h \
 dsp/expon.c dsp/expon.h \
 dsp/chorus.c dsp/chorus.h \
 dsp/bitosc.c dsp/bitosc.h \
