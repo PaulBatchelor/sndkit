@@ -40,29 +40,401 @@ process, but it does a pretty decent, especially from
 a perceptual standpoint.
 * Tangled Files
 =blep.c= and =blep.h=.
+
+#+NAME: blep.c
+#+BEGIN_SRC c :tangle blep.c
+#include <math.h>
+
+#define SK_BLEP_PRIV
+#include "blep.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: blep.h
+#+BEGIN_SRC c :tangle blep.h
+#ifndef SK_BLEP_H
+#define SK_BLEP_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_BLEP_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
 * The PolyBlep
-# TODO
-# @!(fig "blep_polyblep"
-# `
-# S_1(x) = \Biggl\lbrace {
-# \eqalign{
-# t^2 + 2t + 1 \qquad & t > (1.0 - \delta t) \cr
-# 2t - t^2 - 1.0 \qquad & t < \delta t \cr
-# 0.0
-# }
-# }
-# `)!@
+This algorithm centers around a tiny function called
+=polyblep=. It takes in a time value =t= representing
+the position in the waveform in a @!(ref
+"normalized_range" "normalized range")!@, and the value
+=dt=, the delta time between samples.
+
+This will apply two different polynomial curves if the
+position is at the beginning or ends of the position.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT polyblep(SKFLT dt, SKFLT t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT polyblep(SKFLT dt, SKFLT t)
+{
+    if (t < dt) {
+        t /= dt;
+        return t + t - t * t - 1.0;
+    } else if(t > 1.0 - dt) {
+        t = (t - 1.0) / dt;
+        return t * t + t + t + 1.0;
+    }
+
+    return 0.0;
+}
+#+END_SRC
 * Initialization and Struct
 =sk_blep= is the struct.
 
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_blep sk_blep;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_blep {
+    <<sk_blep>>
+};
+#+END_SRC
+
 Initialize with =sk_blep_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_blep_init(sk_blep *blep, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_blep_init(sk_blep *blep, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Components
+** Frequency Value
+The frequency uses @!(ref "parameter_caching"
+"parameter caching")!@.
+
+#+NAME: sk_blep
+#+BEGIN_SRC c
+SKFLT freq;
+SKFLT pfreq;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_blep_freq(blep, 1000);
+blep->pfreq = -1;
+#+END_SRC
+** Onedsr
+The =onedsr= constant is =1/sr=.
+
+#+NAME: sk_blep
+#+BEGIN_SRC c
+SKFLT onedsr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+blep->onedsr = 1.0 / sr;
+#+END_SRC
+** Phasor Values
+Like any good oscillator, under the hood there is a
+@!(ref "phasor")!@. The =phs= keeps track of the phase,
+and the =inc= incrementor keeps track of the increment.
+
+#+NAME: sk_blep
+#+BEGIN_SRC c
+SKFLT inc;
+SKFLT phs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+blep->inc = 0;
+blep->phs = 0;
+#+END_SRC
+
+This is another small change from Finke's original
+implementation. Using a normalized phasor range instead of
+one that goes between 0 and 2 pi simplifies the computation.
+** Leaky Integrator
+For the triangle wave, a =leaky integrator= will be used.
+We will use a very small pole value of 100ms as
+the filter coeffiecient =A=. This value was empirically
+chosen as a reasonably close value to 1.
+
+#+NAME: sk_blep
+#+BEGIN_SRC c
+SKFLT A;
+SKFLT prev;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+blep->A = exp(-1.0/(0.1 * sr));
+blep->prev = 0;
+#+END_SRC
+
+Note: Finke's original implementation uses the increment
+value as the filter's coefficient, and it's unclear to me
+why. So I've gone with something I can better understand
+and reason with.
+** DC Blocker
+That pesky triangle! Using a leaky integrator introduces
+some serious DC.
+
+#+NAME: sk_blep
+#+BEGIN_SRC c
+SKFLT R, x, y;
+#+END_SRC
+
+The DC blocking coefficient =R= has been chosen to be
+close to 0.99 when the sampling rate is 44.1kHz.
+
+#+NAME: init
+#+BEGIN_SRC c
+blep->R = exp(-1.0/(0.0025 * sr));
+blep->x = 0;
+blep->y = 0;
+#+END_SRC
 * Setting The Frequency
-=sk_blep_freq=.
+The frequency of the oscillator is set with =sk_blep_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_blep_freq(sk_blep *blep, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_blep_freq(sk_blep *blep, SKFLT freq)
+{
+    blep->freq = freq;
+}
+#+END_SRC
 * Core Tick Function
-A static function called =tick=.
+The core computation is done with a static function called
+=tick=. It's a generalized function that takes in a callback
+for each waveform.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT tick(sk_blep *blep,
+                  SKFLT (*wave)(sk_blep *, SKFLT));
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT tick(sk_blep *blep,
+                  SKFLT (*wave)(sk_blep *, SKFLT))
+{
+    SKFLT out;
+
+    out = 0.0;
+
+    <<update_increment>>
+    <<compute_wave>>
+    <<update_phasor>>
+
+    return out;
+}
+#+END_SRC
+
+To begin, the increment value is updated if the
+frequency is changed.
+
+#+NAME: update_increment
+#+BEGIN_SRC c
+if (blep->freq != blep->pfreq) {
+    blep->pfreq = blep->freq;
+    blep->inc = blep->freq * blep->onedsr;
+}
+#+END_SRC
+
+The wave callback gets used to compute the actual BLEP'd
+sample.
+
+#+NAME: compute_wave
+#+BEGIN_SRC c
+out = wave(blep, blep->phs);
+#+END_SRC
+
+To wrap up, the internal phasor is updated.
+
+#+NAME: update_phasor
+#+BEGIN_SRC c
+blep->phs += blep->inc;
+
+if (blep->phs > 1.0) {
+    blep->phs -= 1.0;
+}
+#+END_SRC
 * Sawtooth
-=sk_blep_saw=.
+A sawtooth BLEP is produced with =sk_blep_saw=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_blep_saw(sk_blep *blep);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_blep_saw(sk_blep *blep)
+{
+    return tick(blep, blep_saw);
+}
+#+END_SRC
+
+The sawtooth is the most straightforward BLEP. The
+phasor value already produces the correct shape. It just
+needs to be scaled to be in range -1 to 1. This signal
+is then fed into the blep function to smooth out the
+edges.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT blep_saw(sk_blep *blep, SKFLT t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT blep_saw(sk_blep *blep, SKFLT t)
+{
+    SKFLT value;
+
+    value = (2.0 * t) - 1.0;
+    value -= polyblep(blep->inc, t);
+
+    return value;
+}
+#+END_SRC
 * Square
-=sk_blep_square=.
+A square wave BLEP is computed =sk_blep_square=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_blep_square(sk_blep *blep);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_blep_square(sk_blep *blep)
+{
+    return tick(blep, blep_square);
+}
+#+END_SRC
+
+The square shape is first derived by splitting the
+phasor signal in half: lower half is -1, the upper half
+is 1.
+
+The blep is rounded on both edges of the square, so the BLEP
+gets called twice. The =fmod(t + 0.5)= is a trick to offset
+the value in the right position.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+static SKFLT blep_square(sk_blep *blep, SKFLT t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT blep_square(sk_blep *blep, SKFLT t)
+{
+    SKFLT value;
+
+    value = t < 0.5 ? 1.0 : -1.0;
+    value += polyblep(blep->inc, t);
+    value -= polyblep(blep->inc, fmod(t + 0.5, 1.0));
+
+    return value;
+}
+#+END_SRC
 * Triangle
-=sk_blep_triangle=.
+A triangle BLEP is generated with =sk_blep_triangle=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_blep_triangle(sk_blep *blep);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_blep_triangle(sk_blep *blep)
+{
+    return tick(blep, blep_triangle);
+}
+#+END_SRC
+
+A triangle wave BLEP is computed by calculating the
+integral of a square wave. When the square wave is
+at the lower state, it goes down. When it is at the higher
+state, it goes up.
+
+Integration is a fancy way of saying "sum it all up".
+Left to their own devices, a integrated square wave would
+produce triangle waves with huge amplitudes proportional to
+their wavelength (in samples). Dividing by this wavelength
+will normalize the samples.
+
+Integration in floating point numbers can eventually result
+in weird numerical errors. As a preventative measure, The
+summation is designed to "forget" about previous values
+over time, creating what is known as a leaky integrator.
+
+BUT, this numerical forgetfulness comes at a cost of some
+initial DC offset at the beginning. This can be mostly
+mitigated with a DC blocking filter.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT blep_triangle(sk_blep *blep, SKFLT t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT blep_triangle(sk_blep *blep, SKFLT t)
+{
+    SKFLT value;
+
+    /* compute square */
+    value = t < 0.5 ? 1.0 : -1.0;
+    value += polyblep(blep->inc, t);
+    value -= polyblep(blep->inc, fmod(t + 0.5, 1.0));
+
+    /* scale and integrate */
+    value *= (4.0 / blep->freq);
+    value += blep->prev;
+    blep->prev = value;
+
+    /* dc blocker */
+    blep->y = value - blep->x + blep->R*blep->y;
+    blep->x = value;
+
+    return blep->y * 0.8;
+}
+#+END_SRC
