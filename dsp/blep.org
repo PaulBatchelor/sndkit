@@ -1,0 +1,68 @@
+#+TITLE: BLEP
+* Overview
+The =BLEP= algorithm implements a set of oscillators
+using Polynomial Bandlimited Step functions, also known as
+=PolyBLEP=.
+
+Much of this is based on the implementation found on
+[[http://www.martin-finke.de/blog/articles/audio-plugins-018-polyblep-oscillator/][blog post by Martin Finke]],
+with a few adjustments.
+
+Due to their bandlimited properties, these oscillators are
+great things to reach for when working for a sound source
+to use with subtractive synthesis techniques. Bandlimited
+things sound better because they reduce =aliasing=,
+an audible artifact in the sound that happens when a
+signal plays frequencies that are a little too high
+(there's a lot of resources on aliasing, so this is
+pretty much all I'm going to say on this).
+* Algorithm Overview
+BLEPs aim to create better versions of what we would call
+=wavetable= oscillators, or =table-lookup= oscillators like
+@!(ref "osc")!@ or @!(ref "oscf")!@. You can think of these
+methods as taking a single waveform and repeating it a bunch
+of times to produce a sound. Changing the length of that
+waveform changes the frequency. Changing the shape of the
+waveform changes the timbre. Famous oscillator names like
+=sawtooth=, =square=, =pulse=, and =triangle= all their
+names from the appearance of their waveform.
+
+For reasons beyond the scope of this document, these
+table-lookup wavetable oscillators often produce a great
+deal of unwanted noise known as =aliasing=. A lot of
+sources of aliasing occur when large discontinuities,
+or jumps, happen in the waveform. Square and pulse waves,
+for example, make a giant jump from a high state to a low
+state. BLEPs work by finding these large discontinunuities
+in classic waveform shapes, and then smoothing them out
+a little bit using a polynomial curve. It's not a perfect
+process, but it does a pretty decent, especially from
+a perceptual standpoint.
+* Tangled Files
+=blep.c= and =blep.h=.
+* The PolyBlep
+# TODO
+# @!(fig "blep_polyblep"
+# `
+# S_1(x) = \Biggl\lbrace {
+# \eqalign{
+# t^2 + 2t + 1 \qquad & t > (1.0 - \delta t) \cr
+# 2t - t^2 - 1.0 \qquad & t < \delta t \cr
+# 0.0
+# }
+# }
+# `)!@
+* Initialization and Struct
+=sk_blep= is the struct.
+
+Initialize with =sk_blep_init=.
+* Setting The Frequency
+=sk_blep_freq=.
+* Core Tick Function
+A static function called =tick=.
+* Sawtooth
+=sk_blep_saw=.
+* Square
+=sk_blep_square=.
+* Triangle
+=sk_blep_triangle=.
