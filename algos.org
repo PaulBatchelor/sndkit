@@ -71,3 +71,6 @@ for vocal synthesis techniques such as @!(ref "tract")!@.
 
 @!(ref "tract")!@ is a simple physical model of the vocal
 tract, should be used with @!(ref "glottis")!@.
+
+@!(ref "blep")!@ is a set of bandlimited oscillators
+generated using the polyBLEP method.

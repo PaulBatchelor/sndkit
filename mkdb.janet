@@ -49,6 +49,7 @@
 (ww-add-link "glottis" "dsp/glottis.org")
 (ww-add-link "tex" "doc/tex.org")
 (ww-add-link "tract" "dsp/tract.org")
+(ww-add-link "blep" "dsp/blep.org")
 
 # sync and close
 

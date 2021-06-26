@@ -204,8 +204,9 @@ value as the filter's coefficient, and it's unclear to me
 why. So I've gone with something I can better understand
 and reason with.
 ** DC Blocker
-That pesky triangle! Using a leaky integrator introduces
-some serious DC.
+That pesky triangle! The leaky integrator it uses introduces
+some serious DC. A @!(ref "dcblocker" "DC blocking filter")!@ is
+used to remove this.
 
 #+NAME: sk_blep
 #+BEGIN_SRC c
@@ -213,7 +214,8 @@ SKFLT R, x, y;
 #+END_SRC
 
 The DC blocking coefficient =R= has been chosen to be
-close to 0.99 when the sampling rate is 44.1kHz.
+close to 0.99 (a common DC blocker coefficient value)
+when the sampling rate is 44.1kHz.
 
 #+NAME: init
 #+BEGIN_SRC c
