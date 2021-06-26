@@ -356,7 +356,7 @@ The blep is rounded on both edges of the square, so the BLEP
 gets called twice. The =fmod(t + 0.5)= is a trick to offset
 the value in the right position.
 
-#+NAME: funcdefs
+#+NAME: static_funcdefs
 #+BEGIN_SRC c
 static SKFLT blep_square(sk_blep *blep, SKFLT t);
 #+END_SRC

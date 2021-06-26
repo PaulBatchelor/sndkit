@@ -40,4 +40,7 @@ int sk_node_env(sk_core *core);
 int sk_node_glottis(sk_core *core);
 int sk_node_tractxy(sk_core *core);
 int sk_node_tract(sk_core *core);
+int sk_node_blsaw(sk_core *core);
+int sk_node_blsquare(sk_core *core);
+int sk_node_bltri(sk_core *core);
 #endif
