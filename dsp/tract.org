@@ -226,6 +226,36 @@ void (*shape)(sk_tract *, SKFLT *, void *);
 tr->shape = NULL;
 tr->ud = NULL;
 #+END_SRC
+** Use Diameters Flag
+The =use_diameters= flag can be used to enable/disable
+the diameter control. If disabled, areas can be
+directly manipulated.
+
+#+NAME: sk_tract
+#+BEGIN_SRC c
+int use_diameters;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_tract_use_diameters(tr, 1);
+#+END_SRC
+
+It is set with the function =sk_tract_use_diameters=,
+where =mode= is true (1) or false (0).
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tract_use_diameters(sk_tract *tr, int mode);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tract_use_diameters(sk_tract *tr, int mode)
+{
+    tr->use_diameters = mode;
+}
+#+END_SRC
 * Diameter Manipulation
 The vocal tract is controlled by mainpulating the
 underlying diameter sizes. These can be directly accessed
@@ -352,6 +382,46 @@ void sk_tract_tongue_shape(sk_tract *tract,
                   position, diameter, tract->diameter);
 }
 #+END_SRC
+* Area Manipulation
+Sometimes it might be more adventageous to set the
+areas directly, rather than using the diameters (which
+are then squared and set as the area).
+
+To use areas directly, diameter control must be turned off.
+This done by setting the =use_diameters= flag to be false via
+=sk_tract_use_diameters=.
+
+Area shapes can be set using the function
+=sk_tract_set_area_shape=. This will set the shape of the area
+to be an array of size =sz=. If the array is larger than
+the current tract size, it will be truncated. If it is
+smaller, the last values will be padded with the last tract
+sample in the array.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tract_set_area_shape(sk_tract *tr, SKFLT *areas, int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tract_set_area_shape(sk_tract *tr, SKFLT *areas, int sz)
+{
+    int n;
+    SKFLT last;
+
+    last = 0;
+
+    for (n = 0; n < tr->n; n++) {
+        if (n >= sz) {
+            tr->A[n] = last;
+        } else {
+            tr->A[n] = areas[n];
+            last = areas[n];
+        }
+    }
+}
+#+END_SRC
 * Computing Audio
 ** Tick Function
 A single sample of audio is computed with =sk_tract_tick=.
@@ -415,21 +485,30 @@ static void calculate_reflections(sk_tract *tr)
 #+END_SRC
 
 If the =shape= function exists, call it.
+If =use_diameters= is enabled (by default it is),
+it will pass in the diameters as an output. Otherwise,
+it will pass in the areas =A= directly.
 
 #+NAME: shapeit
 #+BEGIN_SRC c
 if (tr->shape != NULL) {
-    tr->shape(tr, tr->diameter, tr->ud);
+    if (tr->use_diameters)
+        tr->shape(tr, tr->diameter, tr->ud);
+    else
+        tr->shape(tr, tr->A, tr->ud);
 }
 #+END_SRC
 
 The cross-sectional areas are calculated by squaring
-the input diameters.
+the input diameters. This will only happen if
+=use_diameters= is enabled.
 
 #+NAME: calculate_areas
 #+BEGIN_SRC c
-for(i = 0; i < tr->n; i++) {
-    tr->A[i] = diam[i] * diam[i];
+if (tr->use_diameters) {
+    for(i = 0; i < tr->n; i++) {
+        tr->A[i] = diam[i] * diam[i];
+    }
 }
 #+END_SRC
 
