@@ -128,11 +128,39 @@ The algorithm for phsclk is quite simple: scale and floor
 the previous and current input phasor signals, and if
 there is a difference, make a tick.
 
+#+NAME: the_usual_way
+#+BEGIN_SRC c
+int i, pi;
+SKFLT s, ps;
+s = in * pc->nticks;
+ps = pc->prev * pc->nticks;
+
+i = floor(s);
+pi = floor(ps);
+
+if (i != pi) out = 1;
+#+END_SRC
+
 =floor= will almost always truncate the decimal, and will
 almost always ensure that the value is between 0 and
 =nticks - 1=. The exception to this is when =in= is exactly
 1. This can somes cause extra ticks to happen, so a
 conditional is added to avoid this.
+
+The one edge case for this is when =nticks= is 1, which
+will cause a tick only to happen at the start of the phase.
+To handle this, phsclk will look for phase resets instead,
+which happens when the previous value is greater than
+the current value.
+
+This also will assume the phasor starts off at 0
+at the beginning, so an initial tick also gets
+generated.
+
+#+NAME: onetick_edgecase
+#+BEGIN_SRC c
+if (pc->prev > in || pc->prev == -1) out = 1;
+#+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
@@ -142,15 +170,11 @@ SKFLT sk_phsclk_tick(sk_phsclk *pc, SKFLT in)
     out = 0;
 
     if (in < 1) {
-        int i, pi;
-        SKFLT s, ps;
-        s = in * pc->nticks;
-        ps = pc->prev * pc->nticks;
-
-        i = floor(s);
-        pi = floor(ps);
-
-        if (i != pi) out = 1;
+        if (pc->nticks == 1) {
+           <<onetick_edgecase>>
+        } else {
+            <<the_usual_way>>
+        }
     }
 
     pc->prev = in;
