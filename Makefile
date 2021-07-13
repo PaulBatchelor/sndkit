@@ -47,6 +47,7 @@ dsp/env.c dsp/env.h \
 dsp/glottis.c dsp/glottis.h \
 dsp/tract.c dsp/tract.h \
 dsp/blep.c dsp/blep.h \
+dsp/phsclk.c dsp/phsclk.h \
 
 TANGLED+=core.c core.h
 
@@ -84,6 +85,7 @@ dsp/env.o \
 dsp/glottis.o \
 dsp/tract.o \
 dsp/blep.o \
+dsp/phsclk.o \
 
 # headers to install
 HEADERS=\

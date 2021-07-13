@@ -44,4 +44,5 @@ int sk_node_blsaw(sk_core *core);
 int sk_node_blsquare(sk_core *core);
 int sk_node_bltri(sk_core *core);
 int sk_node_mtof(sk_core *core);
+int sk_node_phsclk(sk_core *core);
 #endif

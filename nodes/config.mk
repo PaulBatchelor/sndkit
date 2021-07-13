@@ -34,3 +34,4 @@ include nodes/env/config.mk
 include nodes/glottis/config.mk
 include nodes/tract/config.mk
 include nodes/blep/config.mk
+include nodes/phsclk/config.mk

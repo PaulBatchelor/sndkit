@@ -42,6 +42,7 @@ void sklil_load_env(lil_t lil);
 void sklil_load_glottis(lil_t lil);
 void sklil_load_tract(lil_t lil);
 void sklil_load_blep(lil_t lil);
+void sklil_load_phsclk(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -82,6 +83,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_glottis(lil);
     sklil_load_tract(lil);
     sklil_load_blep(lil);
+    sklil_load_phsclk(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
