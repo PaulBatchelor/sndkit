@@ -879,7 +879,7 @@ void sk_regtbl_init(sk_regtbl *rs)
     }
 }
 #+END_SRC
-** WIP regset/regget
+** regset/regget
 Setting/getting values are done with =sk_core_regget= and
 =sk_core_regset=, making calls to the underlying functions
 =sk_register_set= and =sk_register_get=.
