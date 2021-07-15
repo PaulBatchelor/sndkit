@@ -53,6 +53,48 @@ static void mul_compute(pw_node *node)
     }
 }
 
+static void div_compute(pw_node *node)
+{
+    int blksize;
+    int n;
+    struct arith_n *arith;
+
+    blksize = pw_node_blksize(node);
+
+    arith = (struct arith_n *)pw_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        PWFLT a, b, out;
+
+        a = pw_cable_get(arith->a, n);
+        b = pw_cable_get(arith->b, n);
+        out = a / b; /* watch out for divide by 0 */
+
+        pw_cable_set(arith->out, n, out);
+    }
+}
+
+static void sub_compute(pw_node *node)
+{
+    int blksize;
+    int n;
+    struct arith_n *arith;
+
+    blksize = pw_node_blksize(node);
+
+    arith = (struct arith_n *)pw_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        PWFLT a, b, out;
+
+        a = pw_cable_get(arith->a, n);
+        b = pw_cable_get(arith->b, n);
+        out = a - b;
+
+        pw_cable_set(arith->out, n, out);
+    }
+}
+
 static void destroy(pw_node *node)
 {
     pw_patch *patch;
@@ -118,4 +160,12 @@ int sk_node_mul(sk_core *core)
     return node_arith(core, mul_compute);
 }
 
-/* TODO: mul, sub, div */
+int sk_node_sub(sk_core *core)
+{
+    return node_arith(core, sub_compute);
+}
+
+int sk_node_div(sk_core *core)
+{
+    return node_arith(core, div_compute);
+}
