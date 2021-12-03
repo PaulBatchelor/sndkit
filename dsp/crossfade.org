@@ -1,0 +1,89 @@
+#+TITLE: Crossfade
+* Overview
+=Crossfade= between two signals =a= and =b= using some
+position =pos= (a value between 0 and 1). When the position
+is 0, it is signal A, when position is 1, it is signal B.
+* Tangled Files
+=crossfade.c= and =crossfade.h=.
+
+#+NAME: crossfade.h
+#+BEGIN_SRC c :tangle crossfade.h
+#ifndef SK_CROSSFADE_H
+#define SK_CROSSFADE_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: crossfade.c
+#+BEGIN_SRC c :tangle crossfade.c
+#include <math.h>
+#include "crossfade.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#define SQRT2 1.41421356237309504880
+
+<<funcs>>
+#+END_SRC
+* Linear Crossfade
+A linear crossfade is simply linear interpolation.
+
+This is done with =sk_crossfade_linear=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_crossfade_linear(SKFLT a, SKFLT b, SKFLT pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_crossfade_linear(SKFLT a, SKFLT b, SKFLT pos)
+{
+    return (1 - pos)*a + pos*b;
+}
+#+END_SRC
+* Square Root Crossfade
+crossfade using =sqrt=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_crossfade_sqrt(SKFLT a, SKFLT b, SKFLT pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_crossfade_sqrt(SKFLT a, SKFLT b, SKFLT pos)
+{
+    return a * sqrt(pos) + b * sqrt(1 - pos);
+}
+#+END_SRC
+* Equal Power
+Uses equal power to do crossfade.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_crossfade_equal(SKFLT a, SKFLT b, SKFLT pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_crossfade_equal(SKFLT a, SKFLT b, SKFLT pos)
+{
+    SKFLT c;
+    SKFLT s;
+    c = cos(M_PI * pos * 0.5);
+    s = sin(M_PI * pos * 0.5);
+
+    a *= SQRT2 * (c + s) * 0.5;
+    b *= SQRT2 * (c - s) * 0.5;
+
+    return a + b;
+}
+#+END_SRC

@@ -57,6 +57,7 @@ ALGOS=\
 	noise \
 	sparse \
 	softclip \
+	crossfade \
 
 # GNU Make is very convenient here...
 
