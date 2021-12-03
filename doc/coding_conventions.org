@@ -1,0 +1,160 @@
+#+TITLE: Coding Conventions
+* Overview
+This document aims to outline some of the various
+coding conventions and patterns used in the
+sndkit @!(ref "algos" "algorithms")!@. This can be used
+as a guide to help read the programs written here.
+* Literate Programming
+Each algorithm is written using a paradigm known as
+=literate programming=. In a very small nutshell,
+it is a technique that allows programmer
+to melt natural language structure with computer logic
+structure. In sndkit, algorithms are written in
+org markup using org-mode. Between the blocks of text
+are noweb style named code blocks, following the conventions
+of org-babel. From there, the org documents can either be
+rendered to HTML (a process known as =weaving=), or
+be used to generate C code readable by a C compiler (a
+process known as =tangling=).
+
+While emacs and org-mode are very conveniently used to
+write the algorithms,
+*emacs is not a dependency for using sndkit*.
+
+For tangling to C code, sndkit uses a custom org tangler
+called =worgle=, written in ANSI C. It is included with
+the sndkit distribution. For weaving into HTML, a tool
+called weewiki. weewiki is not included with sndkit. You'll
+need to install that program separately in order to render
+the HTML pages locally.
+* Algorithm Overview
+At the start of every algorithm is some kind of overview.
+This provides a few short sentences on what the algorithm
+does, and maybe something about the inputs and outputs.
+
+Sometimes, some upfront elaboration is needed. This happens
+in sections afterwards.
+* Tangled Files
+Typically, a sndkit algorithm will tangle out to a single C
+and header file, foo.c and foo.h. The declarations
+themselves are in a section usually called =tangled files=.
+
+Algorithms in sndkit designed to be as self-contained as
+possible. It should be possible to use the files by
+themselves without anything else from sndkit. This makes
+it easy to extract things from sndkit in other projects and
+use only what is needed.
+
+The downside of this is that yes, there is sometimes
+redudant code and functionality. This is an acceptable
+tradeoff for now, as decomposability of sndkit is an
+important pillar in the design philosophy of this
+project.
+* Named Codeblocks
+Literate programs, such as the ones made in sndkit, are
+composed of named code blocks. Blocks are chunks of text
+that can have blocks nested inside of them. Blocks can
+also be appended to, which can be a useful way to
+dynamically add code.
+
+At this point, sndkit program structures follow a pretty
+predictable structure, and often use the same conventions
+for named code blocks.
+** C and Header Tangle Blocks
+A sndkit algorithm tangles to two files: a C and a header
+file. These are considered to be two top-level named blocks.
+For an algorithm foo, these are named foo.c and foo.h.
+Inside these blocks contain all the other blocks.
+
+What makes these blocks special are that they 
+explicitely tell the tangler to write to files.
+** funcs
+All C functions are appended to a named code block called
+=funcs=. This is included inside of the top-level C file
+block.
+** funcdefs
+All public function declarations/definitions are appended to
+a codeblock called =funcdefs=, and are included in the
+top-level header file block.
+
+In a literate program, a
+=funcdefs= block is usually closely followed by a
+corresponding =func= block.
+** static_funcdefs
+A static function definitions/declarations are done in
+a block called =static_funcdefs=. This is included towards
+the beginning of the C file code block.
+** typedefs
+Public facing structs in C use type definitions, or
+typedefs. All typedefs are appended to the =typedefs= block,
+contained in the header file code block.
+** structs
+Structs used by a particular algorithm are defined in the
+=structs= codeblock, contained in the header file codeblock.
+By default, these are made opaque, but can be exposed by
+defining the =SK_FOO_PRIV= macro.
+** macros
+macros can be defined in a codeblock called =macros=.
+Usually these are defined with local scope in the C file
+rather than the header file. If there is a different
+between local macros in the C file and public ones in
+the header, use =local_macros= and =macros=.
+** init
+A very common design pattern is to have some function
+that initializes data in a struct called =sk_foo_init=.
+Using codeblocks, one can add and initialize variables
+in a piecemeal. Variable declarations can be declared in
+one block. Initialization can happen in a block called
+=init=. For a an algorithm with struct =sk_foo=, contents
+inside of that struct usually would use a code block
+called =foo=.
+* SKFLT
+Floating point types use a macro called =SKFLT=, and by
+default this is set to be =float=. Every DSP algorithm
+has a way to explicitely define this if it hasn't been
+previously defined.
+* Function Naming Conventions
+Sndkit algorithms share a common set of things
+they do like initialization, and computing a sample
+of audio, or setting a variable. Below are a set of
+the most common functions, and the names used to describe
+them.
+** tick
+When a DSP algorithm computes a single sample of audio,
+it is called a =tick=, and is usually called =sk_foo_tick=.
+If a tick function takes any audio-rate signals, these
+are provided as arguments to the function.
+
+Most DSP algorithms in sndkit are mono, so the functions
+will simply return one =SKFLT=. For multiple outputs,
+the values are stored in pointers at the end of the
+function. For stereo processors such as @!(ref "bigverb")!@,
+this is the one time where single-letter
+camel case variable names are used, such as
+=inL=, =inR=, =outL=, or =outR=.
+** init
+For intializing data in a struct, the word =init= is used,
+as in =sk_foo_init=. The first argument to this function
+is the struct itself, which expects to be =sk_foo=.
+Following this is the sampling rate =sr=, if needed. Any
+other init-time variables are supplied after.
+
+=init= should only be used to initialize and zero out
+data. For dynamic memory allocation for things like
+delay lines, =del= and =new= conventions are used.
+** del and new
+For algorithms that require dynamic memory allocation, such
+as @!(ref "bigverb")!@, the =del= and =new= words are used,
+as in =sk_foo_new= and =sk_foo_del=. A =new= function
+will allocate and initialize a new instance of =sk_foo=.
+The =del= function will clean up all memory, as well
+the instance itself.
+** setting and getting parameters
+It is the convention to use setters and getters
+rather than manipulate variables directly.
+
+When in doubt, for parameter =param=, use =sk_foo_param_set=
+and =sk_foo_param_get=. To get and set the parameters.
+However, it is typical for setters drop the =set=, as in
+=sk_foo_param= for terseness, as it is understood that it is
+a setter.

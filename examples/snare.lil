@@ -1,0 +1,31 @@
+# a synthesized snare sound
+
+metro 1
+hold zz
+regset zz 0
+
+regget 0
+env zz 0.001 0.07 0.07
+mul [noise] 0.1
+butlp zz 5000
+peakeq zz 8000 8000 2
+peakeq zz 200 1000 5
+buthp zz 200
+mul zz zz
+
+dup
+dup dup
+verbity zz zz 0.9 0.9 0.2
+drop
+dcblocker zz
+regget 0
+env zz 0.001 0.08 0.1
+mul zz zz
+add zz zz
+
+
+wavout zz "snare.wav"
+
+regget 0
+unhold
+computes 10

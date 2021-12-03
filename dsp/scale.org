@@ -1,0 +1,58 @@
+#+TITLE: Scale
+* Overview
+=scale= provides some helpful scaling functions. Scaling
+refers to taking a value in some range, and then protionally
+refitting it to be in another range. In other words...
+scaling!
+* Tangled files
+=scale.h= and =scale.c=
+
+#+NAME: scale.h
+#+BEGIN_SRC c :tangle scale.h
+#ifndef SK_SCALE_H
+#define SK_SCALE_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: scale.c
+#+BEGIN_SRC c :tangle scale.c
+#include "scale.h"
+<<funcs>>
+#+END_SRC
+* Scale
+The function =sk_scale= takes in a value between 0 and 1,
+an returns a value to be in between =min= and =max=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_scale(SKFLT in, SKFLT min, SKFLT max);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_scale(SKFLT in, SKFLT min, SKFLT max)
+{
+
+    return in * (max - min) + min;
+}
+#+END_SRC
+* Biscale
+The function =sk_biscale= takes a value between -1 and
+1 and returns a value between =min= and =max=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_biscale(SKFLT in, SKFLT min, SKFLT max);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_biscale(SKFLT in, SKFLT min, SKFLT max)
+{
+    return min + (in + 1.0) * 0.5 * (max - min);
+}
+#+END_SRC

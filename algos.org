@@ -1,0 +1,94 @@
+#+TITLE: Algorithms
+@!(ref "osc")!@ is a table-lookup oscillator.
+
+@!(ref "fmpair")!@ is a table-lookup FM oscillator.
+
+@!(ref "rline")!@ is a random line segment generator.
+
+@!(ref "peakeq")!@ is a peaking equalizer filter.
+
+@!(ref "bigverb")!@ is a digital reverb algorithm.
+
+@!(ref "dcblocker")!@ is a DC Blocking filter.
+
+@!(ref "vardelay")!@ is a variable delay line.
+
+@!(ref "phasewarp")!@ is a filter for warping a phasor
+signal.
+
+@!(ref "modalres")!@ is a resonator filter.
+
+@!(ref "bitnoise")!@ is a 1-bit noise generator.
+
+@!(ref "valp1")!@ is a virtual-analog 1-pole lowpass filter.
+
+@!(ref "chaosnoise")!@ is a chaotic noise generator.
+
+@!(ref "oscf")!@ is a table-lookup oscillator with floating
+point precision.
+
+@!(ref "bezier")!@ applies a bezier curve transformation to
+a normalized ramp signal.
+
+@!(ref "expmap")!@ applies an exponential curve
+transformation to an normalized ramp signal.
+
+@!(ref "phsclk")!@ converts a phasor signal into a clock
+signal.
+
+@!(ref "phasor")!@ generates normalized periodic ramp
+signal.
+
+@!(ref "swell")!@ is a smoothing filter for control signals
+whose smoothing amount changes based on the direction.
+
+@!(ref "biramp")!@ converts a phasor ramp signal into a ramp
+that goes up and down.
+
+@!(ref "scale")!@ provides some simple scaling utilities.
+
+@!(ref "rephasor")!@ resynthesizes a phasor signal with a
+slightly different scaling amount.
+
+@!(ref "smoother")!@ is a one-pole smoothing filter.
+
+@!(ref "metro")!@ produces single-sample impulses at a
+regular rate.
+
+@!(ref "expon")!@ is a re-triggerable exponential line
+generator.
+
+@!(ref "chorus")!@ implements a classic chorusing effect.
+
+@!(ref "bitosc")!@ is a 1-bit stateless oscillator.
+
+@!(ref "env")!@ is a triggerable attack, hold, release
+envelope generator.
+
+@!(ref "glottis")!@ implements an analytically derived
+Liljencrants-Fant (LF) model of the human glottis, suitable
+for vocal synthesis techniques such as @!(ref "tract")!@.
+
+@!(ref "tract")!@ is a simple physical model of the vocal
+tract, should be used with @!(ref "glottis")!@.
+
+@!(ref "blep")!@ is a set of bandlimited oscillators
+generated using the polyBLEP method.
+
+@!(ref "vowel")!@ is a vowel filter.
+
+@!(ref "vowshape")!@ is a set of functions useful for
+sculpting @!(ref "tract")!@.
+
+@!(ref "clkphs")!@ converts a clock signal into a phasor
+signal.
+
+@!(ref "butterworth")!@ is a collection of 2nd-order
+butterworth filters.
+
+@!(ref "gen")!@ is a collection of table generators.
+
+@!(ref "sparse")!@ is a sparse noise generator.
+
+@!(ref "softclip")!@ applies soft clipping to a signal with
+drive control via a tanh approximation.

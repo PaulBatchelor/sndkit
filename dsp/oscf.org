@@ -1,0 +1,333 @@
+#+TITLE: oscf
+* Overview
+=oscf= is a table-lookup oscillator using floating point
+precision and linear interpolation. This is nearly identical
+to @!(ref "osc")!@, except that the internal phasor used to
+keep track of table position is a floating point value
+=SKFLT= instead of a fixed point integer. What this enables
+is oscillator sizes that aren't power-of-two. This allows
+usage of waveforms like the [[https://www.adventurekid.se/akrt/waveforms/adventure-kid-waveforms/][Adventure Kid Waveforms]].
+
+Compared to fixed point, floating point numerical
+representation is quite complicated and has some gotchas.
+The author will attempt to navigate the known gotchas as
+best as possible.
+* Files
+=oscf= tanlges to two files: =oscf.h= and =oscf.c=. If
+=SK_OSCF_PRIV= is defined, the struct is exposed.
+
+#+NAME: oscf.h
+#+BEGIN_SRC c :tangle oscf.h
+#ifndef SK_OSCF_H
+#define SK_OSCF_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<typedefs>>
+<<funcdefs>>
+#ifdef SK_OSCF_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+
+#+NAME: oscf.c
+#+BEGIN_SRC c :tangle oscf.c
+#include <math.h>
+#define SK_OSCF_PRIV
+#include "oscf.h"
+<<funcs>>
+#+END_SRC
+* Struct and Contents
+** Declaration
+Everything is wrapped inside of a struct called =sk_osc=.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_oscf sk_oscf;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_oscf {
+    <<sk_oscf>>
+};
+#+END_SRC
+** Phasor
+The heartbeat of an oscillator is what is known as an
+=phasor=: a ramp signal that goes from 0-1 at a specified
+frequency.
+
+Phasor state is stored in a value called =phs=.
+
+#+NAME: sk_oscf
+#+BEGIN_SRC c
+SKFLT phs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+oscf->phs = iphs;
+#+END_SRC
+
+The =phs= value gets incremented by a floating point value
+=inc= every sample.
+
+#+NAME: sk_oscf
+#+BEGIN_SRC c
+SKFLT inc;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+oscf->inc = 0;
+#+END_SRC
+** Table
+The table is stored in a value called =tab= with a size
+=sz=.
+
+#+NAME: sk_oscf
+#+BEGIN_SRC c
+SKFLT *tab;
+unsigned long sz;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+oscf->tab = tab;
+oscf->sz = sz;
+#+END_SRC
+** Sampling Rate
+A copy of the sampling rate is stored. It is needed in order
+to compute the incrementor component in the phasor.
+
+#+NAME: sk_oscf
+#+BEGIN_SRC c
+unsigned int sr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+oscf->sr = sr;
+#+END_SRC
+* Initialization
+oscf is initialized with =sk_oscf_init=. It expects a
+pre-allocated table =tab= and known size =sz=, as well
+as an initial phase =iphs=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_oscf_init(sk_oscf *oscf,
+                  unsigned int sr,
+                  SKFLT *tab,
+                  unsigned long sz,
+                  SKFLT iphs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_oscf_init(sk_oscf *oscf,
+                  unsigned int sr,
+                  SKFLT *tab,
+                  unsigned long sz,
+                  SKFLT iphs)
+{
+    <<init>>
+}
+#+END_SRC
+* Frequency
+The frequency of oscf can be set with =sk_oscf_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_oscf_freq(sk_oscf *oscf, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_oscf_freq(sk_oscf *oscf, SKFLT freq)
+{
+    oscf->freq = freq;
+}
+#+END_SRC
+
+freq uses parameter caching to update internal values
+when the frequency is changed.
+
+#+NAME: sk_oscf
+#+BEGIN_SRC c
+SKFLT freq;
+SKFLT lfreq;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_oscf_freq(oscf, 440);
+oscf->lfreq = -1;
+#+END_SRC
+* Computation
+A single sample of audio is computed with =sk_oscf_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_oscf_tick(sk_oscf *oscf);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_oscf_tick(sk_oscf *oscf)
+{
+    SKFLT out;
+    unsigned long ipos;
+    SKFLT fpos;
+    SKFLT x[2];
+    SKFLT phs;
+
+    phs = oscf->phs;
+
+    <<update_freq>>
+    <<get_position>>
+    <<get_values>>
+    <<interpolate>>
+    <<update_phase>>
+    <<bounds_checking>>
+
+    oscf->phs = phs;
+
+    return out;
+}
+#+END_SRC
+
+To begin, the frequency parameter is checked to see if the
+incrementor needs to be updated.
+
+This is one way to think about computing the increment
+amount:
+
+The phasor needs to move at a certain rate, which means it
+needs to go from 0 to 1 over a certain period of time.
+
+Inverting the frequency value gives the cycle time in
+seconds.
+
+Multiplying by the sampling rate converts it into units of
+samples.
+
+Inverting it again divides it into equal chunks that add up
+1: our incrementor value.
+
+But wait! That's a lot of operations. Back-tracking, this
+whole operation can be simplified to: =f/sr=. where =f= is
+the frequency, and =sr= is the sampling rate.
+
+#+NAME: update_freq
+#+BEGIN_SRC c
+if (oscf->lfreq != oscf->freq) {
+    oscf->lfreq = oscf->freq;
+
+    oscf->inc = oscf->freq / (SKFLT)oscf->sr;
+}
+#+END_SRC
+
+Next up is to get the table lookup position. There
+are two parts. The fractional component =fpos= and
+the integer component =ipos=. The position is obtained
+by scaling the phasor value.
+
+Fun fact: keeping the phasor in a unit range and scaling
+this way is numerically ideal for floating point.
+
+#+NAME: get_position
+#+BEGIN_SRC c
+fpos = phs * oscf->sz;
+ipos = floor(fpos);
+fpos = fpos - ipos;
+#+END_SRC
+
+Table positions at =ipos= and =ipos + 1= are retrieved
+from =tab=. If =ipos= is at the end of the table, it wraps
+around.
+
+The phasor is set to be in range 0 and 1 exactly by the time
+it is here, so there is no reason to normally expect
+out-of-bounds samples here.
+
+#+NAME: get_values
+#+BEGIN_SRC c
+x[0] = oscf->tab[ipos];
+
+if (ipos >= (oscf->sz - 1)) {
+    x[1] = oscf->tab[0];
+} else {
+    x[1] = oscf->tab[ipos + 1];
+}
+#+END_SRC
+
+This is your run-of-the-mill linear interpolation. A
+crossfade in some circles.
+
+#+NAME: interpolate
+#+BEGIN_SRC c
+out = fpos * x[1] + (1 - fpos) * x[0];
+#+END_SRC
+
+Update the internal phase state using the incrementor.
+
+#+NAME: update_phase
+#+BEGIN_SRC c
+phs += oscf->inc;
+#+END_SRC
+
+Care must be done to ensure
+that the phase is within the range 0 and 1. while loops
+are used in place of things like =fmod= because they are
+less expensive.
+
+A note that the phase cannot be *exactly* 1, hence the
+greather than *or* equal to. (This mistake was figured out
+the hard way by the author).
+
+#+NAME: bounds_checking
+#+BEGIN_SRC c
+while (phs >= 1) phs--;
+while (phs < 0) phs++;
+#+END_SRC
+* Variation: external phase control
+@!(marker "external_phase_control")!@
+The function =sk_oscf_tick_extphs= can be used in place
+of =sk_oscf_tick= to compute a sample of of oscf with an
+external phasor. This can be used to implement things like
+hard sync and @!(ref "phasewarp"
+"phase distortion synthesis")!@. Note that internal
+frequency control is disabled in this mode.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_oscf_tick_extphs(sk_oscf *oscf, SKFLT phs);
+#+END_SRC
+
+The function re-uses many of the same codeblocks used
+in =sk_oscf_tick=. The big change is that bounds checking
+happens *before* the computation, rather than after. This
+allows intentional wrap-around for things like hard sync
+oscillation.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_oscf_tick_extphs(sk_oscf *oscf, SKFLT phs)
+{
+    SKFLT out;
+    unsigned long ipos;
+    SKFLT fpos;
+    SKFLT x[2];
+
+    out = 0;
+
+    <<bounds_checking>>
+    <<update_freq>>
+    <<get_position>>
+    <<get_values>>
+    <<interpolate>>
+
+    return out;
+}
+#+END_SRC

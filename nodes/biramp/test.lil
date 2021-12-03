@@ -1,0 +1,21 @@
+phasor 1 0
+hold
+regset zz 0
+
+regget 0
+# slightly steeper uphill than downhill
+biramp zz 0.4
+scale zz 300 600
+sine zz 0.2
+
+regget 0
+flipper zz
+scale zz 900 1200
+sine zz 0.2
+add zz zz
+
+wavout zz "test.wav"
+regget 0
+unhold
+
+computes 10

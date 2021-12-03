@@ -1,0 +1,14 @@
+metro 1
+env zz 0.001 0.01 0.1
+mul [noise] 0.3
+mul zz zz
+
+dup; dup
+verbity zz zz 0.9 0.9 0.9
+drop
+mul zz 0.5
+add zz zz
+
+wavout zz "test.wav"
+
+computes 10

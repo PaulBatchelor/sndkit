@@ -1,0 +1,27 @@
+#+TITLE: sndkit
+sndkit is a sonic toolkit for everywhere.
+
+It is a collection of highly portable ANSI-C implementations
+of audio DSP algorithms commonly used in computer music, all
+wrapped up inside of a statically generated wiki.
+
+Each DSP algorithm is written in a literate programming
+style, a technique pioneered by Donald Knuth. Surrounding
+the implementation itself are words and equations used to
+help explain and contextualize what every single line of
+code is doing.
+
+The text in this wiki is licensed under the
+[[https://creativecommons.org/share-your-work/public-domain/cc0/][Creative Commons Zero]] license, otherwise
+known as "CC0".
+
+The tangled output is dual-licensed under MIT or
+the [[https://unlicense.org/][Unlicense]].
+
+A annotated list of available algorithms can be found @!(ref
+"algos" "here")!@.
+
+The source code for this wiki can be found on
+[[https://git.sr.ht/~pbatch/sndkit][SourceHut]].
+
+Happy Hacking, Humans.

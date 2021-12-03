@@ -1,0 +1,278 @@
+#+TITLE: valp1
+* Overview
+=valp1= implements a =one-pole= =virtual-analog=
+=lowpass filter=, based on the implementation defined in
+"The Art of VA Filter Design" by Vadim Zavalishin (DSP
+engineer at Native Instruments and creator of Reaktor).
+This particular filter id discretized using the
+=topology-preserving bilinear transform=, abbreviated
+as =TPBLT= or =TPT=.
+
+The scope of this document mostly aims to talk about the
+direct implementation, rather than the steps leading up to
+it. Those missing steps and mathematical notation are *very*
+important for actually grokking how this filter works.
+
+Think of this C implementation as the corpse
+a fallen Gazelle in the desert, picked clean to the bone so
+nothing is left but a handful of arithmetic and trig
+operations. It's really hard to reconstruct and understand
+this filter using the C code alone.
+
+The full derivation of this filter is available in chapter 3
+("Time-discretization").
+of Zavalishin's book, which as of writing, is available as
+a [[https://www.native-instruments.com/fileadmin/ni_media/downloads/pdf/VAFilterDesign_1.1.1.pdf][PDF]] from Native Instruments.
+* Tangled Files
+As per usual, a single C and Header file is provided called
+=valp1.c= and =valp1.h=. Defining =SK_VALP1_PRIV= will expose
+the core struct used in this algorithm.
+
+#+NAME: valp1.c
+#+BEGIN_SRC c :tangle valp1.c
+#include <math.h>
+#define SK_VALP1_PRIV
+#include "valp1.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<funcs>>
+#+END_SRC
+
+#+NAME: valp1.h
+#+BEGIN_SRC c :tangle valp1.h
+#ifndef SK_VALP1_H
+#define SK_VALP1_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_VALP1_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+* Struct
+Called =sk_valp1=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_valp1 sk_valp1;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_valp1 {
+    <<sk_valp1>>
+};
+#+END_SRC
+* Cutoff Frequency
+The only parameter is the cutoff frequency. It is set with
+=sk_valp1_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_valp1_freq(sk_valp1 *lp, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_valp1_freq(sk_valp1 *lp, SKFLT freq)
+{
+    lp->freq = freq;
+}
+#+END_SRC
+
+Caching is used so coefficients need not be re-calculated
+every sample.
+
+#+NAME: sk_valp1
+#+BEGIN_SRC c
+SKFLT freq;
+SKFLT pfreq;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_valp1_freq(lp, 1000);
+lp->pfreq = -1;
+#+END_SRC
+* Filter Variables
+** Filter Memory
+Filter memory is stored in a value called =s=, which is
+the same variable name used in the textbook implementation.
+
+#+NAME: sk_valp1
+#+BEGIN_SRC c
+SKFLT s;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+lp->s = 0;
+#+END_SRC
+** Gain coefficient
+The gain coefficent =G= is a cached value used to compute
+the filter. It gets updated every time the frequency
+changes.
+
+#+NAME: sk_valp1
+#+BEGIN_SRC c
+SKFLT G;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+lp->G = 0;
+#+END_SRC
+** Big T (1 / sr)
+=T=, otherwise known as "big T", is the sampling rate
+converted to seconds, or =1/sr=.
+It is needed in order to compute the gain
+coefficient =G=.
+
+#+NAME: sk_valp1
+#+BEGIN_SRC c
+SKFLT T;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+lp->T = 1.0 / (SKFLT)sr;
+#+END_SRC
+* Initialization
+Done with =sk_valp1_init=. Sampling rate is all that is
+needed.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_valp1_init(sk_valp1 *lp, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_valp1_init(sk_valp1 *lp, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Computation
+A single sample is computed with =sk_valp1_tick=.
+The computation itself only requires a few short lines of
+very simple C code. However, the steps required to get it to
+this point were not as
+simple a matter. Often this is the case for filter
+implementations. By the time a filter design reaches C
+code, all you are left with is a handful of arithmetic
+and trig operations.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_valp1_tick(sk_valp1 *lp, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_valp1_tick(sk_valp1 *lp, SKFLT in)
+{
+    SKFLT out;
+    SKFLT v;
+    out = 0;
+    <<update_coefficient>>
+    <<compute>>
+    return out;
+}
+#+END_SRC
+
+In the chapter, Zavalishin does a wonderful job showing how
+take the filter topology of a analog 1-pole lowpass filter
+and faithfully digitize it in a delay-free way using the
+=bilinear transform=. This approach, which
+Zavalishin calls =TPT=, differs from the more
+traditional direct form approach, which involves taking
+a transfer function for an analogue filter in the =s-plane=,
+then plugging-and-chugging in the BLT to convert it to
+a transfer function in the discrete time (digital) =z-plane=.
+
+After all the song and dance about things like
+time discretization methods and zero-delay feedback loops,
+the final equation looks like this:
+
+$$
+y = v + s
+$$
+
+Where $y$ is the filter output, $v$ can be considered to be
+the estimated output of $y$, and $s$ is the feedback. This
+will be returned to in a moment.
+
+Before computing the filter equation, the coefficient
+=G= must be updated if the frequency has been updated.
+
+=G= is computed as =g/(1 + g)=. Little =g= is the gain
+amount.
+
+
+where =g= is the =gain= amount $\omega_a T \over 2$,
+where $\omega_a$ is the =prewarped= filter cutoff frequency,
+in units radians/second. To get this value, first the cutoff
+frequency is multiplied by 2pi to convert it to units of
+radians per second, which will be called $\omega_c$, or
+=wc= in C. This then gets put through a transformation:
+
+$$
+\omega_a = {2 \over T} tan(\omega_c T \over 2)
+$$
+
+This sort of operation is very common when using the BLT
+in filter design, and it is known =prewarping=.
+
+Basically, the BLT is a process for getting analogue filters
+digitized, but it doesn't come for free. The behavior of
+the cutoff frequency in the filter gets skewed a bit.
+This is known as =frequency warping=.
+The prewarping
+controls the warp in such a way that the cutoff frequency
+has a perfect mapping from the analog space, leaving
+everything around it to warp.
+
+#+NAME: update_coefficient
+#+BEGIN_SRC c
+if (lp->pfreq != lp->freq) {
+    SKFLT wc;
+    SKFLT wa;
+    SKFLT g;
+
+    wc = 2.0 * M_PI * lp->freq;
+    wa = (2.0/lp->T) * tan(wc * lp->T * 0.5);
+    g = wa * lp->T * 0.5;
+    lp->G = g / (1.0 + g);
+
+    lp->pfreq = lp->freq;
+}
+#+END_SRC
+
+Next comes computation.
+
+The $v$, or predicted part of the equation is computed and
+stored in a variable called =v= as =(x - s) * G=, where
+=x= is the input signal, =s= is the filter memory state, and
+=G= is the computed scaling parameter used in the =BLT=.
+
+The final filter output =y= can be computed as =v + s=.
+
+The filter memory state =s= is updated to be =y + v=.
+
+#+NAME: compute
+#+BEGIN_SRC c
+v = (in - lp->s) * lp->G;
+out = v + lp->s;
+lp->s = out + v;
+#+END_SRC

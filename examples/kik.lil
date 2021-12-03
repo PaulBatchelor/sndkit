@@ -1,0 +1,46 @@
+# a synthesized drum kick
+
+metro 2
+hold zz
+regset zz 0
+
+
+# body of the drum
+
+# sine table, first argument for oscext, pushed onto stack
+gensine [tabnew 8192]
+
+# exponential frequency
+regget 0
+dup
+expon zz 1 0.1 0.001
+scale zz 60 500
+
+# phasor with phase distortion to add some grit
+# this becomes the second argument
+tphasor zz zz 0
+phasewarp zz 0.2
+
+# the oscillator, oscf
+oscfext zz zz
+mul zz 0.5
+
+regget 0
+env zz 0.001 0.1 0.1
+mul zz zz
+
+# click
+regget 0
+# an impulse fed through a modal resonator
+# creates an exponentially decaying sinusoid
+# a better sounding click than just an impulse
+# that can also be tuned
+modalres zz 3000 3
+add zz zz
+
+wavout zz "kik.wav"
+
+computes 10
+
+regget 0
+unhold zz

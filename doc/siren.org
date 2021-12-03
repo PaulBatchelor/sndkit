@@ -1,0 +1,625 @@
+#+TITLE: The "Siren" Patch
+* Overview
+This document provides a rosetta stone for a =siren= patch.
+It's not exactly the most interesting patch, but it
+succinctly shows how to work with a stack-based
+modular environment.
+
+I originally wrote this patch as a bridge to show the
+relationship between runt code and C + graforge code
+(included amongst the examples).
+Now, I have adapated a version of it that works in sndkit!
+* Patch Description
+The siren patch can be generally described in the following
+way:
+
+Generate an LFO signal, and use it to simultaneously
+modulate the frequency and timbre of another oscillator.
+
+Take that oscillator, make a copy of it, and route it to
+a reverb.
+
+Sum the oscillator and the reverb.
+
+Write it to disk.
+* Implementation 1: LIL and sndkit
+Here is the first implementation, written in LIL, the
+scripting language embedded in the sndkit repository.
+
+#+NAME: siren.lil
+#+BEGIN_SRC lil :tangle siren.lil
+sine 0.1 1
+hold
+regset zz 0
+
+fmpair \
+    [gensine [tabnew 8192]] \
+    [biscale [regget 0] 100 600] \
+    [param 1] \
+    [param 1] \
+    [biscale [regget 0] 0.1 2] \
+    [param 0]
+
+mul zz 0.5
+
+dup; dup
+
+bigverb zz zz 0.97 10000
+drop
+mul zz 0.1
+dcblocker zz
+
+add zz zz
+
+wavout zz "siren.wav"
+
+unhold [regget 0]
+
+computes 10
+#+END_SRC
+* Implementation 2: C and sndkit
+This implementation shows the siren written in C using
+the sndkit @!(ref "core" "core API")!@. The core
+patch construction can be seen in the =patch= function.
+What's really cool is how closely it matches the LIL code.
+If you take away the syntactic sugar in LIL, the underlying
+sndkit calls are essentially 1:1. This patch was written by
+hand looking at the LIL code above. It was a surprisingly
+trivial process!
+
+#+NAME: siren.c
+#+BEGIN_SRC c :tangle siren.c
+#include <math.h>
+#include <stdio.h>
+#include "graforge.h"
+#include "core.h"
+#include "sknodes.h"
+
+int patch(sk_core *core)
+{
+    /* warning: no error checking */
+
+    sk_core_constant(core, 0.1);
+    sk_core_constant(core, 1);
+    sk_node_sine(core);
+    sk_core_hold(core);
+    sk_core_regset(core, 0);
+
+    sk_core_table_new(core, 8192);
+    sk_node_gensine(core);
+
+    sk_core_regget(core, 0);
+    sk_core_constant(core, 100);
+    sk_core_constant(core, 600);
+    sk_node_biscale(core);
+
+    sk_core_constant(core, 1);
+    sk_core_constant(core, 1);
+
+    sk_core_regget(core, 0);
+    sk_core_constant(core, 0.1);
+    sk_core_constant(core, 2);
+    sk_node_biscale(core);
+
+    sk_core_constant(core, 0);
+
+    sk_node_fmpair(core);
+
+    sk_core_constant(core, 0.5);
+    sk_node_mul(core);
+
+    sk_core_dup(core);
+    sk_core_dup(core);
+
+    sk_core_constant(core, 0.97);
+    sk_core_constant(core, 10000);
+    sk_node_bigverb(core);
+    sk_core_drop(core);
+    sk_core_constant(core, 0.1);
+    sk_node_mul(core);
+    sk_node_dcblocker(core);
+
+    sk_node_add(core);
+
+    sk_node_wavout(core, "siren.wav");
+
+    sk_core_regget(core, 0);
+    sk_core_unhold(core);
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    sk_core *core;
+    unsigned int n;
+    unsigned int nblocks;
+    int rc;
+
+    core = sk_core_new(44100);
+
+    rc = patch(core);
+
+    if (rc) {
+        fprintf(stderr, "Error code %d\n", rc);
+        goto clean;
+    }
+
+    nblocks = sk_core_seconds_to_blocks(core, 10);
+
+    for (n = 0; n < nblocks; n++) {
+        sk_core_compute(core);
+    }
+
+    clean:
+    sk_core_del(core);
+    return rc;
+}
+#+END_SRC
+* Implementation 3: Monolith and Runt
+=Monolith= is a realtime computer music environment I wrote
+for myself as a precursor to sndkit. =runt= is a quirky
+homemade stack based language used to notate patches.
+
+Even though sndkit uses TCL and C syntax, the thought
+process and structure I use is still in stacks.
+
+#+NAME: siren.rnt
+#+BEGIN_SRC runt :tangle siren.rnt
+graforge nodes
+
+0.1 1 sine bhold 0 cabset
+
+0 cabget 100 600 biscale
+1 1
+0 cabget 0.1 2 biscale
+0 8192 ftnew gen_sine fmpair
+0.5 mul
+
+bdup bdup
+0.97 10000 revsc
+bdrop 0.1 mul dcblock
+add
+
+"siren.wav" wavout
+
+0 cabget bunhold
+
+sr 10 * _compute rep
+#+END_SRC
+* Implementation 4: Monolith and Scheme
+=monolith= is usually controlled via a Scheme REPL spawned
+inside of Emacs, the flavor of scheme being a fork of s9
+scheme. Runt code is then executed in scheme as inline code.
+The scheme language is used as a kind of macro language,
+making it possible to build more complex structures and
+abstractions.
+
+The scheme =ugens= are wrappers around runt code, so it is
+structurally identical to the runt and monolith code.
+
+#+NAME: siren.scm
+#+BEGIN_SRC scheme :tangle siren.scm
+(monolith:start-offline)
+(monolith:load "ugens.scm")
+(sine 0.1 0.5)
+(bhold zz)
+(cabset zz 0)
+
+(fmpair
+ (biscale (cabget 0) 100 600)
+ (param 1)
+ (param 1)
+ (biscale (cabget 0) 0.1 2)
+ (param 0)
+ (lambda () (gen_sine (ftnew 8192))))
+
+(mul zz 0.5)
+
+(bdup)
+(bdup)
+
+(revsc zz zz 0.97 10000)
+(bdrop)
+(mul zz 0.1)
+(dcblock zz)
+(add zz zz)
+(wavout zz "siren.wav")
+(bunhold (cabget 0))
+(out zz)
+
+(monolith:compute (* 44100 10))
+#+END_SRC
+* Implementation 5: Sporth
+=sporth= was my first ever stack-based audio system.
+Runt syntax and Sporth syntax are very similar to one
+another, but the underlying architecture is very
+different (and slower too).
+
+#+NAME: siren.sp
+#+BEGIN_SRC sporth :tangle siren.sp
+_ft 8192 gen_sine
+0.1 1 sine 0 pset
+
+0 p 100 600 biscale
+0.5
+1 1
+0 p 0.1 2 biscale
+_ft fosc
+
+dup dup
+0.97 10000 revsc
+drop 0.1 mul dcblk
+add
+#+END_SRC
+* Implementation 6: C and Grafwerk
+This comes from my original
+[[https://github.com/paulbatchelor/graforge-siren][siren patch]].
+It's not identical to the previous patches, but
+it is in the same spirit. The corresponding runt
+code (which runs on the =rntgraforge= utility
+that comes with graforge) is included in
+the comments.
+
+As one can see, graforge has a lot of repetitive low-level
+operations which makes for tedious to read code. Most of
+the sndkit core abstraction aims to be an abstraction on top
+of this code. For contrast, you compare this to the C and
+sndkit code from above.
+
+#+NAME: siren.c :tangle siren.c
+#+BEGIN_SRC c
+/*
+ * Siren
+ *
+ * This code will generate a simple siren patch using
+ * some of the pre-made graforge-wrapped soundpipe dsp
+ * nodes found included in the graforge codebase.
+ *
+ * The patch is equivalent to the following runt code:
+ *
+ * == BEGIN RUNT CODE ==
+ *
+ * graforge nodes
+ *
+ * 0.1 1 sine 0 1 biscale bhold 0 cabset
+ *
+ * 0 cabget 100 600 scale 0.5 blsaw
+ *
+ * 0 cabget 100 2000 scale butlp
+ *
+ * bdup
+ * bdup 0.97 10000 revsc bdrop 0.1 mul dcblock
+ *
+ * 0 cabget bunhold
+ *
+ * add
+ *
+ * "siren.wav" wavout bdrop
+ *
+ * sr 10 * _compute rep
+ *
+ * == END RUNT CODE ==
+ *
+ * It is advisable to understand how the runt code above
+ * works before attempting to parse out the C code below.
+ * That way, the runt code can be used as a sort of Rosetta
+ * Stone. Comments in the C program will break up the
+ * program by Runt statements. With any luck, a reader
+ * should begin to understand connection between the
+ * Grafwerk C library and Runt abstraction.
+ *
+ * Even with the DSP wrapper code, one can see from
+ * this small program that the Grafwerk C API at this level
+ * is quite repetive and redundant. In practice, it is best
+ * to write abstractions on top of this and not mess with
+ * these C operations directly. Otherwise, it is slow and
+ * tedious work.
+ *
+ * When building up a graforge patch, the programmer must
+ * be able to keep track of what is on the buffer stack at
+ * all times. Missing a push or pop operation can cause the
+ * entire patch to break. At the C level, these can be very
+ * tedious to debug! It is highly recommended to express the
+ * Patch using some sort of postfix notation like Sporth or
+ * Runt. Presenting the patch in this way will naturally
+ * align the stack operations.
+ *
+ */
+
+#include <stdlib.h>
+#include <soundpipe.h>
+#include "graforge.h"
+
+#include "dsp/sine.h"
+#include "dsp/wavout.h"
+#include "dsp/biscale.h"
+#include "dsp/blsaw.h"
+#include "dsp/scale.h"
+#include "dsp/butlp.h"
+#include "dsp/revsc.h"
+#include "dsp/mul.h"
+#include "dsp/dcblock.h"
+#include "dsp/add.h"
+
+#define NBUFS 8
+#define STACKSIZE 10
+#define SR 44100
+#define BLKSIZE 64
+
+static add_d * mk_add(gf_patch *patch,
+                      sp_data *sp)
+{
+    gf_node *node;
+    add_d *add;
+    gf_patch_new_node(patch, &node);
+    node_add(node, sp);
+    gf_node_setup(node);
+    add = gf_node_get_data(node);
+    return add;
+}
+
+static dcblock_d * mk_dcblock(gf_patch *patch,
+                              sp_data *sp)
+{
+    gf_node *node;
+    dcblock_d *dcblock;
+    gf_patch_new_node(patch, &node);
+    node_dcblock(node, sp);
+    gf_node_setup(node);
+    dcblock = gf_node_get_data(node);
+    return dcblock;
+}
+
+static mul_d * mk_mul(gf_patch *patch,
+                      sp_data *sp)
+{
+    gf_node *node;
+    mul_d *mul;
+    gf_patch_new_node(patch, &node);
+    node_mul(node, sp);
+    gf_node_setup(node);
+    mul = gf_node_get_data(node);
+    return mul;
+}
+
+static revsc_d * mk_revsc(gf_patch *patch,
+                          sp_data *sp)
+{
+    gf_node *node;
+    revsc_d *revsc;
+    gf_patch_new_node(patch, &node);
+    node_revsc(node, sp);
+    gf_node_setup(node);
+    revsc = gf_node_get_data(node);
+    return revsc;
+}
+
+static butlp_d * mk_butlp(gf_patch *patch,
+                          sp_data *sp)
+{
+    gf_node *node;
+    butlp_d *butlp;
+    gf_patch_new_node(patch, &node);
+    node_butlp(node, sp);
+    gf_node_setup(node);
+    butlp = gf_node_get_data(node);
+    return butlp;
+}
+
+static blsaw_d * mk_blsaw(gf_patch *patch,
+                          sp_data *sp)
+{
+    gf_node *node;
+    blsaw_d *blsaw;
+    gf_patch_new_node(patch, &node);
+    node_blsaw(node, sp);
+    gf_node_setup(node);
+    blsaw = gf_node_get_data(node);
+    return blsaw;
+}
+
+static scale_d * mk_scale(gf_patch *patch,
+                          sp_data *sp)
+{
+    gf_node *node;
+    scale_d *scale;
+    gf_patch_new_node(patch, &node);
+    node_scale(node, sp);
+    gf_node_setup(node);
+    scale = gf_node_get_data(node);
+    return scale;
+}
+
+static biscale_d * mk_biscale(gf_patch *patch,
+                              sp_data *sp)
+{
+    gf_node *node;
+    biscale_d *biscale;
+    gf_patch_new_node(patch, &node);
+    node_biscale(node, sp);
+    gf_node_setup(node);
+    biscale = gf_node_get_data(node);
+    return biscale;
+}
+
+static sine_d * mk_sine(gf_patch *patch,
+                        sp_data *sp)
+{
+    gf_node *node;
+    sine_d *sine;
+    gf_patch_new_node(patch, &node);
+    node_sine(node, sp);
+    gf_node_setup(node);
+    sine = gf_node_get_data(node);
+    return sine;
+}
+
+static wavout_d * mk_wavout(gf_patch *patch,
+                            sp_data *sp,
+                            const char *filename)
+{
+    gf_node *node;
+    wavout_d *wavout;
+
+    gf_patch_new_node(patch, &node);
+    node_wavout(sp, node, filename);
+    gf_node_setup(node);
+    wavout = gf_node_get_data(node);
+    return wavout;
+}
+
+int main(int argc, char *argv[])
+{
+    sp_data *sp;
+    gf_patch *patch;
+    sine_d *sine;
+    gf_stack *stack;
+    wavout_d *wavout;
+    unsigned int n;
+    gf_buffer *buf;
+    gf_cable *lfo;
+    biscale_d *biscale;
+    blsaw_d *blsaw;
+    scale_d *scale;
+    butlp_d *butlp;
+    revsc_d *revsc;
+    mul_d *mul;
+    add_d *add;
+    dcblock_d *dcblock;
+
+
+    /* initialize + allocate */
+
+    sp_create(&sp);
+
+    patch = calloc(1, gf_patch_size());
+    gf_patch_init(patch, BLKSIZE);
+    gf_patch_alloc(patch, NBUFS, STACKSIZE);
+    gf_patch_srate_set(patch, SR);
+    sp->sr = gf_patch_srate_get(patch);
+    gf_patch_data_set(patch, sp);
+    stack = gf_patch_stack(patch);
+
+    /* 0.1 1 sine */
+    sine = mk_sine(patch, sp);
+    gf_cable_set_value(sine->freq, 0.1);
+    gf_cable_set_value(sine->amp, 1);
+
+
+    /* 0 1 biscale */
+
+    gf_stack_pop(stack, NULL);
+
+    biscale = mk_biscale(patch, sp);
+
+    gf_cable_connect(sine->out, biscale->in);
+    gf_cable_set_value(biscale->min, 0);
+    gf_cable_set_value(biscale->max, 1);
+
+    /* bhold 0 cabset */
+
+    gf_patch_bhold(patch, &buf);
+    gf_stack_pop(stack, NULL);
+    lfo = biscale->out;
+
+    /* 0 cabget 100 600 scale */
+
+    gf_stack_push_buffer(stack, buf);
+
+    gf_stack_pop(stack, NULL);
+    scale = mk_scale(patch, sp);
+    gf_cable_connect(lfo, scale->in);
+    gf_cable_set_value(scale->min, 100);
+    gf_cable_set_value(scale->max, 600);
+
+    /* 0.5 blsaw */
+
+    gf_stack_pop(stack, NULL);
+
+    blsaw = mk_blsaw(patch, sp);
+    gf_cable_set_value(blsaw->amp, 0.5);
+    gf_cable_connect(scale->out, blsaw->freq);
+
+    /* 0 cabget 100 2000 scale butlp */
+
+    gf_stack_push_buffer(stack, buf);
+    gf_stack_pop(stack, NULL);
+
+    scale = mk_scale(patch, sp);
+    gf_cable_connect(lfo, scale->in);
+    gf_cable_set_value(scale->min, 100);
+    gf_cable_set_value(scale->max, 2000);
+
+
+    /* butlp */
+
+    gf_stack_pop(stack, NULL);
+    gf_stack_pop(stack, NULL);
+    butlp = mk_butlp(patch, sp);
+    gf_cable_connect(scale->out, butlp->p_freq);
+    gf_cable_connect(blsaw->out, butlp->in);
+
+    /* bdup */
+
+    gf_stack_dup(stack);
+
+    /* bdup 0.97 10000 revsc */
+    gf_stack_dup(stack);
+    gf_stack_pop(stack, NULL);
+    gf_stack_pop(stack, NULL);
+    revsc = mk_revsc(patch, sp);
+    gf_cable_connect(butlp->out, revsc->in[1]);
+    gf_cable_connect(butlp->out, revsc->in[0]);
+    gf_cable_set_constant(revsc->feedback, 0.97);
+    gf_cable_set_constant(revsc->lpfreq, 10000);
+
+    /* bdrop */
+
+    gf_stack_pop(stack, NULL);
+
+    /* 0.1 mul */
+
+    gf_stack_pop(stack, NULL);
+    mul = mk_mul(patch, sp);
+    gf_cable_set_constant(mul->in1, 0.1);
+    gf_cable_connect(revsc->out[0], mul->in2);
+
+    /* dcblock */
+    gf_stack_pop(stack, NULL);
+    dcblock = mk_dcblock(patch, sp);
+    gf_cable_connect(mul->out, dcblock->in);
+
+    /* add */
+
+    gf_stack_pop(stack, NULL);
+    add = mk_add(patch, sp);
+    gf_cable_connect(butlp->out, add->in1);
+    gf_cable_connect(dcblock->out, add->in2);
+
+    /* 0 cabget bunhold */
+
+    gf_patch_bunhold(patch, buf);
+
+    /* siren.wav wavout bdrop */
+
+    gf_stack_pop(stack, NULL);
+    wavout = mk_wavout(patch, sp, "siren.wav");
+    gf_cable_connect(add->out, wavout->in);
+    gf_stack_pop(stack, NULL);
+
+    /* sr 10 * _compute rep */
+
+    for (n = 0; n < 10 * SR; n++) {
+        gf_patch_tick(patch);
+    }
+
+    /* cleanup */
+
+    gf_patch_destroy(patch);
+    gf_patch_free_nodes(patch);
+    free(patch);
+    sp_destroy(&sp);
+    return 0;
+}
+#+END_SRC

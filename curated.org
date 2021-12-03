@@ -1,0 +1,46 @@
+#+TITLE: A curated overview of sndkit
+This page features some of the various DSP algorithms
+that are a part of sndkit, with a few words by the author
+talking about each one.
+
+I wish I could say less, but I didn't have enough time.
+
+The @!(ref "osc" "table lookup oscillator")!@ is probably a
+good early one to study and use. Some concepts are a little
+bit tricky to understand, but it is a real wavetable
+oscillator. Not the best, but certainly not the worst.
+Oscillators, and really any DSP algorithm that can be
+pitched, are great DSP algorithms for musician to start with
+because they can leverage music theory (chords, scales,
+etc).
+
+For those interested in pitch oriented stuff like the
+humble table-lookup oscillator, a table-lookup @!(ref
+"fmpair" "FM oscillator")!@ is a great next step. This
+algorithm builds on the table-lookup oscillator to make
+the simplest possible FM configuration (known as an FM
+pair). Learning how this conceptually works is a great way
+to begin grokking FM synthesis.
+
+A good reverb in your sound arsenal is a must. While not
+trivial to understand, the @!(ref "bigverb")!@ algorithm is
+a great reverb algorithm to have, especially for use in
+ambient electronic music. The sound of this Reverb motivated
+the author to actually get serious about learning
+lower-level DSP audio programming. Everything that follows
+is a result of what you see here. As it turns out, Bigverb
+isn't terribly complicated as far as reverb algorithms go,
+but you'd never guess it listening to it. The modulation
+techniques used in Bigverb add lot of unwanted DC bias, so
+it's highly suggested that this be paired with a @!(ref
+"dcblocker" "filter that can block DC")!@.
+
+Digital reverbs sound magical, but they are not magical
+themselves. Most of them use some form of feedback delay,
+in order to simulate reflections in a room coming from a
+real room. Delays themselves are very important concepts
+in audio programming. The @!(ref "vardelay")!@ algorithm
+implements a pretty typical delay line with variable delay
+times using interpolation. This interpolation causes audible
+pitch shifting to occur, which forms the basis of chorus and
+flanging techniques.

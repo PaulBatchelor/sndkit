@@ -1,0 +1,18 @@
+func LFO {} {
+    oscfext [regget 0] [tphasor [metro 0.9] 3.1 0]
+}
+
+gensine [tabnew 8192]
+regset zz 0
+
+regget 0
+
+
+biscale [LFO] 330 440
+
+oscf zz zz 0
+
+mul zz 0.5
+wavout zz "tphasor.wav"
+
+computes 10

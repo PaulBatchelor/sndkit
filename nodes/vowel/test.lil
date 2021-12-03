@@ -1,0 +1,28 @@
+sine 0.04 1
+biscale zz 0 1
+hold zz
+regset zz 0
+
+regget 0
+mul zz 43
+add zz 36
+sine 6 0.3
+add zz zz
+mtof zz
+glottis zz 0.9
+
+regget 0
+scale zz 3 1
+phasor zz 0
+flipper zz
+
+regget 0
+
+vowelmorph zz zz zz
+
+wavout zz "test.wav"
+
+regget 0
+unhold
+
+computes 30

@@ -1,0 +1,6 @@
+metro 6
+modalres zz [mtof 74] [rline 10 400 5]
+dcblocker zz
+mul zz 0.5
+wavout zz "test.wav"
+computes 10

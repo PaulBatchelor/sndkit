@@ -1,0 +1,55 @@
+#+TITLE: Noise
+The =noise= algorithm is a white noise generator. It is
+implemented using a very simple LCG. It is similar to
+the one used by the internal RNG in
+the @!(ref "core" "sndkit core API")!@, except that
+this one is self contained, and produces a normalized value
+between -1 and 1.
+
+More words and structure will be eventually placed here.
+
+#+NAME: noise.h
+#+BEGIN_SRC c :tangle noise.h
+#ifndef SK_NOISE_H
+#define SK_NOISE_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+typedef struct sk_noise sk_noise;
+
+#ifdef SK_NOISE_PRIV
+struct sk_noise {
+    unsigned long rng;
+};
+#endif
+
+void sk_noise_init(sk_noise *n, unsigned long seed);
+SKFLT sk_noise_tick(sk_noise *n);
+#endif
+#+END_SRC
+
+#+NAME: noise.c
+#+BEGIN_SRC c :tangle noise.c
+#define SK_NOISE_PRIV
+#define SK_NOISE_RANDMAX 2147483648
+#include "noise.h"
+
+void sk_noise_init(sk_noise *n, unsigned long seed)
+{
+    n->rng = seed;
+}
+
+SKFLT sk_noise_tick(sk_noise *n)
+{
+    SKFLT out;
+
+    out = (SKFLT)n->rng / SK_NOISE_RANDMAX;
+    out *= 2;
+    out -= 1;
+    n->rng = (1103515245 * n->rng + 12345) % SK_NOISE_RANDMAX;
+
+    return out;
+}
+#+END_SRC

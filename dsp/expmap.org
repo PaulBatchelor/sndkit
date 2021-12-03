@@ -1,0 +1,249 @@
+#+TITLE: expmap
+* Overview
+=expmap= is an exponential signal mapper with variable
+slope. It takes in a normalized linear value, and applies
+an exponential curve to it.
+
+Two version of =expmap= are provided: a naive implementation
+that is easy to read and adapt, and a more optimized version
+that uses parameter caching to reduce division operations
+and calls to =exp=.
+* Equation
+This is all there is to it:
+
+@!(fig "expmap_eqn"
+"
+{1 - e^{xs} \\over 1 - e^{s}}
+")!@
+
+Where @!(smallfig "expmap_x" "x")!@ is the normalized
+linear input signal, and @!(smallfig "expmap_s" "s")!@ is
+the slope.
+
+As @!(smallfig "expmap_s")!@ gets more negative, the
+exponential curve will be more convex, with more values
+staying closer to 1. As @!(smallfig "expmap_s")!@ gets more
+positive, the exponential curve will get more concave, with
+more values staying closer to 0.
+* Tangled Files
+=expmap.c= and =expmap.h= are the tangled files. If
+=SK_EXPMAP_PRIV= is defined, it exposes the structs.
+
+#+NAME: expmap.c
+#+BEGIN_SRC c :tangle expmap.c
+#include <math.h>
+#define SK_EXPMAP_PRIV
+#include "expmap.h"
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: expmap.h
+#+BEGIN_SRC c :tangle expmap.h
+#ifndef SK_EXPMAP_H
+#define SK_EXPMAP_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_EXPMAP_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+* Naive Function (stateless).
+The function =sk_expmap_stateless= will compute
+this exponential function without any internal state.
+The code is quite clear and simple,
+but requires two calls =exp=, which is an expensive
+operation.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_expmap_stateless(SKFLT in, SKFLT slope);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_expmap_stateless(SKFLT in, SKFLT slope)
+{
+    return (1 - exp(in*slope)) / (1 - exp(slope));
+}
+#+END_SRC
+* Struct
+Called =sk_expmap=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_expmap sk_expmap;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_expmap {
+    <<sk_expmap>>
+};
+#+END_SRC
+* Input/Ouput Caching
+To avoid computation, some caching of the input/output
+variables are used.
+
+=pin= is the cached input value, will be used to avoid
+computation. At init, it is set to be an (invalid) negative
+value.
+
+#+NAME: sk_expmap
+#+BEGIN_SRC c
+SKFLT pin;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+em->pin = -1;
+#+END_SRC
+
+=pout= is the cached computed output value. It is used if no
+computation is needed. By default, it is set to be -1. It is
+assumed that this value shouldn't actually ever be returned.
+
+#+NAME: sk_expmap
+#+BEGIN_SRC c
+SKFLT pout;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+em->pout = -1;
+#+END_SRC
+* Scaling Constant
+=scale= is the constant =1/(1 - exp(slope)=. A scaler used
+to shave off an expensive =exp= operation and =div=
+operation.
+
+#+NAME: sk_expmap
+#+BEGIN_SRC c
+SKFLT scale;
+#+END_SRC
+
+The scaling value can be computed with the static function
+=compute_scale=, given an input slope.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT compute_scale(SKFLT slope);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT compute_scale(SKFLT slope)
+{
+    return 1 / (1 - exp(slope));
+}
+#+END_SRC
+
+After the =slope= is initialized, the scale is initialized
+to be the slope.
+
+#+NAME: init_scale
+#+BEGIN_SRC c
+em->scale = compute_scale(em->slope);
+#+END_SRC
+* Initialization
+Initialization is done with =sk_expmap_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expmap_init(sk_expmap *em);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_expmap_init(sk_expmap *em)
+{
+    <<init>>
+}
+#+END_SRC
+* Changing Slope
+The slope of expmap can be changed with =sk_expmap_slope=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expmap_slope(sk_expmap *em, SKFLT slope);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_expmap_slope(sk_expmap *em, SKFLT slope)
+{
+    em->slope = slope;
+}
+#+END_SRC
+
+The slope parameter uses caching to avoid re-computation.
+
+#+NAME: sk_expmap
+#+BEGIN_SRC c
+SKFLT slope;
+SKFLT pslope;
+#+END_SRC
+
+The slope is set to be =1= to begin.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_expmap_slope(em, 1);
+em->pslope = 1;
+<<init_scale>>
+#+END_SRC
+* Compute
+A single sample of audio is computed with =sk_expmap_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_expmap_tick(sk_expmap *em, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_expmap_tick(sk_expmap *em, SKFLT in)
+{
+    SKFLT out = 0;
+    <<update_scale_value>>
+    <<compute>>
+    return out;
+}
+#+END_SRC
+
+Before a sample is computed, the slope parameter is checked
+for updates. If it is updated, the scale needs to be
+re-computed.
+
+#+NAME: update_scale_value
+#+BEGIN_SRC c
+if (em->slope != em->pslope) {
+    em->pslope = em->slope;
+    em->scale = compute_scale(em->slope);
+}
+#+END_SRC
+
+Computation is done only if the input value =in= is
+different from the cached input value =pin=. If
+it is, it updates the cached output value =pout=.
+
+
+the output variable =out= is set to be the cached value
+=pout=.
+
+#+NAME: compute
+#+BEGIN_SRC c
+if (in != em->pin) {
+    em->pin = in;
+    em->pout = (1 - exp(in * em->slope)) * em->scale;
+}
+out = em->pout;
+#+END_SRC

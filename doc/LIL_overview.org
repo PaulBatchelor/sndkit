@@ -1,0 +1,264 @@
+#+TITLE: LIL and sndkit: an overview
+* What is LIL?
+[[http://runtimeterror.com/tech/lil/][LIL (Little Interpreted Language)]] is a tiny scripting
+language included with sndkit. Using LIL, one can connect
+various sndkit algorithms together to build up sounds and
+patches.
+
+Syntactically, LIL looks very similar to TCL:
+
+#+BEGIN_SRC lil
+print hello world
+#+END_SRC
+
+Will print "hello world". The general format is to have
+words separated by spaces. The first word is the command,
+the following words are the arguments.
+* Sndkit functions
+sndkit adds several functions to LIL. Most of these are
+sndkit algorithms wrapped into a unit generator that takes
+in input signals and returns one or more output signals.
+
+The following code can be used to produce a sine wave at
+440Hz with an amplitude of 0.5:
+
+#+BEGIN_SRC lil
+sine 440 0.5
+#+END_SRC
+
+If you were to run this program, you wouldn't hear any
+sound. To get sound, the output of the sine wave would need
+to be written to a WAV file. And then some audio would need
+to be computed.
+
+The following code creates a 10 second WAV file of a sine:
+
+#+BEGIN_SRC lil
+wavout [sine 440 0.5] "sine.wav"
+computes 10
+#+END_SRC
+
+Using the brackets [], the sine wave signal is computed and
+sent as input to the WAV file writer wavout, writing to a
+file called "sine.wav". The computes command runs the patch
+for 10 seconds.
+
+One could use nested brackets to build s-exprsdsion like
+constructs. This creates a sine wave whose pitch is being
+modulated by another sine wave to create vibrato:
+
+#+BEGIN_SRC lil
+sine [add [param 440] [sine 6 50]] 0.5
+#+END_SRC
+
+Add adds two signals together, in this case a constant 440
+and a sine wave at 6Hz with an amplitude of 50. This causes
+the sounding sine wave oscillator to go up 50Hz and then
+down 50hz.
+
+The param function starts needing to be used when arguments
+mix and match constants and evalulated signals using
+brackets. Any constants that appear before bracketted
+arguments need to use param. This is why the 440 constant
+needs a param, and the 0.5 does not require one (though it
+doesn't hurt to add). It's a weird quirk that has to do
+with evaluation order and how things work under the hood,
+but one gets used to it.
+* The 'zz' operator
+Brackets and s-expressions can be fun, but they can get
+very unwieldy very quickly in LIL, especially since
+backslashes are required to break up commands across
+different lines.
+
+The previous vibrato example can be rewritten without
+brackets using a special function called 'zz':
+
+#+BEGIN_SRC lil
+sine 6 50
+add zz 440
+sine zz 0.5
+#+END_SRC
+
+zz itself doesn't do anything. It is a placeholder that
+tells the function to use the argument that has been
+implicitely generated.
+
+This can be quite funny looking and confusing at first.
+This concept can be best grokked by understanding the
+stack-based operations that are actually happening to build
+this patch.
+
+Using postfix notation as seen in Forths and Forth-like
+languages, the patch above can be realized in the following
+way:
+
+#+BEGIN_SRC forth
+440 6 sine 440 add 0.5 sine
+#+END_SRC
+
+This can be read left-to-right:
+
+440 and 6 are pushed to the stack.
+
+sine pops 6 and 440, computes a sample, and pushes it on
+the stack.
+
+440 is pushed to the stack.
+
+add pops 440 and the sine sample, adds them together, and
+pushes the result onto the stack.
+
+0.5 is pushed onto the stack.
+
+A sine function pops the 2 items off the stack and computes
+the sine that gets heard.
+
+Going back to LIL, zz tells a function to pop the last item
+off the sndkit stack and use that as an argument. Note that
+zz only works with sndkit nodes and things working with the
+sndkit stack. It is not a part of LIL!
+* Stack Operations
+It was mentioned in the previous section that under the hood
+sndkit works using a stack. A few stack operations have been
+exposed to LIL.
+
+The most common stack operation used =dup=, which duplicates
+the last item on the stack. If the item is a signal (it
+typically is), it will efficiently make a copy of this
+signal so it can be used as an input for another unit
+generator.
+
+The following code below is a patch of subtractive sawtooth
+oscillator being fed into a delay line. The =dup= operation
+here makes a copy of the saw (@!(ref "blep" "blsaw")!@) and
+feeds it into the delay line with feedback
+(@!(ref "vardelay")!@).
+
+#+BEGIN_SRC lil
+# create a trigger signal
+metro 0.5
+
+# feed signal into envelope generator
+env zz 0.001 0.01 0.1
+
+# create saw oscillator at middle C
+blsaw [mtof 60]
+butlp zz 800
+
+# multiply envelope and saw
+mul zz zz
+
+# reduce gain a bit to prevent clipping
+
+mul zz 0.7
+
+# make a copy of the dry signal
+dup
+
+# process dry signal with delay line and filter it
+vardelay zz 0.5 0.75 1.0
+butlp zz 300
+
+# add dry and wet signal together
+add zz zz
+
+# write output to WAV file
+wavout zz "test.wav"
+
+# compute 10 seconds of audio
+computes 10
+#+END_SRC
+
+The =drop= operation will drop the last item of the stack.
+Here it is being used below to discard one of the channels
+of the stereo reverb processor @!(ref "bigverb")!@. =dup=
+is also being called twice here. Once to make a copy of the
+dry signal, and then again for the stereo inputs for
+the reverb.
+
+#+BEGIN_SRC lil
+# create an LFO at 0.2hz
+sine 0.2 1
+
+# scale the LFO to be between 250-400hz
+biscale zz 250 400
+
+# feed scaled LFO into frequency of sawtooth oscillator
+blsaw zz
+
+# filter the sound and scale it
+butlp zz 800
+mul zz 0.3
+
+# make a copy of the dry signal
+dup
+# copy the signal for mono->stereo inputs
+dup
+
+# process stereo signal using bigverb
+bigverb zz zz 0.93 10000
+
+# drop one of the outputs (right channel)
+drop
+
+# scale the remaining channel
+mul zz 0.1
+
+# add wet and dry signals
+add zz zz
+
+# write to WAV file and compute
+wavout zz "test.wav"
+computes 10
+#+END_SRC
+* Registers and Buffer Holding
+For signals that get used more than once throughout
+a patch, it is best to use buffer holding and registers.
+
+Various unit generators talk to eachother by reading and
+writing to small chunks of signals known as =buffers=.
+Under the hood, there is a fixed number of buffers to
+write to, which are managed automatically using something
+called a =buffer pool=. When a signal is done using
+a buffer (the signal is no longer being used), that
+buffer is released. This can be process can be prevented
+by manually marking the buffer. This is known as =holding=
+the buffer. A held buffer must be explicitely unheld when
+it is done. Otherwise, the buffer will never be used
+again (which can cause trouble later).
+
+To store and retrieve buffers, sndkit provides a register
+system. There are a total of 16 registers available.
+
+The following example below creates a @!(ref "siren")!@
+patch. Here, an LFO signal is being used to control filter
+cutoff and frequency of a sawtooth oscillator. When the LFO
+signal is created, is is held and stored in register 0 via
+=regset= and =hold=. The signal can then be retrieved again
+using =regget=. When it is finished, the buffer is released
+using =unhold=.
+
+#+BEGIN_SRC lil
+# create an LFO. hold and store in register 0
+sine 0.2 1
+hold zz
+regset zz 0
+
+# scale the LFO and to modulate sawtooth
+biscale [regget 0] 215 430
+blsaw zz
+mul zz 0.5
+
+# scale the LFO to modulate filter cutoff
+biscale [regget 0] 100 1000
+butlp zz zz
+
+# unhold the LFO signal
+regget 0
+unhold zz
+regclr 0
+
+# write to wave
+wavout zz "test.wav"
+computes 10
+#+END_SRC

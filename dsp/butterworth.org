@@ -1,0 +1,135 @@
+#+TITLE: Butterworth
+A collection of 2nd-order butterworth filter
+collections. These will be explained and probably
+coded up a little bit better later. For now,
+these are imports from Soundpipe.
+
+The digital Butterworth filter is initially designed
+in the S-plane like you would an analogue filter, which
+results in a special transfer function. This transfer
+function then gets digitized to the Z-plane using a process
+known as the =bilinear transform=, or BLT. By the time
+this filter gets implemented in C code, this transformation
+has already been applied. What you're left with is a biquad
+with a bunch of constants from the BLT.
+
+Going through the motions of converting the Butterworth
+filter from the S-plane to the Z-plane is a little bit
+beyond the scope of this sndkit. However,
+Julius Smith has a page that derives
+a [[https://ccrma.stanford.edu/~jos/filters/Example_Second_Order_Butterworth_Lowpass.html][Second-order butterworth lowpass filter]].
+
+
+#+NAME: butlp.h
+#+BEGIN_SRC c :tangle butterworth.h
+#ifndef SK_BUTTERWORTH_H
+#define SK_BUTLERWORTH_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+typedef struct sk_butterworth sk_butterworth;
+
+void sk_butterworth_init(sk_butterworth *bw, int sr);
+void sk_butterworth_freq(sk_butterworth *bw, SKFLT freq);
+
+SKFLT sk_butlp_tick(sk_butterworth *bw, SKFLT in);
+SKFLT sk_buthp_tick(sk_butterworth *bw, SKFLT in);
+
+#ifdef SK_BUTTERWORTH_PRIV
+struct sk_butterworth {
+    SKFLT freq, lfreq;
+    SKFLT a[7];
+    SKFLT pidsr;
+};
+#endif
+
+#endif
+#+END_SRC
+
+Below is mostly a verbatim copy of the soundpipe code that
+has been slightly reworked to not use =malloc=.
+
+Explanations will follow, someday.
+
+#+NAME: butterworth.c
+#+BEGIN_SRC c :tangle butterworth.c
+#include <math.h>
+#include <stdint.h>
+#include <stdlib.h>
+
+#define SK_BUTTERWORTH_PRIV
+#include "butterworth.h"
+
+#define ROOT2 1.4142135623730950488
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+static SKFLT filter(SKFLT in, SKFLT *a)
+{
+    SKFLT t, y;
+    /* a5 = t(n - 1); a6 = t(n - 2) */
+    t = in - a[3]*a[5] - a[4]*a[6];
+    y = t*a[0] + a[1]*a[5] + a[2]*a[6];
+    a[6] = a[5];
+    a[5] = t;
+    return y;
+}
+
+void sk_butterworth_init(sk_butterworth *bw, int sr)
+{
+    int i;
+    sk_butterworth_freq(bw, 1000.0);
+    bw->lfreq = -1;
+    bw->pidsr = M_PI / (SKFLT)sr;
+    for (i = 0; i < 7; i++) bw->a[i] = 0.0;
+}
+
+void sk_butterworth_freq(sk_butterworth *bw, SKFLT freq)
+{
+    bw->freq = freq;
+}
+
+SKFLT sk_butlp_tick(sk_butterworth *bw, SKFLT in)
+{
+    if (bw->freq != bw->lfreq) {
+        SKFLT *a, c;
+        a = bw->a;
+        bw->lfreq = bw->freq;
+        /* derive C constant used in BLT */
+        c = 1.0 / tan((SKFLT)(bw->pidsr * bw->lfreq));
+
+        /* perform BLT, store components */
+        a[0] = 1.0 / (1.0 + c*ROOT2 + c*c);
+        a[1] = 2*a[0];
+        a[2] = a[0];
+        a[3] = 2.0 * (1.0 - c*c) * a[0];
+        a[4] = (1.0 - c*ROOT2 + c*c) * a[0];
+    }
+
+    return filter(in, bw->a);
+}
+
+SKFLT sk_buthp_tick(sk_butterworth *bw, SKFLT in)
+{
+    if (bw->freq != bw->lfreq) {
+        SKFLT *a, c;
+        a = bw->a;
+        bw->lfreq = bw->freq;
+        /* derive C constant used in BLT */
+        c = tan((SKFLT)(bw->pidsr * bw->freq));
+
+        /* perform BLT, store components */
+        a[0] = 1.0 / (1.0 + c*ROOT2 + c*c);
+        a[1] = -2*a[0];
+        a[2] = a[0];
+        a[3] = 2.0 * (c*c - 1.0) * a[0];
+        a[4] = (1.0 - c*ROOT2 + c*c) * a[0];
+    }
+
+    return filter(in, bw->a);
+}
+#+END_SRC

@@ -1,0 +1,58 @@
+#+TITLE: Softclip
+* Overview
+The =softclip= algorithm will apply soft cliping to an input
+signal so that it lies in the range of [-1, 1]. Under the
+hood, this implements a fast approximation of the =tanh=
+function with a =drive= parameter. This yields a reasonable
+sounding saturation effect.
+
+The approximation used was found via the
+[[https://www.musicdsp.org/en/latest/Other/238-rational-tanh-approximation.html][music-dsp mailing list]].
+* Tangled Files
+As per usual, =softclip.c= and =softclip.h=.
+
+#+NAME: softclip.c
+#+BEGIN_SRC c :tangle softclip.c
+#include "softclip.h"
+<<funcs>>
+#+END_SRC
+
+#+NAME: softclip.h
+#+BEGIN_SRC c :tangle softclip.h
+#ifndef SK_SOFTCLIP_H
+#define SK_SOFTCLIP_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+* Stateless Function
+The softclip algorithm can be implemented as a
+stateless function, called =sk_stateless_tick=.
+It takes in an input signal =in= and a multiplier
+amount =drive=. For a desired effect to occur,
+=drive= should be greater than 1.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_softclip_tick(SKFLT in, SKFLT drive);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT rational_tanh(SKFLT x)
+{
+    if( x < -3 )
+        return -1;
+    else if( x > 3 )
+        return 1;
+    else
+        return x * ( 27 + x * x ) / ( 27 + 9 * x * x );
+}
+
+SKFLT sk_softclip_tick(SKFLT in, SKFLT drive)
+{
+    return rational_tanh(in * drive);
+}
+#+END_SRC

@@ -1,0 +1,5 @@
+#+TITLE: Wiki Index
+@!
+(import "wiki_index")
+(wiki_index/mkpage)
+!@

@@ -1,0 +1,4 @@
+glottis 130 0.8
+mul zz 0.4
+wavout zz "glottis.wav"
+computes 10

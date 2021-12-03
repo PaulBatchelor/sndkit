@@ -1,0 +1,336 @@
+#+TITLE: Bitnoise
+* Introduction
+=bitnoise= is a 1-bit noise generator, based on the
+one found on the [[https://wiki.nesdev.com/w/index.php/APU_Noise][NES APU]].
+It features a 15-bit linear feedback shift register
+(abbreviated as =LFSR=), mode toggle switch, and a
+rate parameter for speed control.
+* Tangled Files
+Bitnoise tangles to two files: =bitnoise.c= and
+=bitnoise.h=.
+
+#+NAME: bitnoise.c
+#+BEGIN_SRC c :tangle bitnoise.c
+/* tangled from sndkit. do not edit by hand */
+#include <stdint.h>
+#include <math.h>
+#define SK_BITNOISE_PRIV
+#include "bitnoise.h"
+<<macros>>
+<<funcs>>
+#+END_SRC
+
+If =SK_BITNOISE_PRIV= is enabled, it
+exposes the struct in the header. Otherwise, it is
+left as an opaque struct.
+
+#+NAME: bitnoise.h
+#+BEGIN_SRC c :tangle bitnoise.h
+/* tangled from sndkit. do not edit by hand */
+#ifndef SK_BITNOISE_H
+#define SK_BITNOISE_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_BITNOISE_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+* Structs
+All parameters are contained in a struct called
+=sk_bitnoise=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_bitnoise sk_bitnoise;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_bitnoise {
+    <<sk_bitnoise>>
+};
+#+END_SRC
+* Init
+Bitnoise is initialized with =sk_bitnoise_init=. The
+sampling rate must be supplied here.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bitnoise_init(sk_bitnoise *bn, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bitnoise_init(sk_bitnoise *bn, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Variables, Constants, and State
+** Phasor Constants and State
+A fixed-point phasor is used to manage clocking and
+frequency control, similar to the one found in @!(ref
+"rline")!@.
+
+Defined constants =SK_BITNOISE_PHSMAX= and
+=SK_BITNOISE_PHSMSK= are used to wrap.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_BITNOISE_PHSMAX 0x1000000L
+#define SK_BITNOISE_PHSMSK 0x0FFFFFFL
+#+END_SRC
+
+To calculate the increment amount, a calculated constant
+called =maxlens= is used, which is the maximum phase length
+in units of seconds. When multiplied by the rate paramter,
+this provides a value (in units of cycles) that tells the
+phasor how much to increment.
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+SKFLT maxlens;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+bn->maxlens = SK_BITNOISE_PHSMAX / (SKFLT) sr;
+#+END_SRC
+
+The phasor position itself is stored in a long integer
+called =phs=, and is set to be 0.
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+uint32_t phs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+bn->phs = 0;
+#+END_SRC
+** Linear Feedback Shift Register State
+Stored in a 16-bit unsigned integer called =lfsr=.
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+uint16_t lfsr;
+#+END_SRC
+
+According to the APU specs, this is initialized to be 1.
+
+#+NAME: init
+#+BEGIN_SRC c
+bn->lfsr = 1;
+#+END_SRC
+** Bit Position
+The current bit position in the register is kept track of in
+an integer called =pos=.
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+int pos;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+bn->pos = 0;
+#+END_SRC
+** Saved Value
+The last computed sample is stored in a variable called
+=saved=.
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+SKFLT saved;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+bn->saved = 0;
+#+END_SRC
+* Parameters
+** Rate
+The =rate= parameter changes the speed at which the noise
+generator updates, similar to how a sample-and-hold works.
+This is supplied in units of Hz.
+
+Set the rate parameter with =sk_bitnoise_rate=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bitnoise_rate(sk_bitnoise *bn, SKFLT rate);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bitnoise_rate(sk_bitnoise *bn, SKFLT rate)
+{
+    bn->rate = rate;
+}
+#+END_SRC
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+SKFLT rate;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_bitnoise_rate(bn, 1000);
+#+END_SRC
+** Mode
+The =mode= parameter is a toggle value which changes the
+behavior of LFSR. It is either 1 or 0. When 0, the LFSR
+should be set up to produce a sequence that is 32767 steps
+long. When 1, it should produce 31 or 91 steps, depending on
+the state of the shift register.
+
+Set the mode parameter with =sk_bitnoise_mode=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bitnoise_mode(sk_bitnoise *bn, int mode);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bitnoise_mode(sk_bitnoise *bn, int mode)
+{
+    bn->m = mode;
+}
+#+END_SRC
+
+#+NAME: sk_bitnoise
+#+BEGIN_SRC c
+int m;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_bitnoise_mode(bn, 0);
+#+END_SRC
+* Compute
+A single sample is initialized with =sk_bitnoise_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_bitnoise_tick(sk_bitnoise *bn);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_bitnoise_tick(sk_bitnoise *bn)
+{
+    SKFLT out;
+
+    out = 0;
+    <<update_phasor>>
+    <<update_LFSR>>
+    <<write_output>>
+    return out;
+}
+#+END_SRC
+
+To begin, the fixed phasor is updated. It is incremented by
+an amount determined by multiplying the constant =maxlens=
+with the =rate= parameter.
+
+#+NAME: update_phasor
+#+BEGIN_SRC c
+bn->phs += floor(bn->rate * bn->maxlens);
+#+END_SRC
+
+When the phasor reaches the or goes beyond the upper limit,
+it needs to wrap around again. Also, the state of the shift
+register may need to be updated.
+
+Wrap around of the phasor is done by AND-ing it with the
+phase mask =SK_BITNOISE_PHSMSK=.
+
+The shift register will need to get updated if it bit
+position reaches the end (it exceeds 14).
+
+According to the [[https://wiki.nesdev.com/w/index.php/APU_Noise][NES dev wiki]],
+the LFSR is computed in the following way:
+
+Compute feedback as the exclusive OR of bit 0 and
+one other bit. Depending on the mode flag, this
+bit is either bit 1 (mode OFF) or bit 6 (mode ON).
+
+The register is right-shifted by 1.
+
+The calculated feedback bit is set to be bit 14
+(the leftmost bit) of the new register.
+
+#+NAME: calculate_LFSR
+#+BEGIN_SRC c
+x = bn->lfsr;
+f = (x & 1) ^ ((x >> (bn->m ? 6:1)) & 1);
+x >>= 1;
+x |= f << 14;
+bn->lfsr = x;
+#+END_SRC
+
+The actual noise output is done by extracting the current
+bit from the shift register, and then scaling that state
+to be in range -1,1.
+
+The bitwise operations below work together to "pop" the
+current bit out of the register. First, the register
+is right-shifted so that the desired bit is in the lowest
+bit position. ANDing with 1 then isolates that last bit.
+
+#+NAME: extract_bit
+#+BEGIN_SRC c
+y = (bn->lfsr >> bn->pos) & 1;
+#+END_SRC
+
+The value is scaled to be in between -1 and 1. Because
+it is binary, one could be tempted to use a ternary value
+like =y ? 1.0 : -1.0=. However, according to
+[[https://godbold.org][godbolt], =y * 2 - 1= takes about 3
+instructions to do in x86_64 (=mov=, =mul=, =sub=), and
+=y ? 1.0 : -1.0= takes instructions (=cmp=, =je=, =mov=,
+=jmp=, =mov=). (I'm pretty sure the one with less
+instructions is more efficient).
+
+This computed output is cached for later use in =saved=.
+
+#+NAME: scale_and_store
+#+BEGIN_SRC c
+bn->saved = y * 2 - 1;
+#+END_SRC
+
+#+NAME: update_LFSR
+#+BEGIN_SRC c
+if (bn->phs >= SK_BITNOISE_PHSMAX) {
+    SKFLT y;
+    bn->phs &= SK_BITNOISE_PHSMSK;
+    if (bn->pos > 14) {
+        uint16_t f;
+        uint16_t x;
+        bn->pos = 0;
+        <<calculate_LFSR>>
+    }
+
+    <<extract_bit>>
+    <<scale_and_store>>
+    bn->pos++;
+}
+#+END_SRC
+
+The cached value =saved= is what is returned in the output.
+
+#+NAME: write_output
+#+BEGIN_SRC c
+out = bn->saved;
+#+END_SRC

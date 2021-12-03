@@ -1,0 +1,24 @@
+#+TITLE: Parameter Caching
+* Overview
+=Parameter Caching= is a technique that uses some sort of
+memory caching to keep track of changes to a parameter.
+In the context of DSP, this is often used for filters so
+that filter coefficients do not need to be constantly
+updated.
+* Coding Conventions in Sndkit
+In sndkit, the convention for parameter caching is to use
+two variables =var= and =pvar=, with =pvar= being the cached
+variable, and =var= being the one externally set. In
+the compute loop, these variables would be checked for
+changes:
+
+#+BEGIN_SRC c
+if (var != pvar) {
+    pvar = var;
+    /* expensive computation goes here */
+}
+#+END_SRC
+* Examples
+Some algorithms that use parameter caching include
+@!(ref "bigverb")!@, @!(ref "peakeq")!@, and
+@!(ref "env")!@.

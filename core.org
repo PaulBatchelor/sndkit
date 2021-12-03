@@ -1,0 +1,1448 @@
+#+TITLE: Core
+* Overview
+This document describes and outlines a small API for
+sndkit. It is primarily designed to be a small layer on top
+of Graforge, a library used to build up directed audio
+graphs. A large portion of the functionality is based on
+what is found in runt-graforge. Just simpler.
+
+In addition to maintaining an instance of graforge, the
+sndkit API provides a stack and a register system. The
+stack is the primary means of sharing data between nodes.
+Registers are for more persitently used values.
+* Tangled files
+=core.h= and =core.c=.
+
+#+NAME: core.h
+#+BEGIN_SRC c :tangle core.h
+#ifndef SKGF_H
+#define SKGF_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+#ifdef SK_CORE_PRIV
+<<structs>>
+<<core>>
+#endif
+<<macros>>
+<<funcdefs>>
+
+#ifdef __plan9__
+#pragma incomplete sk_core
+#pragma incomplete sk_stack
+#pragma incomplete sk_regtbl
+#pragma incomplete sk_table
+#endif
+#endif
+#+END_SRC
+
+#+NAME: core.c
+#+BEGIN_SRC c :tangle core.c
+#include <stdlib.h>
+#include <math.h>
+#include <string.h>
+#include "graforge.h"
+#define SK_CORE_PRIV
+#include "core.h"
+<<enums>>
+<<funcs>>
+#+END_SRC
+* Engine Management
+All this behavior is defined in a struct called =sk_core=.
+
+Creating/freeing is done with =sk_core_new= and
+=sk_core_del=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_core * sk_core_new(int sr);
+void sk_core_del(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_core * sk_core_new(int sr)
+{
+    sk_core *core;
+    gf_patch *patch;
+
+    core = malloc(sizeof(sk_core));
+    core->patch = malloc(gf_patch_size());
+
+    patch = core->patch;
+    gf_patch_init(patch, 64);
+    gf_patch_alloc(patch, 8, 10);
+    gf_patch_srate_set(patch, sr);
+
+    sk_stack_init(&core->stack);
+    sk_regtbl_init(&core->regtbl);
+
+    sk_core_srand(core, 0);
+    return core;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_core_del(sk_core *core)
+{
+    if (core == NULL) return;
+
+    gf_patch_destroy(core->patch);
+    gf_patch_free_nodes(core->patch);
+    free(core->patch);
+
+    free(core);
+    core = NULL;
+}
+#+END_SRC
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_core sk_core;
+#+END_SRC
+
+#+NAME: core
+#+BEGIN_SRC c
+struct sk_core {
+    gf_patch *patch;
+    sk_stack stack;
+    sk_regtbl regtbl;
+    unsigned long rng;
+};
+#+END_SRC
+
+A internal block of audio can be computed with
+=sk_core_compute=. Usually this size is 64 samples.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_core_compute(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_core_compute(sk_core *core)
+{
+    gf_patch_compute(core->patch);
+}
+#+END_SRC
+
+=sk_core_computes= is like =sk_core_compute=, but computes
+an approximuate number of seconds of audio. This value
+gets rounded to the nearest block. The number of blocks
+rendered gets rendered.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_core_computes(sk_core *core, SKFLT secs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_core_computes(sk_core *core, SKFLT secs)
+{
+    size_t nblocks, n;
+    nblocks = sk_core_seconds_to_blocks(core, secs);
+
+    for (n = 0; n < nblocks; n++) {
+        sk_core_compute(core);
+    }
+
+    return nblocks;
+}
+#+END_SRC
+
+Building up nodes involves interacting with the graforge
+API. To get the top level struct of that opaquely, use
+=sk_core_patch=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+gf_patch * sk_core_patch(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+gf_patch * sk_core_patch(sk_core *core)
+{
+    return core->patch;
+}
+#+END_SRC
+
+The function =sk_core_seconds_to_blocks= converts
+seconds to a number of render blocks.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_core_seconds_to_blocks(sk_core *core, SKFLT secs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_core_seconds_to_blocks(sk_core *core, SKFLT secs)
+{
+    size_t nblocks;
+    int sr;
+
+    sr = gf_patch_srate_get(core->patch);
+    nblocks = floor((sr * secs) / 64) + 1;
+
+    return nblocks;
+}
+#+END_SRC
+* Stack
+** Core Data Types
+An item on a stack is contained in a thing known as a
+=stacklet=. A stacklet has integer for a type flag, a
+floating point number for numerical values, and a generic
+pointer for C structures.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_stacklet sk_stacklet;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_stacklet {
+    int type;
+    SKFLT f;
+    void *ptr;
+};
+<<stack_struct>>
+#+END_SRC
+
+A stacklet is initialized with the function
+=sk_stacklet_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_stacklet_init(sk_stacklet *s);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_stacklet_init(sk_stacklet *s)
+{
+    s->type = SK_TYPE_NONE;
+    s->f = 0;
+    s->ptr = NULL;
+}
+#+END_SRC
+
+An array of stacklets forms the foundation of a =sk_stack=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_stack sk_stack;
+#+END_SRC
+
+The stack will be hard coded to be 16.
+
+An integer =pos= is used to keep track of position.
+
+#+NAME: stack_struct
+#+BEGIN_SRC c
+#define SK_STACKSIZE 16
+struct sk_stack {
+    sk_stacklet stack[SK_STACKSIZE];
+    int pos;
+};
+#+END_SRC
+
+A stack is initialized with =sk_stack_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_stack_init(sk_stack *s);
+#+END_SRC
+
+The position is set to be negative, indicating an empty
+stack.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_stack_init(sk_stack *s)
+{
+    int i;
+
+    for (i = 0; i < SK_STACKSIZE; i++) {
+        sk_stacklet_init(&s->stack[i]);
+    }
+
+    s->pos = -1;
+}
+#+END_SRC
+** Types
+The typeflag currently supports the following types:
+
+#+NAME: enums
+#+BEGIN_SRC c
+enum {
+   SK_TYPE_NONE,
+   SK_TYPE_CONSTANT,
+   SK_TYPE_CABLE,
+   SK_TYPE_TABLE,
+   SK_TYPE_GENERIC
+};
+#+END_SRC
+** Push/Pop
+Push and pop are the core operations for the stack. Both
+return non-zero values on error.
+
+=sk_stack_pop= will pop a value off the stack and save it
+to the stacklet variable =s=.
+
+=sk_stack_push= will push an initialized stacklet to the
+stack, and save that value to stacklet variable =s= to
+be filled with some item.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_pop(sk_stack *stack, sk_stacklet **out);
+int sk_stack_push(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_pop(sk_stack *stack, sk_stacklet **out)
+{
+    sk_stacklet *s;
+    /* no items on stack */
+    if (stack->pos < 0) return 1;
+
+    /* stack overflow */
+    if (stack->pos >= SK_STACKSIZE) return 2;
+
+    s = &stack->stack[stack->pos];
+    stack->pos--;
+
+    *out = s;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_push(sk_stack *stack, sk_stacklet **out)
+{
+    sk_stacklet *s;
+
+    if (stack->pos >= (SK_STACKSIZE - 1)) return 1;
+    stack->pos++;
+    s = &stack->stack[stack->pos];
+
+    sk_stacklet_init(s);
+    *out = s;
+    return 0;
+}
+#+END_SRC
+** Peak
+The function =sk_stack_peak= will look at the last item on
+the stack, but not pop it off the stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_peak(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_peak(sk_stack *stack, sk_stacklet **out)
+{
+    sk_stacklet *s;
+    if (stack->pos < 0) return 1;
+    if (stack->pos >= SK_STACKSIZE) return 2;
+
+    s = &stack->stack[stack->pos];
+    *out = s;
+    return 0;
+}
+#+END_SRC
+** Dup
+=dup= is an operation that duplicates an item on the stack.
+
+The basic operation can be done with =sk_stack_dup=. The
+operation will store the duplicated stack item to =out= if
+the argument is not =NULL=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_dup(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_dup(sk_stack *stack, sk_stacklet **out)
+{
+    int rc;
+    sk_stacklet *a, *b;
+
+    rc = sk_stack_peak(stack, &a);
+    SK_ERROR_CHECK(rc);
+
+    rc = sk_stack_push(stack, &b);
+    SK_ERROR_CHECK(rc);
+
+    *b = *a;
+
+    if (out != NULL) *out = b;
+
+    return 0;
+}
+#+END_SRC
+
+
+=sk_core_dup= will call =sk_stack_dup= on the internal
+stack, but also will call a dup operation on the graforge
+stack if the item is a graforge cable.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_dup(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_dup(sk_core *core)
+{
+    sk_stacklet *s;
+    int rc;
+
+    rc = sk_stack_dup(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CABLE) {
+        gf_stack *stack;
+        stack = gf_patch_stack(core->patch);
+        gf_stack_dup(stack);
+    }
+
+    return 0;
+}
+#+END_SRC
+** Drop
+=drop= is an operation that drops an item on the stack.
+
+The basic operation is done with =sk_stack_drop=.
+
+The dropped value will be saved to =out= if =out= is
+not =NULL=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_drop(sk_stack *stack, sk_stacklet **out);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_drop(sk_stack *stack, sk_stacklet **out)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (out != NULL) *out = s;
+    return 0;
+}
+#+END_SRC
+
+The function =sk_core_drop= performs a drop on the stack
+in the core struct. If the item is a graforge cable, it
+will also perform a drop on the graforge buffer stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_drop(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_drop(sk_core *core)
+{
+    int rc;
+    sk_stacklet *s;
+    rc = sk_stack_drop(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CABLE) {
+        gf_stack *stack;
+        stack = gf_patch_stack(core->patch);
+        gf_stack_pop(stack, NULL);
+    }
+
+    return 0;
+}
+#+END_SRC
+** Swap
+=swap= will swap the positions of the last two items on
+the stack.
+
+The basic operation is done with =sk_stack_swap=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stack_swap(sk_stack *stack,
+                  sk_stacklet **s1,
+                  sk_stacklet **s2);
+#+END_SRC
+
+A gentle reminder: the stack must have at least 2 items on
+the stack, meaning the index position must be at least 1.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stack_swap(sk_stack *stack,
+                  sk_stacklet **out1,
+                  sk_stacklet **out2)
+{
+    sk_stacklet tmp;
+    int pos;
+
+    pos = stack->pos;
+    if (pos < 1) return 1;
+
+
+    tmp = stack->stack[pos];
+
+    stack->stack[pos] = stack->stack[pos - 1];
+    stack->stack[pos - 1] = tmp;
+
+    if (out1 != NULL) *out1 = &stack->stack[pos - 1];
+    if (out2 != NULL) *out2 = &stack->stack[pos];
+
+    return 0;
+}
+#+END_SRC
+
+The function =sk_core_swap= does a swap, and will also swap
+on the graforge buffer stack if both items are cables.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_swap(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_swap(sk_core *core)
+{
+    int rc;
+    sk_stacklet *s[2];
+    rc = sk_stack_swap(&core->stack, &s[0], &s[1]);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s[0]->type == SK_TYPE_CABLE && s[1]->type == SK_TYPE_CABLE) {
+        gf_stack *stack;
+        stack = gf_patch_stack(core->patch);
+        gf_stack_swap(stack);
+    }
+
+    return 0;
+}
+#+END_SRC
+* Parameters and Cables
+=sndkit_param= is an abstraction used to deal with
+graforge cables, and is designed to link up with the
+sndkit stack and graforge nodes.
+
+A sndkit parameter can either be a graforge cable from a
+node or a constant value. If it is cable, it will properly
+manage the buffer stack in graforge. If it is a constant,
+it will only manipulate the sndkit stack.
+** Struct
+A parameter is stored in a struct called =sk_param=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct {
+    char type;
+    union {
+        gf_cable *c;
+        SKFLT f;
+    } data;
+} sk_param;
+#+END_SRC
+** Getting a Parameter
+Get a parameter from the core stack via =sk_param_get=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_get(sk_core *core, sk_param *p);
+#+END_SRC
+
+Getting a parameter is a matter of popping from the stack
+and checking the type. A constant will set the constant
+value and flag in the param struct. A cable will set the
+cable value and flag in the param struct, and will also pop
+from the buffer stack.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_get(sk_core *core, sk_param *p)
+{
+    sk_stack *stk;
+    sk_stacklet *s;
+    int rc;
+
+    stk = &core->stack;
+
+    rc = sk_stack_pop(stk, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CONSTANT) {
+        p->type = 0;
+        p->data.f = s->f;
+    } else if (s->type == SK_TYPE_CABLE) {
+        p->type = 1;
+        p->data.c = (gf_cable *)s->ptr;
+        gf_cable_pop(p->data.c);
+    } else {
+        /* Wrong type! */
+        return 1;
+    }
+
+    return 0;
+}
+#+END_SRC
+
+For situations where only constants are allowed, use
+=sk_param_get_constant=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_get_constant(sk_core *core, SKFLT *val);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_get_constant(sk_core *core, SKFLT *val)
+{
+    sk_stack *stk;
+    sk_stacklet *s;
+    int rc;
+
+    stk = &core->stack;
+
+    rc = sk_stack_pop(stk, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_CONSTANT) {
+        /* Wrong type! */
+        return 1;
+    }
+
+    *val = s->f;
+    return 0;
+}
+#+END_SRC
+
+For situations where only cables are allowed, use
+=sk_param_get_cable=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_get_cable(sk_core *core, sk_param *p);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_get_cable(sk_core *core, sk_param *p)
+{
+    sk_stack *stk;
+    sk_stacklet *s;
+    int rc;
+
+    stk = &core->stack;
+
+    rc = sk_stack_pop(stk, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type == SK_TYPE_CABLE) {
+        p->type = 1;
+        p->data.c = (gf_cable *)s->ptr;
+        gf_cable_pop(p->data.c);
+    } else {
+        /* Wrong type! */
+        return 1;
+    }
+
+    return 0;
+}
+#+END_SRC
+** Setting a Parameter
+Set a parameter with =sk_param_set=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_set(sk_core *core,
+                 gf_node *node,
+                 sk_param *p,
+                 int cid);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_set(sk_core *core,
+                 gf_node *node,
+                 sk_param *p,
+                 int cid)
+{
+    gf_cable *c;
+
+    gf_node_get_cable(node, cid, &c);
+    if (p->type == 0) {
+        gf_cable_set_value(c, p->data.f);
+    } else {
+        int rc;
+        rc = gf_cable_connect(p->data.c, c);
+        SK_GF_ERROR_CHECK(rc);
+    }
+    return 0;
+}
+#+END_SRC
+
+Setting a parameter will properly assign the internal value
+to a cable of a node. This node's cable is referenced by
+its index position. A constant parameter will set the node
+cable as a consant. A cable parameter will be connected to
+the node cable.
+** Pushing Constants
+Constant values can be pushed to the stack with the
+function =sk_core_constant=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_constant(sk_core *core, SKFLT x);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_constant(sk_core *core, SKFLT x)
+{
+    int rc;
+    sk_stacklet *s;
+    sk_stack *stk;
+
+    stk = &core->stack;
+
+    rc = sk_stack_push(stk, &s);
+    SK_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_CONSTANT;
+    s->f = x;
+
+    return 0;
+}
+#+END_SRC
+** Pushing Output
+An signal cable from a node is pushed to the stack via
+=sk_param_out=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_param_out(sk_core *core,
+                 gf_node *node,
+                 int cid);
+#+END_SRC
+
+Cables need to be pushed in the order they are created in
+the patch. The onus is on the developers of the node to
+make sure this is done properly. Don't worry,
+this is less tricky than it sounds. If done correctly, this
+process can be mostly automated or abstracted away.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_param_out(sk_core *core,
+                 gf_node *node,
+                 int cid)
+{
+    gf_cable *c;
+    sk_stacklet *s;
+    sk_stack *stk;
+    int rc;
+
+    stk = &core->stack;
+
+    rc = sk_stack_push(stk, &s);
+    SK_ERROR_CHECK(rc);
+    rc = gf_node_get_cable(node, cid, &c);
+    SK_GF_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_CABLE;
+    s->ptr = c;
+
+    return 0;
+}
+#+END_SRC
+
+=sk_param_out= will take an output cable of a node
+(referenced by index), and push it onto the sndkit stack.
+It will also push the cable's buffer onto the stack.
+** Pushing/Popping Generic Pointers
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_generic_push(sk_core *core, void *ptr);
+int sk_core_generic_pop(sk_core *core, void **ptr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_generic_push(sk_core *core, void *ptr)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_push(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_GENERIC;
+    s->ptr = ptr;
+
+    return rc;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_generic_pop(sk_core *core, void **ptr)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_GENERIC) {
+        return 1;
+    }
+
+    if (ptr != NULL) *ptr = s->ptr;
+
+    return rc;
+}
+#+END_SRC
+* Registers
+A register interface is used alongside the stack
+interface to store and retrieve data. A value stored
+in a register can be directly referenced by an id value.
+
+Registers are very useful for storing data that is
+used more than once throughout the patch, or for situations
+where using stack operations to manipulate the day becomes
+tedious. Examples of
+this include cables containing clock signals and lookup
+tables.
+** structs
+A single register entry is encapsulated in a struct called
+=sk_register_entry=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_register_entry sk_register_entry;
+#+END_SRC
+
+A register entry contains an =sk_stacklet= as well as a flag
+to indicate the current state of the register.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_register_entry {
+    sk_stacklet data;
+    int flags;
+};
+#+END_SRC
+
+A register is initialized with =sk_register_entry_init=,
+which will initialize the stacklet and zero out the flags.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_register_entry_init(sk_register_entry *e);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_register_entry_init(sk_register_entry *e)
+{
+    sk_stacklet_init(&e->data);
+    e->flags = 0;
+}
+#+END_SRC
+
+A register collection is
+encapsulated in a struct called =sk_regtbl=,
+and is a fixed array of =sk_register_entry= values. The
+size is defined via a macro.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_regtbl sk_regtbl;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+#define SK_REGSIZE 16
+struct sk_regtbl {
+    sk_register_entry r[SK_REGSIZE];
+};
+#+END_SRC
+
+Registers are initialized with =sk_regtbl_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_regtbl_init(sk_regtbl *rs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_regtbl_init(sk_regtbl *rs)
+{
+    int i;
+
+    for (i = 0; i < SK_REGSIZE; i++) {
+        sk_register_entry_init(&rs->r[i]);
+    }
+}
+#+END_SRC
+** regset/regget
+Setting/getting values are done with =sk_core_regget= and
+=sk_core_regset=, making calls to the underlying functions
+=sk_register_set= and =sk_register_get=.
+
+Values are assumed to be encapsulated in
+a =sk_stacklet=, and registers are addressed by id.
+
+Will return a non-zero value on error.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regget(sk_core *core, int pos);
+int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet *s);
+int sk_core_regset(sk_core *core, int pos);
+int sk_register_set(sk_regtbl *rt, int pos, sk_stacklet *s);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_get(sk_regtbl *rt, int pos, sk_stacklet *s)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    *s = rt->r[pos].data;
+    return 0;
+}
+#+END_SRC
+
+Things get a bit more involved the item in the register
+is a graforge cable. This requires pushing the buffer
+contained inside of the cable back onto the buffer stack.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regget(sk_core *core, int pos)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_push(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+    rc = sk_register_get(&core->regtbl, pos, s);
+    SK_ERROR_CHECK(rc);
+
+    /* also push to buffer stack if cable */
+    if (s->type == SK_TYPE_CABLE) {
+        gf_cable *c;
+        gf_buffer *b;
+        gf_stack *bstack;
+        c = (gf_cable *) s->ptr;
+        b = gf_cable_get_buffer(c);
+        bstack = gf_patch_stack(core->patch);
+        gf_stack_push_buffer(bstack, b);
+    }
+
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_set(sk_regtbl *rt, int pos, sk_stacklet *s)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    rt->r[pos].data = *s;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regset(sk_core *core, int pos)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+    rc = sk_register_set(&core->regtbl, pos, s);
+    SK_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+** regmrk
+=sk_core_regmrk=, marks a register as being used. this makes
+an underlying call to =sk_register_mark=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regmrk(sk_core *core, int pos);
+int sk_register_mark(sk_regtbl *rt, int pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_mark(sk_regtbl *rt, int pos)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    rt->r[pos].flags |= 1;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regmrk(sk_core *core, int pos)
+{
+    return sk_register_mark(&core->regtbl, pos);
+}
+#+END_SRC
+** regclr
+=sk_core_regclr= clears the register, making it free to be
+claimed. This makes an underlying call to
+=sk_register_clear=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regclr(sk_core *core, int pos);
+int sk_register_clear(sk_regtbl *rt, int pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_clear(sk_regtbl *rt, int pos)
+{
+    if (pos < 0 || pos >= SK_REGSIZE) return 1;
+
+    rt->r[pos].flags = 0;
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regclr(sk_core *core, int pos)
+{
+    return sk_register_clear(&core->regtbl, pos);
+}
+#+END_SRC
+** regnxt
+=sk_core_regnxt= returns the next free register, which
+makes an underlying call to =sk_register_nextfree=.
+
+=start= indicates which register position to start at. Leave
+this to be 0 if there is no preference.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_regnxt(sk_core *core, int start, int *pos);
+int sk_register_nxtfree(sk_regtbl *rt, int start);
+#+END_SRC
+
+=sk_register_nextfree= will iterate through
+the registers until it finds one that is free. it will
+return the id of this register.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_register_nxtfree(sk_regtbl *rt, int start)
+{
+    int pos;
+    int i;
+    sk_register_entry *reg;
+
+    reg = rt->r;
+
+    if (start < 0 || start >= SK_REGSIZE) start = 0;
+
+    pos = start;
+
+    for (i = 0; i < SK_REGSIZE; i++) {
+        if (!(reg[pos].flags & 1)) return pos;
+        pos = (pos + 1) % SK_REGSIZE;
+    }
+
+    return -1;
+}
+#+END_SRC
+
+=sk_core_regnxt= returns a non-zero error code if there are
+no available registers. This is done to make it play better
+with the =SK_ERROR_CHECK= paradigm.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_regnxt(sk_core *core, int start, int *pos)
+{
+    *pos = sk_register_nxtfree(&core->regtbl, start);
+
+    if (*pos < 0) return 1;
+
+    return 0;
+}
+#+END_SRC
+* Buffer Operations
+Graforge works by reading and writing to fixed-size blocks
+of samples known as buffers. Buffers are manipulated using
+a =stack=, and are managed/queried from a =pool=.
+
+After being used by a node, buffers are usually immediately
+returned to the buffer pool to be re-used. But, sometimes
+signals stored in those buffers need to be saved for later
+on in the patch. In order to do this, one must explicitely
+=hold= the buffer and then =unhold= it when it is done being
+used. If buffers are not unheld, it creates a sort of
+resource leak which will dry up the buffer pool and cause
+graforge to lock up.
+
+Holding and unholding buffers can be done with
+=sk_core_hold= and =sk_core_unhold=. These will peak at
+the last item on the stack, presumably a cable, and it will
+hold the buffer contained inside of it. In the case of
+=sk_core_unhold=, the item will be popped from the stack.
+
+If something goes wrong, a non-zero value is returned.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_hold(sk_core *core);
+int sk_core_unhold(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_hold(sk_core *core)
+{
+    int rc;
+    sk_stacklet *s;
+    rc = sk_stack_peak(&core->stack, &s);
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_CABLE) {
+        /* Wrong type, kiddo */
+        return 2;
+    }
+
+    rc = gf_patch_bhold(core->patch, NULL);
+    SK_GF_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_unhold(sk_core *core)
+{
+    sk_param cable;
+    gf_buffer *buf;
+    gf_cable *c;
+    int rc;
+
+    rc = sk_param_get(core, &cable);
+    SK_ERROR_CHECK(rc);
+
+    if (cable.type != 1) {
+        /* Your princess is is another castle. */
+        return 2;
+    }
+
+    c = cable.data.c;
+    buf = gf_cable_get_buffer(c);
+    rc = gf_patch_bunhold(core->patch, buf);
+    SK_GF_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+* Tables
+A small abstraction for dealing with tables that are managed
+by graforge.
+** Table Struct
+a struct called =sk_table=. Contains a =SKFLT= array and
+it's size.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_table sk_table;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_table {
+    SKFLT *tab;
+    unsigned long sz;
+};
+#+END_SRC
+** Creating a New Table
+Called =sk_core_table_new=. Allocates a new table and wraps
+it around a graforge pointer. This table will be
+automatically freed when the patch is freed.
+
+The table itself is then pushed to the stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_table_new(sk_core *core, unsigned long sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void free_table(gf_pointer *p)
+{
+    sk_table *tab;
+
+    tab = gf_pointer_data(p);
+
+    free(tab->tab);
+    free(tab);
+}
+
+int sk_core_table_new(sk_core *core, unsigned long sz)
+{
+    sk_table *tab;
+    int rc;
+
+    tab = malloc(sizeof(sk_table));
+
+    if (tab == NULL) return 1;
+
+    tab->tab = malloc(sz * sizeof(SKFLT));
+    memset(tab->tab, 0, sz * sizeof(SKFLT));
+    tab->sz = sz;
+
+    gf_patch_append_userdata(core->patch, free_table, tab);
+
+    rc = sk_core_table_push(core, tab);
+    SK_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
+** Getting Table Data and Size
+Getter functions =sk_table_size= and =sk_table_data=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_table_size(sk_table *t);
+SKFLT* sk_table_data(sk_table *t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_table_size(sk_table *t)
+{
+    return t->sz;
+}
+
+SKFLT* sk_table_data(sk_table *t)
+{
+    return t->tab;
+}
+#+END_SRC
+** Pushing/Popping Table
+=sk_core_pop_table= and =sk_core_push_table=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_table_push(sk_core *core, sk_table *tab);
+int sk_core_table_pop(sk_core *core, sk_table **tab);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_table_push(sk_core *core, sk_table *tab)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_push(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    s->type = SK_TYPE_TABLE;
+    s->ptr = tab;
+
+    return rc;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_table_pop(sk_core *core, sk_table **tab)
+{
+    int rc;
+    sk_stacklet *s;
+
+    rc = sk_stack_pop(&core->stack, &s);
+
+    SK_ERROR_CHECK(rc);
+
+    if (s->type != SK_TYPE_TABLE) {
+        printf("uh oh type is %d, %g\n", s->type, s->f);
+        printf("%d items on stack\n", core->stack.pos);
+        return 1;
+    }
+
+    *tab = (sk_table *)s->ptr;
+
+    return rc;
+}
+#+END_SRC
+** Dumping Raw Table Information
+Raw table data can be written to disk 
+format using =sk_table_dump=.
+
+The function =sk_core_tabdump= will pop the
+table off the stack and then call =sk_table_dump=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_table_dump(sk_table *tab, const char *filename);
+int sk_core_tabdump(sk_core *core, const char *filename);
+#+END_SRC
+
+Note that tables
+are representing in floating-point format, and will
+use the endian encoding used by the OS when writing/reading
+from disk.
+
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_table_dump(sk_table *tab, const char *filename)
+{
+    FILE *fp;
+
+    fp = fopen(filename, "w");
+
+    if (fp == NULL) return 1;
+
+    fwrite(tab->tab, sizeof(SKFLT), tab->sz, fp);
+
+    fclose(fp);
+
+    return 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_tabdump(sk_core *core, const char *filename)
+{
+    int rc;
+    sk_table *tab;
+
+    rc = sk_core_table_pop(core, &tab);
+    SK_ERROR_CHECK(rc);
+
+    return sk_table_dump(tab, filename);
+}
+#+END_SRC
+* Error Checking
+=SK_ERROR_CHECK= is a convenient macro used that will
+check an error code and exit if it is non-zero.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_ERROR_CHECK(rc) if (rc) return rc;
+#+END_SRC
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_GF_ERROR_CHECK(rc) if(rc != GF_OK) {\
+    fprintf(stderr, "Error: %s\n", gf_error(rc));\
+    return 1;\
+}
+#+END_SRC
+* Random Number Generator
+A simple random number generator (RNG)
+is included with the core API, based
+on the LCG found in Soundpipe.
+
+Seed the RNG with =sk_core_srand=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_core_srand(sk_core *core, unsigned long val);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_core_srand(sk_core *core, unsigned long val)
+{
+    core->rng = val;
+}
+#+END_SRC
+
+A random number is generated with =sk_core_rand=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+unsigned long sk_core_rand(sk_core *core);
+#+END_SRC
+
+This will return a value between 0 and =SK_CORE_RANDMAX=.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_CORE_RANDMAX 2147483648
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+unsigned long sk_core_rand(sk_core *core)
+{
+    core->rng = (1103515245 * core->rng + 12345) % SK_CORE_RANDMAX;
+    return core->rng;
+}
+#+END_SRC
+
+=sk_core_randf= returns a random number between 0 and 1.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_core_randf(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_core_randf(sk_core *core)
+{
+    return (SKFLT)sk_core_rand(core) / SK_CORE_RANDMAX;
+}
+#+END_SRC

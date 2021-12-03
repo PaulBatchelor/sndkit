@@ -1,0 +1,460 @@
+#+TITLE: clkphs
+* Overview
+The =clkphs= algorithm is a utility that takes in
+a clock signal (a periodic series of single-sample
+impulses), and produces a phasor (a period linear ramp
+signal).
+
+There are a few caveats to this particular algorithm
+that one should be aware of. The conversion works by
+measuring the distance between ticks in a clock signal,
+and uses that to estimate the phasor for the next
+signal. When clkphs first starts, it will need to wait
+a beat before starting up. In this initial period,
+the module will return -1. clkphs also works best on
+clock signals that are mostly steady in tempo.
+* Tangled Files
+This document tangles to a header and C file combo
+=clkphs.c= and =clkphs.h=.
+
+Define =SK_CLKPHS_PRIV= will expose the header files.
+
+#+NAME: clkphs.c
+#+BEGIN_SRC c :tangle clkphs.c
+#include <stdio.h>
+#define SK_CLKPHS_PRIV
+#include "clkphs.h"
+
+<<funcs>>
+#+END_SRC
+
+#+NAME: clkphs.h
+#+BEGIN_SRC c :tangle clkphs.h
+#ifndef SK_CLKPHS_H
+#define SK_CLKPHS_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_CLKPHS_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+
+#endif
+#+END_SRC
+* Initialization
+Clkphs is intialized with =sk_clkphs_init=. No samplerate
+is needed because it only needs to work in units of
+samples.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_clkphs_init(sk_clkphs *c);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_clkphs_init(sk_clkphs *c)
+{
+    <<init>>
+    c->correction = 1.0;
+}
+#+END_SRC
+* Struct Components
+** Typedef And Struct Declaration
+State is managed in a struct called =sk_clkphs=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_clkphs sk_clkphs;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_clkphs {
+    <<sk_clkphs>>
+};
+#+END_SRC
+** Counter
+The =counter= variable is used to measure distances between
+ticks.
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+unsigned long counter;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->counter = 0;
+#+END_SRC
+** Increment
+The increment variable =inc= is the amount the phasor will
+increment by every sample. It is computed based on the
+previously measured period between two clock ticks.
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+SKFLT inc;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->inc = 0;
+#+END_SRC
+** Internal Phase Position
+The internal phase is kept track of as a floating point
+variable called =phs=.
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+SKFLT phs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->phs = 0;
+#+END_SRC
+** Start Flag
+The =start= flag is used to indicate if clkphs has just
+started yet. A value of 1 means it has just started.
+
+A phasor can only be synthesized after the
+first distance between two ticks is measured. Before that
+point, it will have to wait return a negative value.
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+int start;
+#+END_SRC
+
+There can also be a state where the DSP has started and
+is waiting for the first tick. This is set with a value
+of -1, which is what it gets initialized to.
+
+#+NAME: init
+#+BEGIN_SRC c
+c->start = -1;
+#+END_SRC
+** Wait Flag
+If the clock is slowing down and the phasor doesn't yet
+know about it, it will need to wait for the next tick.
+This flag is set with the =wait= variable.
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+int wait;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->wait = 0;
+#+END_SRC
+** Spillover Flag
+If the clock is speeding up and the phasor doesn't
+yet know about it, it will try to spill out over into
+the next tick's space. When this happens, the =spillover=
+flag is set.
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+int spillover;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->spillover = 0;
+#+END_SRC
+** Correction Amount
+When spillage happens, some course correction is added to
+wrap and move things along. This factor is stored in a
+variable called =correction= and dynamically adjusted based
+on how close to finishing the phasor is (closer values will
+result in less correction).
+
+#+NAME: sk_clkphs
+#+BEGIN_SRC c
+SKFLT correction;
+#+END_SRC
+
+In normal circumstances, course correction has a factor of
+1x, or no effect.
+
+#+NAME: init
+#+BEGIN_SRC c
+c->correction = 1.0;
+#+END_SRC
+* Computation
+Computing a single sample of audio is done with
+=sk_clkphs_tick=. It expects an input clock signal
+=clk=, and returns a phasor.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_clkphs_tick(sk_clkphs *c, SKFLT clk);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_clkphs_tick(sk_clkphs *c, SKFLT clk)
+{
+    SKFLT out;
+    SKFLT phs;
+
+    out = 0;
+
+    <<check_for_tick>>
+    <<update_counter>>
+    <<check_flags>>
+    <<set_output>>
+    <<phasor_computation>>
+
+
+    return out;
+}
+#+END_SRC
+** Handling A Tick
+At beginning, the algorithm will first check and respond
+to a tick that happens in the current sample. Depending
+on internal state, different things can occur.
+
+#+NAME: check_for_tick
+#+BEGIN_SRC c
+if (clk != 0) {
+    <<if_just_started>>
+    <<if_first_period_completed>>
+    <<typical_tick_handling>>
+}
+#+END_SRC
+
+When clkphs as *just* started (aka =start= is -1), it is
+waiting for the first tick. This will begin the initial
+count measurement, and change the =start= flag to be 1.
+
+#+NAME: if_just_started
+#+BEGIN_SRC c
+if (c->start == -1) {
+    /* start initial count */
+    c->start = 1;
+    c->counter = 0;
+    return -1;
+}
+#+END_SRC
+
+The second tick that happens (when =start= has been already
+set to be 1) completes the first counter. It is at
+this point that a phasor signal can be synthesized.
+The counter at this point will have measured the
+duration of two ticks in units of samples. The reciprocal
+of this will yield the phasor increment amount.
+
+#+NAME: if_first_period_completed
+#+BEGIN_SRC c
+else if (c->start == 1) {
+    /* first counter finished */
+    c->start = 0;
+    c->phs = 0;
+    c->inc = 1.0 / c->counter;
+    c->counter = 0;
+}
+#+END_SRC
+
+Typical handling of a tick signals the re-initialization
+of the phasor signal, as well as resetting of the
+=spillover= and =wait= flags.
+
+#+NAME: typical_tick_handling
+#+BEGIN_SRC c
+else {
+    /* reset phasor and flags */
+    c->inc = 1.0 / c->counter;
+    c->counter = 0;
+    c->correction = 1.0;
+    c->wait = 0;
+
+    <<too_much_spillage>>
+
+    <<phasor_wraparound>>
+}
+#+END_SRC
+
+It should be noted that if the =spillover= flag is still
+set by the time it reaches this point, it indicates
+that spillage couldn't fully recover in the previous
+period. When this happens, the algorithm will cut its
+losses, and reset the phasor entirely.
+
+A hard reset of the phasor caused by too much
+spillover will result in a missing period, which can
+cause off-by-one rhythms to occur from things
+using this as a timing signal. Fortunately, it should
+be very unlikely that this will ever happen. Only extremly
+sudden and vast tempo jumps could cause a scenario like
+this to happen. If this is avoided, it should be non-issue.
+
+#+NAME: too_much_spillage
+#+BEGIN_SRC c
+if (c->spillover) {
+    /* too much spillage. abandon ship */
+    c->spillover = 0;
+    c->phs = 0;
+}
+#+END_SRC
+
+Like a typical phasor algorithm, the internal phase is
+wrapped around itself. Both upper and lower bounds
+are checked, though it is typically assumed to just
+go above bounds.
+
+#+NAME: phasor_wraparound
+#+BEGIN_SRC c
+if (c->phs >= 1.0) {
+    c->phs -= 1.0;
+} else if (c->phs < 0.0) {
+    c->phs += 1.0;
+} else {
+    <<engage_spillover>>
+}
+#+END_SRC
+
+If the internal phasor value is still within bounds,
+it means it hasn't fully reached the end of the phasor,
+and will be given some additional time in the
+next period to complete itself. This is known as spill-over,
+and the =spillover= flag will be set to change
+the algorithm behavior accordingly.
+
+#+NAME: engage_spillover
+#+BEGIN_SRC c
+/* too slow! spill-over mode */
+c->spillover = 1;
+
+if (c->phs != 0) {
+    <<compute_correction>>
+} else {
+    <<ignore_spillage>>
+}
+#+END_SRC
+
+When spillover happens, some correction is factored into
+the increment signal. This factor is computed as the
+ideal place it is supposed to be (1.0), divided by the
+actual phase position. As the actual phase position
+approaches 1, the amount of correction gets smaller.
+
+#+NAME: compute_correction
+#+BEGIN_SRC c
+c->correction = 1.0 / c->phs;
+#+END_SRC
+
+Divisions by exactly zero will cause things to crash,
+so spillover is ignored entirely when this happens.
+Other than the phase being explictely reset to be 0
+when spillover happens, it is difficult to imagine
+a real-world scenario where this would happen.
+
+#+NAME: ignore_spillage
+#+BEGIN_SRC c
+c->correction = 1.0;
+c->spillover = 0;
+#+END_SRC
+** Phasor Computation
+After a tick is processed, actual phasor signal can be
+computed.
+
+First, the counter updates itself by incrementing by 1.
+
+#+NAME: update_counter
+#+BEGIN_SRC c
+c->counter++;
+#+END_SRC
+
+The wait and start flags are then checked. If either are
+enabled, the algorithm will return. Wait will return
+a value of 1. Start will return a value of -1.
+
+#+NAME: check_flags
+#+BEGIN_SRC c
+if (c->start != 0) return -1;
+if (c->wait) return 1;
+#+END_SRC
+
+The output of the phasor signal is the current state of
+the previous phasor.
+
+#+NAME: set_output
+#+BEGIN_SRC c
+out = c->phs;
+#+END_SRC
+
+Phasor computation has 3 steps. First is incrementation,
+second is threshold check, third is an update.
+
+#+NAME: phasor_computation
+#+BEGIN_SRC c
+phs = c->phs;
+
+<<incrementation>>
+<<threshold_check>>
+<<update_phase>>
+#+END_SRC
+
+The internal phasor value is incremented using the current
+increment amount, multiplied by the current correction
+amount.
+
+#+NAME: incrementation
+#+BEGIN_SRC c
+phs += c->inc*c->correction;
+#+END_SRC
+
+After it is updated, the phasor value will be checked to
+see if the phasor has exceeded 1.
+
+#+NAME: threshold_check
+#+BEGIN_SRC c
+if (phs >= 1.0) {
+    <<spillover_exception>>
+    <<tell_it_to_wait>>
+}
+#+END_SRC
+
+In a typical phasor
+algorithm, this is where the wraparound would happen.
+However, since it being externally synchronized with
+a clock signal, it is told to wait at 1 until the next
+tick via setting the wait flag.
+
+#+NAME: tell_it_to_wait
+#+BEGIN_SRC c
+else {
+    c->wait = 1;
+}
+#+END_SRC
+
+The exception to this rule happens when the spillover
+flag is set, indicating that the phasor spilling over
+from the previous period has finally finished up, and it
+is time to work on synthesizing the phasor for the current
+period.
+
+#+NAME: spillover_exception
+#+BEGIN_SRC c
+if (c->spillover) {
+    /* now back to our regularly scheduled program */
+    c->spillover = 0;
+    phs -= 1.0;
+}
+#+END_SRC
+
+Finally, the phase is updated in the struct.
+
+#+NAME: update_phase
+#+BEGIN_SRC c
+c->phs = phs;
+#+END_SRC

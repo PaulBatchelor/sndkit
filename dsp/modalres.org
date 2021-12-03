@@ -1,0 +1,306 @@
+#+TITLE: ModalRes
+* Overview
+ModalRes is an implementation of a 2nd-order resonator
+filter suitable for use in modal synthesis.
+
+This filter is particularly useful in constructing bell or
+other impact-based sounds. In order to do this, you'd need
+to know the modal ratios pre-measured of time. This is what
+is known as black-box modelling. A similar example of this
+is formant-based speech synthesis.
+
+Some good modal ratios and measurements can be found [[https://csound.com/docs/manual/MiscModalFreq.html][here]].
+* Tangled Files
+=modalres.c= and =modalres.h= are the two files that are
+tangled.
+
+#+NAME: modalres.c
+#+BEGIN_SRC c :tangle modalres.c
+#include <math.h>
+#define SK_MODALRES_PRIV
+#include "modalres.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<funcs>>
+#+END_SRC
+
+#+NAME: modalres.h
+#+BEGIN_SRC c :tangle modalres.h
+#ifndef SK_MODALRES_H
+#define SK_MODALRES_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_MODALRES_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+* Initiazation
+Initialized with =sk_modalres_init=. Only the sampling rate
+needs to be supplied.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_modalres_init(sk_modalres *mr, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_modalres_init(sk_modalres *mr, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Struct
+The encapsulating struct is called =sk_modalres=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_modalres sk_modalres;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_modalres {
+    <<sk_modalres>>
+};
+#+END_SRC
+* Filter State Variables and Coefficients
+The filter state parameters are the typical things you'd
+need in a biquadratic filter difference equation.
+
+Variables are created to store the previous x value and
+2 y values.
+
+#+NAME: sk_modalres
+#+BEGIN_SRC c
+SKFLT x;
+SKFLT y[2];
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+mr->x = 0;
+mr->y[0] = 0;
+mr->y[1] = 0;
+#+END_SRC
+
+Coefficients for the biquad are =b1= for the x value, and
+=a1= and =a2= for the y values. These coefficents get
+computed in the computation section.
+
+#+NAME: sk_modalres
+#+BEGIN_SRC c
+SKFLT b1;
+SKFLT a1;
+SKFLT a2;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+mr->b1 = 0;
+mr->a1 = 0;
+mr->a2 = 0;
+#+END_SRC
+
+As per usual, a copy of the sampling rate is stored, as it
+is needed to calculate filter coefficients.
+
+#+NAME: sk_modalres
+#+BEGIN_SRC c
+int sr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+mr->sr = sr;
+#+END_SRC
+
+An unusual part of this filter design is the scaler
+variable, which is used to scale the audio output, but
+is not part of the actual transer function. We'll call
+this one =s=.
+
+#+NAME: sk_modalres
+#+BEGIN_SRC c
+SKFLT s;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+mr->s = 0;
+#+END_SRC
+* Parameters
+** Frequency
+Set with =sk_modalres_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_modalres_freq(sk_modalres *mr, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_modalres_freq(sk_modalres *mr, SKFLT freq)
+{
+    mr->freq = freq;
+}
+#+END_SRC
+
+#+NAME: sk_modalres
+#+BEGIN_SRC c
+SKFLT freq;
+SKFLT pfreq;
+#+END_SRC
+
+The frequency parameter uses caching to check if filter
+coefficients needs to be updated. The cached value is set
+to be negative in order to force computation on the first
+tick.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_modalres_freq(mr, 1000);
+mr->pfreq = -1;
+#+END_SRC
+** Q value
+Set with =sk_modalres_q=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_modalres_q(sk_modalres *mr, SKFLT q);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_modalres_q(sk_modalres *mr, SKFLT q)
+{
+    mr->q = q;
+}
+#+END_SRC
+
+The Q parameter uses caching to check if filter
+coefficients needs to be updated. The cached value
+is set to be negative in order to force computation on
+the initial tick.
+
+#+NAME: sk_modalres
+#+BEGIN_SRC c
+SKFLT q;
+SKFLT pq;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_modalres_q(mr, 1);
+mr->pq = -1;
+#+END_SRC
+* Computation
+A single sample is computed with =sk_modalres_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_modalres_tick(sk_modalres *mr, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_modalres_tick(sk_modalres *mr, SKFLT in)
+{
+    SKFLT out;
+
+    out = 0;
+    <<update_coefficients>>
+    <<compute_difference_equation>>
+    <<update_filter_state>>
+    <<scale_output>>
+    return out;
+}
+#+END_SRC
+
+Update the coefficients, if needed.
+First, frequency is converted to radians.
+While traditionally represented as the
+lowercase $\omega$ in mathematical notation, the variable
+=w= will be used in C as crude approximation.
+
+From there the following coefficients are computed:
+
+#+BEGIN_SRC tex
+b1 = {1 \over \omega^2 + {\omega \over 2Q}}
+a1 = {1 - 2\omega^2}b1
+a2 = {\omega^2 - {\omega \over 2Q}}
+#+END_SRC
+
+#+NAME: update_coefficients
+#+BEGIN_SRC c
+if (mr->freq != mr->pfreq || mr->q != mr->pq) {
+    SKFLT w;
+    SKFLT a, b, d;
+
+    w = mr->freq * 2.0 * M_PI;
+
+    a = mr->sr / w;
+    b = a*a;
+    d = 0.5*a;
+
+    mr->pfreq = mr->freq;
+    mr->pq = mr->q;
+
+    mr->b1 = 1.0 / (b + d/mr->q);
+    mr->a1 = (1.0 - 2.0*b) * mr->b1;
+    mr->a2 = (b - d/mr->q) * mr->b1;
+    mr->s = d;
+}
+#+END_SRC
+
+Compute difference equation. This computes the difference
+equation:
+
+#+BEGIN_SRC tex
+$$
+y(n) = b0 x(n) + b1 x(n - 1) - a1 y(n - 1) - a2 y(n - 2)
+$$
+#+END_SRC
+
+Where $b0$ is 0, effectively cancelling out this term.
+
+What's interesting about this is that it adds an implicit
+one-sample delay to the filter.
+This is done because more accurately simulates the impulse
+response in an ideal mass-spring-damper system. The produces
+is, after all, a *response* to the impulse.
+
+#+NAME: compute_difference_equation
+#+BEGIN_SRC c
+out = mr->b1*mr->x - mr->a1*mr->y[0] - mr->a2*mr->y[1];
+#+END_SRC
+
+Update filter state. Shift things forward in time one
+sample. What was once =y[0]= is now =y[1]=. What is now
+the current output becomes =y[0]=, what is now the current
+input value because the previous input value =x=.
+
+#+NAME: update_filter_state
+#+BEGIN_SRC c
+mr->y[1] = mr->y[0];
+mr->y[0] = out;
+mr->x = in;
+#+END_SRC
+
+The output is scaled by the variable =s= before it is
+returned. It is not part of the recursive filter function.
+
+#+NAME: scale_output
+#+BEGIN_SRC c
+out *= mr->s;
+#+END_SRC

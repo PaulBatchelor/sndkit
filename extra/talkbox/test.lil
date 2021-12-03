@@ -1,0 +1,13 @@
+wavin "oneart.wav"
+blsaw [mtof 24]
+blsaw [mtof 36]
+add zz zz
+blsaw [mtof 43]
+add zz zz
+mul zz 0.1
+butlp zz 3000
+talkbox zz zz 1.0
+dcblocker zz
+wavout zz "test.wav"
+
+computes 10

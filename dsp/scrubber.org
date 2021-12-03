@@ -1,0 +1,56 @@
+#+TITLE: Scrubber
+* Overview
+An FFT based in-memory sample scrubber with pitch control.
+* Tangled Files
+* FFT procedures, and Soundpipe
+One could spend a whole lifetime building FFT algorithms,
+so an existing FFT implementation is used. For FFT and
+inverse-FFT operations, the Soundpipe fft utilities are
+used. So yes, Soundpipe is a hard dependency for this
+algorithm. Or at least, bits of Soundpipe are. The FFT
+portions can easily be extracted from the Soundpipe
+codebase.
+
+The soundpipe FFT utility is a wrapper around a public
+domain FFT implementation by John Green.
+* Initialization
+Done with =sk_scrubber_init=.
+* Cleanup
+Done with =sk_scrubber_cleanup=. Mainly done for the sake
+of the =sp_fft=. Future iterations will try to remove any
+mandatory use of =malloc= and =free=.
+* Constants
+Scrubber uses a fixed FFT size, which greatly simplifies
+things. The FFT size chosen is 2048, or =2^11=. It's a good
+value that equal parts effeciency and fidelity.
+
+The LOG2 of this FFT size is 11, and this is what is passed
+into the soundpipe FFT interface.
+
+The hopsize determines how quickly to slide along the FFT
+window. In this case it's 512, or the FFT size divided up
+into 4 bits.
+
+This divisor is a significant constant that will be
+stored as a constant as well.
+* Parameters
+** Position
+Sets the current read position of the buffer, in samples.
+** Playback
+Sets the relative playback speed. 1 is normal, 2 is 2x
+speed, and 0.5 is 2x slower.
+* Computation
+Read interpolated samples from buffer forward/backward
+frames.
+
+Take FFT of frames
+
+Phase Vocode.
+
+Inverse FFT operation.
+
+Overlap-add to output frames.
+
+Write to output and scale;
+
+Update counter and frame position.

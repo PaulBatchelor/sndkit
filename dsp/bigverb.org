@@ -1,0 +1,1048 @@
+#+TITLE: Bigverb
+* Introduction
+Bigverb is an implementation of a classic waveguide
+reverberator. It is composed up
+of 8 feedback delay lines running in parallel, in what is
+known as a [[https://ccrma.stanford.edu/~jos/cfdn/Feedback_Delay_Networks.html][Feedback Delay Network]]. It is largely inspired by
+the works Julius O. Smith, and the work he did in using
+waveguide networks. In particular, this algorithm is based
+on ideas in a 1985 paper called "A New Approach to Digital
+Reverberation using Waveguide Networks".
+
+Bigverb, as the name implies, has a very nice warm sound
+when set to be a very large space, and is ideal for use in
+ambient style music. Bigverb is not designed to sound
+realistic, and is not an ideal choice for anything that
+needs room modelling.
+* Distinct Characterstics
+The "sound" of this algorithm comes from a few major
+things.
+** Use of Jitter Modulation
+Every delay line has a bit of jitter applied to
+the delay time, which causes a little of pitch modulation.
+Several schroeder and FDN-style reverb designs use this
+kind of modulation, such as the Mutable instruments
+clouds reverb, and the tank reverb described in the Dattorro
+paper "Effect design, part 1: reverberator and other filters".
+Such modulation creates the illusion of the reverb being
+a higher-order system than it actual (aka: a more complex
+reverb algorithm with more delay lines).
+While these designs tend to use a sinusoidal LFO on only a
+few delay lines, the Costello topology applies non-correlated
+modulation to every single delay line. As a result, you get
+a very dense-sounding reverb output.
+** Parameter Tunings
+The parameter tunings of this reverb add to the
+particular character of this sound. All units are set in
+such a way so that they can be stored as integer values.
+
+The tuning consists of 8 parameter sets, corresponding to
+each delay line "unit". A set has the following parameters: delay time
+(=delay=) (in units of samples with a samplerate of
+44.1kHz), the amount of variation in delay time to apply
+(=drift=) (in units of tenth milliseconds, in order to use
+integer values), the random variation frequency (=randfreq=)
+(in Hz multiplied by 1000 to avoid decimals),
+as well as a starting seed for the internal RNG.
+
+The credit for these parameter tunings (and this topology)
+go to Sean Costello, who also originally designed this
+reverb algorithm in 1999. This work would later pave the way
+for his famous commercial reverb plugins and algorithms
+published by his company ValhallaDSP.
+
+#+NAME: parameter_set
+#+BEGIN_SRC c
+struct bigverb_paramset {
+    int delay; /* in samples, 44.1 kHz */
+    int drift; /* 1/10 milliseconds */
+    int randfreq; /* Hertz * 1000 */
+    int seed;
+};
+
+static const struct bigverb_paramset params[8] = {
+    {0x09a9, 0x0a, 0xc1c, 0x07ae},
+    {0x0acf, 0x0b, 0xdac, 0x7333},
+    {0x0c91, 0x11, 0x456, 0x5999},
+    {0x0de5, 0x06, 0xf85, 0x2666},
+    {0x0f43, 0x0a, 0x925, 0x50a3},
+    {0x101f, 0x0b, 0x769, 0x5999},
+    {0x085f, 0x11, 0x37b, 0x7333},
+    {0x078d, 0x06, 0xc95, 0x3851}
+};
+#+END_SRC
+** Delay Line Configuration
+Normally, this family of reverbs is a combination of allpass
+filters and comb filters in various series/parallel
+combinations. This implementation has a far simpler
+topology: it is essentially (but not *quite*) 8 feedback delay
+lines in parallel with a 1-pole lowpass IIR filter for tone
+control. If it weren't for the massive amount delay
+modulation, this would be a pretty metallic sounding reverb!
+* Top Level Files and Structs
+** Files to Tangle To
+This Bigverb document tanlges to two files:
+=bigverb.c= and =bigverb.h=.
+
+=bigverb.h= contains typedefs, structs, and forward
+function declarations. To enable structs, define the
+macro =SK_BIGVERB_PRIV=.
+
+#+NAME: bigverb.c
+#+BEGIN_SRC c :tangle bigverb.c
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#define SK_BIGVERB_PRIV
+#include "bigverb.h"
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+<<parameter_set>>
+<<fdelay_constants>>
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: bigverb.h
+#+BEGIN_SRC c :tangle bigverb.h
+#ifndef SK_BIGVERB_H
+#define SK_BIGVERB_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_BIGVERB_PRIV
+<<main_struct>>
+#endif
+#endif
+#+END_SRC
+** The Bigverb Struct
+An instance of Bigverb is contained inside of a struct
+called =sk_bigverb=.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_bigverb sk_bigverb;
+#+END_SRC
+
+#+NAME: main_struct
+#+BEGIN_SRC c
+<<delay_struct>>
+struct sk_bigverb {
+    int sr;
+    <<sk_bigverb>>
+};
+#+END_SRC
+* Setup and Cleanup
+A new instance of bigverb is created with
+=sk_bigverb_new=. The only argument required is the sampling
+rate. If something goes wrong, this will return =NULL=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_bigverb * sk_bigverb_new(int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_bigverb * sk_bigverb_new(int sr)
+{
+    sk_bigverb *bv;
+
+    bv = calloc(1, sizeof(sk_bigverb));
+
+    bv->sr = sr;
+    <<init_variables>>
+    <<setup_delay_lines>>
+
+    return bv;
+}
+#+END_SRC
+
+When it is done being used, bigverb must be cleanly freed
+with =sk_bigverb_del=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bigverb_del(sk_bigverb *bv);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bigverb_del(sk_bigverb *bv)
+{
+    <<cleanup>>
+    free(bv);
+    bv = NULL;
+}
+#+END_SRC
+* High level parameters
+High level parametric control of bigverb includes
+"size" and "cutoff". Set parameters before computing
+audio. These are are just floating point values contained
+in the struct that can be indirectly set with setters in
+situations where the struct is opaque.
+** Size
+Set the reverb size with =sk_bigverb_size=
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bigverb_size(sk_bigverb *bv, SKFLT size);
+#+END_SRC
+
+Size is a variable between 0-1, which
+controls the feedback level for the delay line.
+
+The =size= parameter is stored as a variable called
+=size=, and is set to be a pretty sounding value of
+=0.93=.
+
+#+NAME: sk_bigverb
+#+BEGIN_SRC c
+SKFLT size;
+#+END_SRC
+
+#+NAME: init_variables
+#+BEGIN_SRC c
+sk_bigverb_size(bv, 0.93);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bigverb_size(sk_bigverb *bv, SKFLT size)
+{
+    bv->size = size;
+}
+#+END_SRC
+** Cutoff
+The tone of bigverb can be set with =sk_bigverb_cutoff=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bigverb_cutoff(sk_bigverb *bv, SKFLT cutoff);
+#+END_SRC
+
+=cutoff= is a parameter in Hz that determines the overall
+timbre of the reverb. This controls the cutoff frequency of
+the one pole lowpass filter applied to the reverb.
+
+It is set to be a default value of 10kHz, or 10,000 hz.
+
+#+NAME: init_variables
+#+BEGIN_SRC c
+sk_bigverb_cutoff(bv, 10000.0);
+#+END_SRC
+
+Cutoff uses caching in order to monitor if the parameter
+has changed. It does this in order to prevent needing to
+compute filter coefficients every sample. The main variable
+to be set is =cutoff=, and the cached variable is =pcutoff=.
+At the beginning, =pcutoff= is set to be a negative value,
+which will cause bigverb to calculate coefficients in the
+first call to the tick function after initialization.
+
+#+NAME: sk_bigverb
+#+BEGIN_SRC c
+SKFLT cutoff;
+SKFLT pcutoff;
+#+END_SRC
+
+#+NAME: init_variables
+#+BEGIN_SRC c
+bv->pcutoff = -1;
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bigverb_cutoff(sk_bigverb *bv, SKFLT cutoff)
+{
+    bv->cutoff = cutoff;
+}
+#+END_SRC
+* Filter
+State in a constant called =filt=.
+
+#+NAME: sk_bigverb
+#+BEGIN_SRC c
+SKFLT filt;
+#+END_SRC
+
+#+NAME: init_variables
+#+BEGIN_SRC c
+bv->filt = 1.0;
+#+END_SRC
+* Computing Audio
+After bigverb has been initialized, it is ready to
+process audio. This implementation uses what is known
+as a =tick= function, or a function that computes audio
+one sample at a time instead of one block at a time. This
+simplifies the implementation at the cost of a little bit
+of performance overhead, depending on the compiler and
+optimization settings.
+** Top-Level Tick Function
+The function to tick one sample unit of audio is done with
+=sk_bigverb_tick=. It takes in two stereo input
+values, and returns two stereo output values.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_bigverb_tick(sk_bigverb *bv,
+                     SKFLT inL, SKFLT inR,
+                     SKFLT *outL, SKFLT *outR);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_bigverb_tick(sk_bigverb *bv,
+                     SKFLT inL, SKFLT inR,
+                     SKFLT *outL, SKFLT *outR)
+{
+    /* TODO: implement */
+    SKFLT lsum, rsum;
+
+    lsum = 0;
+    rsum = 0;
+
+    <<update_filter_coefficients>>
+    <<calculate_junction_pressure>>
+    <<compute_delay_bank>>
+
+    *outL = lsum;
+    *outR = rsum;
+}
+#+END_SRC
+** Updating filter coefficients
+Bigverb uses parameter caching for the =cutoff= parameter in
+order to save on computation time.
+
+Any time =cutoff= changes, the filter coefficients must be
+updated. This happens in the tick function, before any
+computation happens.
+
+The filter is a simple 1-pole IIR lowpass filter whose
+difference equation been reduced to only require a single
+parameter. This in turn then gets used in each filter delay
+line.
+
+#+NAME: update_filter_coefficients
+#+BEGIN_SRC c
+if (bv->pcutoff != bv->cutoff) {
+    bv->pcutoff = bv->cutoff;
+    bv->filt = 2.0 - cos(bv->pcutoff * 2 * M_PI / bv->sr);
+    bv->filt = bv->filt - sqrt(bv->filt * bv->filt - 1.0);
+}
+#+END_SRC
+** Calculating Resultant Junction Pressure Amount
+The resultant junction pressure amount is calculated from
+the delay bank, and then factored into the input signals.
+
+Sum of all the delay line signals, and scaled by 0.25, or
+2/N, where N is the number of delay lines (8).
+
+#+NAME: calculate_junction_pressure
+#+BEGIN_SRC c
+{
+    int i;
+    SKFLT jp;
+
+    jp = 0;
+
+    for (i = 0; i < 8; i++) {
+        jp += bv->delay[i].y;
+    }
+
+    jp *= 0.25;
+
+    inL = jp + inL;
+    inR = jp + inR;
+}
+#+END_SRC
+** Computing the delay bank
+The delay bank is then computed. Each delay line is computed
+and summed with either the left or right input signal, and
+then sent to a corresponding left or right channel.
+
+At the end, a final scaling out of the output happens. This
+is hard coded to be 35 percent.
+
+#+NAME: compute_delay_bank
+#+BEGIN_SRC c
+{
+    int i;
+    for (i = 0; i < 8; i++) {
+        if (i & 1) {
+            rsum += delay_compute(&bv->delay[i],
+                                  inR,
+                                  bv->size,
+                                  bv->filt,
+                                  bv->sr);
+        } else {
+            lsum += delay_compute(&bv->delay[i],
+                                  inL,
+                                  bv->size,
+                                  bv->filt,
+                                  bv->sr);
+        }
+    }
+}
+rsum *= 0.35f;
+lsum *= 0.35f;
+#+END_SRC
+* The Feedback Delay Line Bank
+8 delay units come together to make the delay line bank.
+Each is initialized using one of the parameter sets.
+** Memory Allocation + Setup
+#+NAME: sk_bigverb
+#+BEGIN_SRC c
+SKFLT *buf;
+#+END_SRC
+
+#+NAME: init_variables
+#+BEGIN_SRC c
+bv->buf = NULL;
+#+END_SRC
+
+#+NAME: setup_delay_lines
+#+BEGIN_SRC c
+{
+unsigned long total_size;
+int i;
+SKFLT *buf;
+
+total_size = 0;
+buf = NULL;
+<<calculate_pool_size>>
+<<allocate_memory>>
+<<initialize_delay_banks>>
+}
+#+END_SRC
+The delay bank is the abstraction in charge of properly
+allocating all the memory needed for the buffers.
+
+Memory is allocated in one giant chunk, and then divied up
+to each delay line.
+
+The total memory size is obtained by summing all the delay
+times. These times are stored as fixed delay times in units
+of samples. These parameters assume a sampling rate of
+44.1kHz. If this is not the case, this value must be scaled
+accordingly, and then truncated to be an integer. This value
+is used again to properly slice up the big memory chunk.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int get_delay_size(const struct bigverb_paramset *p, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static int get_delay_size(const struct bigverb_paramset *p, int sr)
+{
+    SKFLT sz;
+    sz = (SKFLT)p->delay/44100 + (p->drift * 0.0001) * 1.125;
+    return floor(16 + sz*sr);
+}
+#+END_SRC
+
+#+NAME: calculate_pool_size
+#+BEGIN_SRC c
+for (i = 0; i < 8; i++) {
+    total_size += get_delay_size(&params[i], sr);
+}
+#+END_SRC
+
+Allocation is done with =calloc=, which zeros out the memory
+as well. This memory will eventually be freed in
+=sk_bigverb_del=.
+
+#+NAME: allocate_memory
+#+BEGIN_SRC c
+buf = calloc(1, sizeof(SKFLT) * total_size);
+bv->buf = buf;
+#+END_SRC
+
+#+NAME: cleanup
+#+BEGIN_SRC c
+free(bv->buf);
+#+END_SRC
+
+#+NAME: sk_bigverb
+#+BEGIN_SRC c
+sk_bigverb_delay delay[8];
+#+END_SRC
+
+#+NAME: initialize_delay_banks
+#+BEGIN_SRC c
+{
+    unsigned long bufpos;
+    bufpos = 0;
+    for (i = 0; i < 8; i++) {
+        unsigned int sz;
+        sz = get_delay_size(&params[i], sr);
+
+        delay_init(&bv->delay[i], &params[i],
+                   &buf[bufpos], sz, sr);
+        bufpos += sz;
+    }
+}
+#+END_SRC
+** A Single Delay Line Unit
+A delay unit in a bank consists of variable delay line with
+cubic interpolation with a 1 pole low-pass filter for tone
+control, whose frequency is determined using a master
+parameter, as well as a jitter generator. Feedback as well.
+*** Struct Declaration
+A delay unit is known as a struct called =sk_bigverb_delay=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_bigverb_delay sk_bigverb_delay;
+#+END_SRC
+
+#+NAME: delay_struct
+#+BEGIN_SRC c
+struct sk_bigverb_delay {
+    <<bigverb_delay>>
+};
+#+END_SRC
+*** Initialization
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void delay_init(sk_bigverb_delay *d,
+                       const struct bigverb_paramset *p,
+                       SKFLT *buf,
+                       size_t sz,
+                       int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void delay_init(sk_bigverb_delay *d,
+                       const struct bigverb_paramset *p,
+                       SKFLT *buf,
+                       size_t sz,
+                       int sr)
+{
+    SKFLT readpos;
+    <<delay_init>>
+}
+#+END_SRC
+
+Set up buffer + sz
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+SKFLT *buf;
+size_t sz;
+#+END_SRC
+
+#+NAME: delay_init
+#+BEGIN_SRC c
+d->buf = buf;
+d->sz = sz;
+#+END_SRC
+
+Initialize write position (0), abbreviated as =wpos=.
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+int wpos;
+#+END_SRC
+
+#+NAME: delay_init
+#+BEGIN_SRC c
+d->wpos = 0;
+#+END_SRC
+
+Initialize read position. Based on delay time, =drift= and
+initial seed. Read position has to components, an integer
+read position, and a floating point read position. These
+will be abbreviated =irpos= and =frpos=.
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+int irpos;
+int frpos;
+#+END_SRC
+
+Seed value is multiplied by the initial drift value, and then
+divided by 32767.
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+int rng;
+#+END_SRC
+
+#+NAME: delay_init
+#+BEGIN_SRC c
+d->rng = p->seed;
+<<setup_readpos>>
+#+END_SRC
+
+
+The initial time is added to this.
+
+=bufsize - (readpos * sr)= <-- this puts the read position at
+the end of the buffer.
+
+Truncate (using integer cast).'
+
+#+NAME: setup_readpos
+#+BEGIN_SRC c
+readpos = ((SKFLT)p->delay / 44100);
+readpos += d->rng * (p->drift * 0.0001) / 32768.0;
+readpos = sz - (readpos * sr);
+d->irpos = floor(readpos);
+d->frpos = floor((readpos - d->irpos) * FRACSCALE);
+#+END_SRC
+
+Create first random segments.
+
+#+NAME: delay_init
+#+BEGIN_SRC c
+<<init_jitter>>
+generate_next_line(d, sr);
+#+END_SRC
+*** Top-Level Compute
+The delay line computation is done in a tick function. It
+takes in an input sample, returns an output sample. In
+addition to delay, filtering, feedback, and jittering
+happens as well.
+
+Because feedback + filtering are global options, these
+are passed in as parameters on the stack. What is required
+is the feedback amount, and the calculated filter
+coeffecient used in the filter.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT delay_compute(sk_bigverb_delay *d,
+                           SKFLT in,
+                           SKFLT fdbk,
+                           SKFLT filt,
+                           int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT delay_compute(sk_bigverb_delay *del,
+                           SKFLT in,
+                           SKFLT fdbk,
+                           SKFLT filt,
+                           int sr)
+{
+    SKFLT out;
+    SKFLT frac_norm;
+    SKFLT a, b, c, d;
+    SKFLT s[4];
+    out = 0;
+    <<write_to_buffer>>
+    <<increment_write_position>>
+    <<update_fractional_read_position>>
+    <<update_integer_read_position>>
+    <<normalize_fractional_component>>
+    <<calculate_interpolation_coefficients>>
+    <<read_from_buffer>>
+    <<compute_interpolation>>
+    <<increment_fractional_read_position>>
+    <<apply_feedback_and_filter>>
+    <<update_jitter>>
+    return out;
+}
+#+END_SRC
+
+# since filter is the same cutoff... probably
+# only need to filter once to get same result.
+# this is the cummutative property I think?
+# May do this later.
+
+The following things happen:
+
+Write the to delay buffer and pre-filter the input by
+subtracting the filter state =y=.
+
+#+NAME: write_to_buffer
+#+BEGIN_SRC c
+del->buf[del->wpos] = in - del->y;
+#+END_SRC
+
+Increment the write position. If this is greater than the
+buffer size, wrap around.
+
+#+NAME: increment_write_position
+#+BEGIN_SRC c
+del->wpos++;
+if (del->wpos >= del->sz) del->wpos -= del->sz;
+#+END_SRC
+
+Update the fractional read position. If the read position
+exceeds the maximum fractional scale amount, it means it has
+bits that must carry over to the integer read position.
+After these bits have been carried over, mask out the upper
+bits to keep the range in bounds.
+
+#+NAME: update_fractional_read_position
+#+BEGIN_SRC c
+if (del->frpos >= FRACSCALE) {
+    del->irpos += del->frpos >> FRACNBITS;
+    del->frpos &= FRACMASK;
+}
+#+END_SRC
+
+If needed, update the read position with wrap-around.
+
+#+NAME: update_integer_read_position
+#+BEGIN_SRC c
+if (del->irpos >= del->sz) del->irpos -= del->sz;
+#+END_SRC
+
+Normalize the fractional component so that it is in range
+0 and 1. This is done by dividing the amount by fractional
+scaling factor =FRACSCALE=.
+
+#+NAME: normalize_fractional_component
+#+BEGIN_SRC c
+frac_norm = del->frpos / (SKFLT)FRACSCALE;
+#+END_SRC
+
+Calculate interpolation coefficients. These are 4
+pre-derived coefficents used to compute third-order
+lagrangian interpolation.
+Derivation of these is currently beyond the scope of this
+document. These will be called =a=, =b=, =c=, and =d=,
+respectively, and will correspond to =x(n - 1)=, =x(n)=,
+=x(n + 1)=, and =x(n + 2)=, respectively.
+
+#+NAME: calculate_interpolation_coefficients
+#+BEGIN_SRC c
+{
+    SKFLT tmp[2];
+    d = ((frac_norm * frac_norm) - 1) / 6.0;
+    tmp[0] = ((frac_norm + 1.0) * 0.5);
+    tmp[1] = 3.0 * d;
+    a = tmp[0] - 1.0 - d;
+    c = tmp[0] - tmp[1];
+    b = tmp[1] - frac_norm;
+}
+#+END_SRC
+
+Read the samples needed, based on the current playhead
+position. When the read position is in regular bounds, this
+means reading the previous, current, two next samples.
+Otherwise, this means the same thing, but with wrap-around
+and bounds checks.
+
+#+NAME: read_from_buffer
+#+BEGIN_SRC c
+{
+    int n;
+    SKFLT *x;
+    n = del->irpos;
+    x = del->buf;
+
+    if (n > 0 && n < (del->sz - 2)) {
+        s[0] = x[n - 1];
+        s[1] = x[n];
+        s[2] = x[n + 1];
+        s[3] = x[n + 2];
+    } else {
+        int k;
+        n--;
+        if (n < 0) n += del->sz;
+        s[0] = x[n];
+        for (k = 0; k < 3; k++) {
+            n++;
+            if (n >= del->sz) n -= del->sz;
+            s[k + 1] = x[n];
+        }
+    }
+}
+#+END_SRC
+
+Calculate interpolation. Using the coefficents
+described above and the fractional component =f=, one can compute
+cubic interpolation with the following expression:
+
+@!(fig "bigverb_interpolation"
+``
+y(n) = (a x(n - 1) + b x(n) + c x(n + 1) + d x(n + 2)) \cdot f + x(n)
+``
+)
+!@
+
+#+NAME: compute_interpolation
+#+BEGIN_SRC c
+out = (a*s[0] + b*s[1] + c*s[2] + d*s[3]) * frac_norm + s[1];
+#+END_SRC
+
+Increment fractional read position, as determined by the
+jitter.
+
+#+NAME: increment_fractional_read_position
+#+BEGIN_SRC c
+del->frpos += del->inc;
+#+END_SRC
+
+Apply feedback and filter. The feedback will scale the delay
+output. The filtering is a difference equation, optimized
+and factored to use a minimum number of arithmetic
+operations.
+
+#+NAME: apply_feedback_and_filter
+#+BEGIN_SRC c
+out *= fdbk;
+out += (del->y - out) * filt;
+del->y = out;
+#+END_SRC
+
+# Original difference equation
+#
+# y(n) = c1 * x(n) + c2 * y(n - 1)
+#
+# c2 = b - sqrt(b^2 - 1.0)
+# c1 = (1 - c2)
+# b = 2 - cos(\omega))
+# \omega = freq * 2 * PI / sr
+#
+# can be derived from tone in the following way:
+# y(n) = c1 * x(n) + c2 * Y(n - 1)
+#      = (1 - c2)*x(n) + c2 * y(n - 1)
+#      = x(n) - c2*x(n) + c2*y(n-1)
+#      = c2*y(n - 1) - c2*x(n) + x(n)
+#      = c2*(y(n - 1) - x(n)) + x(n)
+
+Update jitter, if needed. When the counter zeros out
+(or worse), it is time to find a new random target to lerp
+to.
+
+#+NAME: update_jitter
+#+BEGIN_SRC c
+del->counter--;
+if (del->counter <= 0) {
+    generate_next_line(del, sr);
+}
+#+END_SRC
+*** Feedback Fractional Delay Line
+A delay line is initialized with a pre-allocated zeroed
+buffer its size. Memory will be managed outside of this
+abstraction.
+
+Being a fractional delay line means the read position has
+two components: an integer component and a fractional
+component. The integer component is the current position
+in the delay buffer. The fractional component tells how much
+it goes over into the next discrete sample position.
+In a way, interpolation can be thought of as the process of
+using these two values to make a really good guess of what
+lies in between the samples.
+
+The fractional delay component is maintained as a 28 bit
+integer. This is done to avoid some of the weirdness found
+in floating point operations. The remaining upper bits
+are "carry-over" samples, that get accumulated in integer
+component of the read position.
+
+A few constants are used to conveniently work with this
+fractional delay component.
+
+=FRACSCALE= is the fractional scaling amount,
+which is $1^28$, or =0x10000000=. Multiplied with a uniform
+scalar, this is used to calculate the increment.
+
+#+NAME: fdelay_constants
+#+BEGIN_SRC c
+#define FRACSCALE 0x10000000
+#+END_SRC
+
+=FRACMASK= is the bitmask used to keep the fractional
+position in 28-bit range. It is $1^28 - 1$, or =0xFFFFFFF=.
+This is in particular is used to filter out upper bits that
+get carried over to the integer read position.
+
+#+NAME: fdelay_constants
+#+BEGIN_SRC c
+#define FRACMASK 0xFFFFFFF
+#+END_SRC
+
+=FRACNBITS= is the number of bits in the number. set to be
+28.
+
+#+NAME: fdelay_constants
+#+BEGIN_SRC c
+#define FRACNBITS 28
+#+END_SRC
+*** Jitter
+Jitter in this context, is a random line segment
+generator. It linearly interpolates between random values in
+a given range, using random durations in a given range.
+
+A line generator stores a counter and increment amount.
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+int inc;
+int counter;
+#+END_SRC
+
+#+NAME: init_jitter
+#+BEGIN_SRC c
+d->inc = 0;
+d->counter = 0;
+#+END_SRC
+
+The most significant thing to happen in the jitter signal is
+calculating the next random segment. This is done in a
+static function called =generate_next_line=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void generate_next_line(sk_bigverb_delay *d, int sr);
+#+END_SRC
+
+To begin, another random value is created based on the
+previous random value.
+
+The RNG algorithm used is quite simple, and is used to
+produce a 16-bit value.
+
+@!
+(fig "bigverb_rng" ``x(n) = (5^{6}x(n - 1) + 1) \& 0xFFFF``)
+!@
+
+Before and after this equation, the value is balanced so that
+is a 16-bit bipolar signal.
+Before, it adds 0x10000 if the
+value is less than 0. After, it substracts 0x10000 if the
+seed value is greater than 0x8000.
+
+#+NAME: generate_random_number
+#+BEGIN_SRC c
+if (d->rng < 0) d->rng += 0x10000;
+/* 5^6 = 15625 */
+d->rng = (1 + d->rng * 0x3d09);
+d->rng &= 0xFFFF;
+if (d->rng >= 0x8000) d->rng -= 0x10000;
+#+END_SRC
+
+This new random value is used to produce the next random
+value in seconds.
+
+The line counter is reset. This value comes from the
+high-level parameter.
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+int maxcount;
+#+END_SRC
+
+NOTE: this used to use =round=, but this isn't part of
+the ANSI C standard, and was causing issues on some C
+compilers. This VERY slightly changes the signal at a bit
+level, but perceptually it is completely identical.
+
+#+NAME: init_jitter
+#+BEGIN_SRC c
+d->maxcount = floor((sr / ((SKFLT)p->randfreq * 0.001)));
+#+END_SRC
+
+#+NAME: reset_counter
+#+BEGIN_SRC c
+d->counter = d->maxcount;
+#+END_SRC
+
+Compute delay time values. The current delay time,
+=curdel=, is obtained by subtracting the write + integer
+read positions, then adding in the fractional component.
+Wraparound is applied.
+
+#+NAME: compute_delay_values
+#+BEGIN_SRC c
+curdel = d->wpos -
+    (d->irpos + (d->frpos/(SKFLT)FRACSCALE));
+while (curdel < 0) curdel += d->sz;
+curdel /= sr;
+#+END_SRC
+
+The next delay time to lerp to is derived from the RNG
+and drift amount.
+
+#+NAME: compute_delay_values
+#+BEGIN_SRC c
+nxtdel = (d->rng * (d->drift * 0.0001) / 32768.0) + d->dels;
+#+END_SRC
+
+The delay time, in seconds (=dels=).
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+SKFLT dels;
+#+END_SRC
+
+#+NAME: init_jitter
+#+BEGIN_SRC c
+d->dels = p->delay / 44100.0;
+#+END_SRC
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+SKFLT drift;
+#+END_SRC
+
+#+NAME: init_jitter
+#+BEGIN_SRC c
+d->drift = p->drift;
+#+END_SRC
+
+The linear increment value is the difference between the current
+and next delay times, divided by the number of steps needed
+to draw a line between them (=counter=). This value is then
+converted into samples. An extra sample is tacked on to
+prevent nil values.
+
+#+NAME: compute_increment
+#+BEGIN_SRC c
+inc = ((curdel - nxtdel) / (SKFLT)d->counter)*sr;
+inc += 1;
+#+END_SRC
+
+This increment value is truncated and converted to the
+fractional read.
+
+#+NAME: set_fractional_read
+#+BEGIN_SRC c
+d->inc = floor(inc * FRACSCALE);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void generate_next_line(sk_bigverb_delay *d, int sr)
+{
+    SKFLT curdel;
+    SKFLT nxtdel;
+    SKFLT inc;
+    <<generate_random_number>>
+    <<reset_counter>>
+    <<compute_delay_values>>
+    <<compute_increment>>
+    <<set_fractional_read>>
+}
+#+END_SRC
+*** Filter Memory
+A one-pole lowpass filter such as the one used in the delay
+line requires one sample of memory, which stores the output
+of the previous filter. In a difference equation, this would
+be known as $y(n - 1)$. In C code, we abbreviate this as
+=y=.
+
+#+NAME: bigverb_delay
+#+BEGIN_SRC c
+SKFLT y;
+#+END_SRC
+
+#+NAME: delay_init
+#+BEGIN_SRC c
+d->y = 0.0;
+#+END_SRC

@@ -1,0 +1,473 @@
+#+TITLE: Chorus
+* Overview
+This documents outlines an implementation for a =chorus=
+effect.
+
+A [[https://ccrma.stanford.edu/~jos/pasp/Chorus_Effect.html][chorus]] can be generally described
+as an effect that takes some sound somehow
+makes it sound like multiple sounds playing
+the same note in unison.
+
+A chorus is usually done with some kind of modulating
+delay line. This particular implementation will be no
+different. When the delay time is modulated, it results
+in an audible pitch shift due to the interpolation. This
+slight warbling pitch-shifted version of the signal is
+then added back to the original signal to create the
+illusion of two voices playing in unison.
+
+A low-frequence oscillator (LFO) is typically used to
+modulate the delay time. Some implementations I've seen
+use a triangle wave, as they are computationally cheap and
+simple to implement. However, the sharp edges when it
+changes slope can cause a very unwanted artifact in the
+chorus. In place of a triangle wave LFO, this implementation
+will be using a sine wave. Normally, using a sine wave
+modulator means either choosing between taking up memory
+(via a @!(ref "oscf" "table lookup oscillator")!@), or
+CPU cyles using =sin= directly, but if the frequency is
+expected to be fixed, a so-called
+[[https://ccrma.stanford.edu/~jos/pasp/Digital_Sinusoid_Generators.html][magic circle]] algorithm
+can be used to produce a sinusoid requiring only 2 samples
+of memory, 2 multiplies, and 2 adds. This magic circle
+sinusoid will be used in the implementation to modulate
+our chorus.
+
+Before being mixed in with the input signal, the delay line
+output is filted with a one-pole low pass IIR filter. What
+this does is adds a bit more presence to the dry signal.
+* Tangled files
+=chorus.c= and =chorus.h=. Defining =SK_CHORUS_PRIV= will
+expose the =sk_chorus= struct.
+
+#+NAME: chorus.h
+#+BEGIN_SRC c :tangle chorus.h
+#ifndef SK_CHORUS_H
+#define SK_CHORUS_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_CHORUS_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+
+#ifdef __plan9__
+#pragma incomplete sk_chorus
+#endif
+#endif
+#+END_SRC
+
+#+NAME: chorus.c
+#+BEGIN_SRC c :tangle chorus.c
+#include <math.h>
+#include <stdlib.h>
+#define SK_CHORUS_PRIV
+#include "chorus.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<funcs>>
+#+END_SRC
+* Struct
+All data is contained in a struct called =sk_chorus=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_chorus sk_chorus;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_chorus {
+   <<sk_chorus>>
+};
+#+END_SRC
+* Setup and Cleanup
+The function =sk_chorus_new= and =sk_chorus_del= will
+dynamically allocate and free an instance of =chorus=.
+The sample rate =sr=, and size of the delay line in units
+of seconds =delay=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_chorus * sk_chorus_new(int sr, SKFLT delay);
+void sk_chorus_del(sk_chorus *c);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_chorus * sk_chorus_new(int sr, SKFLT delay)
+{
+    sk_chorus *c;
+    SKFLT *buf;
+    long sz;
+
+    c = malloc(sizeof(sk_chorus));
+    sz = floor(delay * sr);
+    buf = malloc(sizeof(SKFLT) * sz);
+    sk_chorus_init(c, sr, buf, sz);
+
+    return c;
+}
+
+void sk_chorus_del(sk_chorus *c)
+{
+    free(c->buf);
+    free(c);
+    c = NULL;
+}
+#+END_SRC
+
+=sk_chorus_init= can be called directly if the memory
+is intended to be managed externally. The buffer =buf=
+and the buffer size =sz= (in samples) is provided.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chorus_init(sk_chorus *c,
+                    int sr,
+                    SKFLT *buf,
+                    long sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chorus_init(sk_chorus *c,
+                    int sr,
+                    SKFLT *buf,
+                    long sz)
+{
+    <<init>>
+}
+#+END_SRC
+* Setting Parameters
+** Rate
+The rate of the LFO, in Hertz. Set it with
+=sk_chorus_rate=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chorus_rate(sk_chorus *c, SKFLT rate);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chorus_rate(sk_chorus *c, SKFLT rate)
+{
+    c->rate = rate;
+}
+
+#+END_SRC
+
+This uses parameter caching to prevent
+coefficients from being needlessly updated.
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT rate, prate;
+#+END_SRC
+
+=prate= is set to be different from =rate= so that
+coefficients get updated on the first tick.
+#+NAME: init
+#+BEGIN_SRC c
+c->prate = -1;
+sk_chorus_rate(c, 0.5);
+#+END_SRC
+** Depth
+=Depth= controls how much the LFO modulates the delay line.
+This is a value in range 0-1. Set it with =sk_chorus_depth=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chorus_depth(sk_chorus *c, SKFLT depth);
+#+END_SRC
+
+Because this is used with a delay line, some bounds checking
+is done here. If the value is not in the proper range, it
+could lead to segfaults.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chorus_depth(sk_chorus *c, SKFLT depth)
+{
+    if (depth < 0) depth = 0;
+    if (depth > 1) depth = 1;
+    c->depth = depth;
+}
+#+END_SRC
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT depth;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_chorus_depth(c, 1);
+#+END_SRC
+** Mix
+=mix= controls the mix between the dry/wet signal. 1 is
+all wet. 0 is all dry. 0.5 is a mix between the two. It
+is helpful to have an all wet mix for chaining choruses
+together.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chorus_mix(sk_chorus *c, SKFLT mix);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chorus_mix(sk_chorus *c, SKFLT mix)
+{
+    c->mix = mix;
+}
+#+END_SRC
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT mix;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_chorus_mix(c, 0.5);
+#+END_SRC
+* Computing A Sample
+A single sample is computed with =sk_chorus_tick=, it will
+take in a single sample as input, and return a single sample
+of output.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_chorus_tick(sk_chorus *c, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_chorus_tick(sk_chorus *c, SKFLT in)
+{
+    SKFLT out;
+    SKFLT lfo;
+    SKFLT t;
+    SKFLT frac;
+    long p1, p2;
+    out = 0;
+
+    <<update_magic_circle>>
+    <<compute_lfo>>
+    <<calculate_delay>>
+    <<get_first_read_position>>
+    <<get_second_read_position>>
+    <<compute_fractional_component>>
+    <<interpolate_and_update>>
+    <<apply_lowpass_filter>>
+    <<write_input_sample>>
+    <<update_write_position>>
+    <<mix>>
+
+    return out;
+}
+#+END_SRC
+* Components
+** Sample Rate
+A copy of the sample rate is needed to compute coefficients.
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+int sr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->sr = sr;
+#+END_SRC
+** Delay
+The delay line is buffer of floating-point samples.
+The write position =wpos= is stored in an integer. The
+total buffer size =sz= is used for bounds checking.
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT *buf;
+long sz;
+long wpos;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->buf = buf;
+c->sz = sz;
+c->wpos = sz - 1;
+{
+    long i;
+    for (i = 0; i < sz; i++) c->buf[i] = 0;
+}
+#+END_SRC
+
+For interpolation, a unit delay is used storing the previous
+sample. This will be a variable called =z1=, appropriately
+labled since it is a 1-sample delay in the z-plane.
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT z1;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->z1 = 0;
+#+END_SRC
+** 1-pole lowpass filter
+This one pole lowpass filter has 1-sample filter memory
+of the previous sample =ym1= (y minus 1), and alpha
+coefficient =a=.
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT ym1;
+SKFLT a;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+c->ym1 = 0;
+#+END_SRC
+
+The =a= filter coefficient is computed at init time to have
+a cutoff frequency of =2.02kHz=. This cutoff value was found
+empirically.
+
+#+NAME: init
+#+BEGIN_SRC c
+{
+    SKFLT b;
+    SKFLT freq;
+
+    freq = 2020;
+
+    b = 2.0 - cos(freq * (2 * M_PI / sr));
+    c->a = b - sqrt(b*b - 1);
+}
+#+END_SRC
+** Magic Circle Sinusoid
+The magic circle requires 2 samples of memory stored
+in =mc_x=, in addition to a constant =mc_eps=, where the
+=eps= is short for greek letter epsilon, the symbol
+used in the original equation (TODO: create citation,
+but see the link in overview for now).
+
+#+NAME: sk_chorus
+#+BEGIN_SRC c
+SKFLT mc_x[2];
+SKFLT mc_eps;
+#+END_SRC
+
+It's very important that the first sample input for the
+magic circle be set to be 1. This is the initial
+impulse which sets off the resonator.
+
+#+NAME: init
+#+BEGIN_SRC c
+c->mc_x[0] = 1;
+c->mc_x[1] = 0;
+c->mc_eps = 0;
+#+END_SRC
+* The Process
+Update magic circle.
+
+#+NAME: update_magic_circle
+#+BEGIN_SRC c
+if (c->prate != c->rate) {
+    c->prate = c->rate;
+    c->mc_eps = 2.0 * sin(M_PI * (c->rate / c->sr));
+}
+
+c->mc_x[0] = c->mc_x[0] + c->mc_eps * c->mc_x[1];
+c->mc_x[1] = -c->mc_eps * c->mc_x[0] + c->mc_x[1];
+#+END_SRC
+
+Compute the LFO.
+
+#+NAME: compute_lfo
+#+BEGIN_SRC c
+lfo = (c->mc_x[1] + 1) * 0.5;
+#+END_SRC
+
+Calculate the delay time =t= (in samples).
+
+#+NAME: calculate_delay
+#+BEGIN_SRC c
+t = (lfo * 0.9 * c->depth + 0.05) * c->sz;
+#+END_SRC
+
+Get first read position. Wrap around if needed.
+
+#+NAME: get_first_read_position
+#+BEGIN_SRC c
+p1 = c->wpos - (int)floor(t);
+if (p1 < 0) p1 += c->sz;
+#+END_SRC
+
+Get second read position (used for linear interpolation).
+Wrap around if needed.
+
+#+NAME: get_second_read_position
+#+BEGIN_SRC c
+p2 = p1 - 1;
+if (p2 < 0) p2 += c->sz;
+#+END_SRC
+
+Get fractional component from delay time.
+
+#+NAME: compute_fractional_component
+#+BEGIN_SRC c
+frac = t - (int)floor(t);
+#+END_SRC
+
+Interpolate and update memory.
+
+#+NAME: interpolate_and_update
+#+BEGIN_SRC c
+out = c->buf[p2] + c->buf[p1]*(1 - frac) - (1 - frac)*c->z1;
+c->z1 = out;
+#+END_SRC
+
+Apply low pass filter.
+
+#+NAME: apply_lowpass_filter
+#+BEGIN_SRC c
+c->ym1 = (1 - c->a) * out + c->a*c->ym1;
+out = c->ym1;
+#+END_SRC
+
+Write input sample to buffer.
+
+#+NAME: write_input_sample
+#+BEGIN_SRC c
+c->buf[c->wpos] = in;
+#+END_SRC
+
+Update write position. Wrap around if needed.
+
+#+NAME: update_write_position
+#+BEGIN_SRC c
+c->wpos++;
+if (c->wpos >= c->sz) c->wpos = 0;
+#+END_SRC
+
+The final step is to mix the input signal with delay line
+signal.
+
+#+NAME: mix
+#+BEGIN_SRC c
+out = c->mix * out + (1 - c->mix) * in;
+#+END_SRC

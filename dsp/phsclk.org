@@ -1,0 +1,184 @@
+#+TITLE: phsclk
+* Overview
+=phsclk= is a utility that converts an incoming phasor
+signal into a clock signal that will tick N times in one
+cycle.
+
+Using a phasor signal to generate a clock signal has the
+advantage of arbitrarily subdiving a beat. If the phasor is
+the master clock, parallel sequences can be subidvided in
+different ways while also remaining relatively in sync.
+There is no chance of accumulative drift.
+
+This algorithm is minimally stateful, only requiring memory
+of the previous sample to work.
+
+A tick is registered when the phasor crosses a certain
+threshold. Both the previous and current phasor signals are
+scaled by the subdivision amount, then floored. If they are
+different, a tick is registered.
+* Generated Files
+=phsclk.c= and =phsclk.h= are the generated files.
+
+#+NAME: phsclk.c
+#+BEGIN_SRC c :tangle phsclk.c
+#include <math.h>
+#define SK_PHSCLK_PRIV
+#include "phsclk.h"
+<<funcs>>
+#+END_SRC
+
+#+NAME: phsclk.h
+#+BEGIN_SRC c :tangle phsclk.h
+#ifndef PHSCLK_H
+#define PHSCLK_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_PHSCLK_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+* Structs
+The state data is encapsulated in a struct called
+=sk_phsclk=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_phsclk sk_phsclk;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_phsclk {
+    <<sk_phsclk>>
+};
+#+END_SRC
+
+#+NAME: sk_phsclk
+#+BEGIN_SRC c
+SKFLT prev;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+pc->prev = -1;
+#+END_SRC
+* Init
+phsclk is initialized with =sk_phsclk_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_phsclk_init(sk_phsclk *pc);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_phsclk_init(sk_phsclk *pc)
+{
+    <<init>>
+}
+#+END_SRC
+* Setting Number of Ticks
+The number of ticks is set with the function
+=sk_phsclk_nticks=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_phsclk_nticks(sk_phsclk *pc, SKFLT nticks);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_phsclk_nticks(sk_phsclk *pc, SKFLT nticks)
+{
+    pc->nticks = nticks;
+}
+#+END_SRC
+
+#+NAME: sk_phsclk
+#+BEGIN_SRC c
+SKFLT nticks;
+#+END_SRC
+
+4 is a sensible starting value. Western music loves
+multiples of 4 and 8.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_phsclk_nticks(pc, 4);
+#+END_SRC
+* Computation
+The function =sk_phsclk_tick= computes a single sample of
+audio from an input signal =in=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_phsclk_tick(sk_phsclk *pc, SKFLT in);
+#+END_SRC
+
+The algorithm for phsclk is quite simple: scale and floor
+the previous and current input phasor signals, and if
+there is a difference, make a tick.
+
+#+NAME: the_usual_way
+#+BEGIN_SRC c
+int i, pi;
+SKFLT s, ps;
+s = in * pc->nticks;
+ps = pc->prev * pc->nticks;
+
+i = floor(s);
+pi = floor(ps);
+
+if (i != pi) out = 1;
+#+END_SRC
+
+=floor= will almost always truncate the decimal, and will
+almost always ensure that the value is between 0 and
+=nticks - 1=. The exception to this is when =in= is exactly
+1. This can somes cause extra ticks to happen, so a
+conditional is added to avoid this.
+
+The one edge case for this is when =nticks= is 1, which
+will cause a tick only to happen at the start of the phase.
+To handle this, phsclk will look for phase resets instead,
+which happens when the previous value is greater than
+the current value.
+
+This also will assume the phasor starts off at 0
+at the beginning, so an initial tick also gets
+generated.
+
+#+NAME: onetick_edgecase
+#+BEGIN_SRC c
+if (pc->prev > in || pc->prev == -1) out = 1;
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_phsclk_tick(sk_phsclk *pc, SKFLT in)
+{
+    SKFLT out;
+    out = 0;
+
+    if (in < 1) {
+        if (pc->nticks == 1) {
+           <<onetick_edgecase>>
+        } else {
+            <<the_usual_way>>
+        }
+    }
+
+    pc->prev = in;
+
+    return out;
+}
+#+END_SRC

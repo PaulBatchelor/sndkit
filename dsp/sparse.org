@@ -1,0 +1,218 @@
+#+TITLE: Sparse
+* Overview
+=Sparse= implements a sparse noise generator. This algorithm
+will randomly fire impulses with amplitudes within the
+range [-1, 1] at an average rate determined by a parametric
+frequency value. The resulting sound is something that
+can crudely approximate the kind of crackling noise from
+a vinyl record (some filtering on the sparse noise helps
+a bit).
+
+Sparse noise is closely related to =Velvet Noise=, a special
+kind of signal that's been often used in the context of
+reverberation. The difference between the two is that velvet
+noise only has impulses with amplitudes of -1 and 1, and
+nothing in between. Putting sparse noise through a
+[[https://en.wikipedia.org/wiki/Sign_function][Sign Function]] will
+convert it to Velvet Noise.
+* Tangled Files
+Sparse tangles to two self contained files =sparse.c= and
+=sparse.h=. Define =SK_SPARSE_PRIV= will expose the contents
+of the =sk_sparse= struct.
+
+#+NAME: sparse.h
+#+BEGIN_SRC c :tangle sparse.h
+#ifndef SK_SPARSE_H
+#define SK_SPARSE_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_SPARSE_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+
+#endif
+#+END_SRC
+
+#+NAME: sparse.c
+#+BEGIN_SRC c :tangle sparse.c
+#define SK_SPARSE_PRIV
+#include "sparse.h"
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+* Struct
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_sparse sk_sparse;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_sparse {
+    int sr;
+    <<sk_sparse>>
+};
+#+END_SRC
+* Initialization
+The function =sk_sparse_init= will initialize an instance
+of =sk_sparse=. It requires the sampling rate =sr=, and
+an initial seed for the internal random number generator.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_sparse_init(sk_sparse *sp, int sr, unsigned long seed);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_sparse_init(sk_sparse *sp, int sr, unsigned long seed)
+{
+    sp->sr = sr;
+    <<init>>
+}
+#+END_SRC
+* Setting The Frequency Parameter
+The rate of the sparse noise generator is set with
+the frequency parameter via =sk_sparse_freq=.
+
+The frequency variable
+uses @!(ref "parameter_caching" "parameter caching")!@ in
+order to update values only when needed.
+
+#+NAME: sk_sparse
+#+BEGIN_SRC c
+SKFLT freq;
+SKFLT pfreq;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_sparse_freq(sp, 30); /* arbitrary positive value */
+sp->pfreq = -1;
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_sparse_freq(sk_sparse *sp, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_sparse_freq(sk_sparse *sp, SKFLT freq)
+{
+    sp->freq = freq;
+}
+#+END_SRC
+* Threshold Component
+The =thresh= variable will maintain a threshold generator,
+that gets updated every time the frequency changes. This
+is a value between 0 and 1. The higher the value, the more
+likely an impulse will be generated.
+
+#+NAME: sk_sparse
+#+BEGIN_SRC c
+SKFLT thresh;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sp->thresh = 0;
+#+END_SRC
+* Random Number Generator
+For randomness, a simple 32-bit LCG is good enough for
+musical purposes. This is used over system =rand= for
+portability reasons.
+
+#+NAME: sk_sparse
+#+BEGIN_SRC c
+unsigned long rng;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sp->rng = seed;
+#+END_SRC
+
+The 32-bit random value that is generated from the LCG
+gets normalized to be in range 0 and 1.
+
+A little utility called =randval= will be used to compute
+and normalize the LCG.
+
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT randval(sk_sparse *sp);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT randval(sk_sparse *sp)
+{
+    sp->rng = (1103515245L * sp->rng + 12345L);
+    sp->rng %= 2147483648L;
+
+    return (SKFLT)sp->rng / 2147483648L;
+}
+#+END_SRC
+* Computation
+A single sample of audio is computed with =sk_sparse_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_sparse_tick(sk_sparse *sp);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_sparse_tick(sk_sparse *sp)
+{
+    SKFLT out;
+    SKFLT r;
+    out = 0;
+
+    <<check_and_update_frequency>>
+    <<compute_random_value>>
+    <<check_and_produce_impulse>>
+
+    return out;
+}
+#+END_SRC
+
+Before any computation can be begin, the frequency parameter
+is checked and updated if needed. It's at this point that
+the threshold value is updated by dividing the frequency
+by the sampling rate. A frequency set at the sampling rate
+will generate a random value at every sample, effectively
+making white noise. If the frequency is 0 or negative, no
+values will ever be generated, and the output will only be
+silence.
+
+#+NAME: check_and_update_frequency
+#+BEGIN_SRC c
+if (sp->freq != sp->pfreq) {
+    sp->pfreq = sp->freq;
+    sp->thresh = sp->freq / (SKFLT)sp->sr;
+}
+#+END_SRC
+
+For every sample, a random number is generated and checked
+against the threshold. If it is less than the threshold,
+an impulse will be fired with a random amplitude.
+
+#+NAME: compute_random_value
+#+BEGIN_SRC c
+r = randval(sp);
+#+END_SRC
+
+#+NAME: check_and_produce_impulse
+#+BEGIN_SRC c
+if (r < sp->thresh) out = (2 * randval(sp)) - 1;
+#+END_SRC

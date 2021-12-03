@@ -1,0 +1,10 @@
+# some synthesized hihat sounds
+
+env [metro 8] 0.001 0.01 0.01
+mul [noise] 0.5
+butlp zz 4000
+buthp zz 8000
+mul zz zz
+wavout zz "hh.wav"
+
+computes 10

@@ -1,0 +1,169 @@
+#+TITLE: Phasor
+* Overview
+The =phasor= (not to be confused with the phaser audio
+effect) is a name used to describe a classic signal
+generator that produces a periodic ramp signal normalized
+to be in range 0-1, set to move at a specified frequency.
+Phasors are typically used in the context of table-lookup
+oscillators such as @!(ref "oscf")!@.
+
+The term "phasor" comes from the engineering and physics
+world, used to describe the complex value of a sinusoid
+(phase, and amplitude). While not a complex value, the
+phasor in this computer music context could be the phase
+component of the phasor.
+
+The adoption of the phasor term in the computer music world
+can be traced back to one of the oldest opcodes in Csound,
+but the author believes it may go back even further to the
+MUSICN family of computer music languages. It is noteworthy
+that the word phasor is six letters, which was the
+character limit for opcodes in both MUSICN languages and
+the older versions of Csound. In this context, it is a
+really nice name to describe this.
+* Tangled Files
+Tangles to =phasor.h= and =phasor.c=.
+
+If =SK_PHASOR_PRIV= is defined, it exposes the struct
+=sk_phasor=, otherwise it is opaque.
+
+#+NAME: phasor.h
+#+BEGIN_SRC c :tangle phasor.h
+#ifndef SK_PHASOR_H
+#define SK_PHASOR_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+#ifdef SK_PHASOR_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+
+#+NAME: phasor.c
+#+BEGIN_SRC c :tangle phasor.c
+#define SK_PHASOR_PRIV
+#include "phasor.h"
+<<funcs>>
+#+END_SRC
+* Struct and initialization
+The state of phasor is wrapped in a struct
+called =sk_phasor=, and  initialized with =sk_phasor_init=.
+You'll need the sampling rate, and initial phase.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_phasor sk_phasor;
+#+END_SRC
+
+In =sk_phasor=, =freq= stores the frequency, =phs= stores
+the previous phasor value, and =onedsr= is the inverse value
+of the sampling rate, which is used in order to shave off
+a traditionally more expensive divide operation.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_phasor {
+    SKFLT freq;
+    SKFLT phs;
+    SKFLT onedsr;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_phasor_init(sk_phasor *ph, int sr, SKFLT iphs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_phasor_init(sk_phasor *ph, int sr, SKFLT iphs)
+{
+    ph->phs = iphs;
+    ph->onedsr = 1.0 / sr;
+    sk_phasor_freq(ph, 440);
+}
+#+END_SRC
+* Setting the Frequency
+The frequency of the phasor can be set with
+=sk_phasor_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_phasor_freq(sk_phasor *ph, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_phasor_freq(sk_phasor *ph, SKFLT freq)
+{
+    ph->freq = freq;
+}
+#+END_SRC
+* Computation
+A single sample of audio is computed with
+=sk_phasor_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_phasor_tick(sk_phasor *ph);
+#+END_SRC
+
+The output of the phasor is the current internal phase
+state before being incremented.
+
+The behavior of the phasor is to increment its internal
+phase by an increment amount, determined by =freq*onedsr=.
+It is then wrapped to be in range 0 and 1. Instead of
+using something =fmod= for the wrapping, conditionals
+and arithmetic are used. In addition to being simpler,
+this is often a faster approach.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_phasor_tick(sk_phasor *ph)
+{
+    SKFLT phs;
+    SKFLT incr;
+    SKFLT out;
+
+    phs = ph->phs;
+    incr = ph->freq * ph->onedsr;
+
+    out = phs;
+
+    phs += incr;
+
+    if (phs >= 1.0) {
+        phs -= 1.0;
+    } else if (phs < 0.0) {
+        phs += 1.0;
+    }
+
+    ph->phs = phs;
+
+    return out;
+}
+#+END_SRC
+* Resetting The Phase
+The phase of the phasor can be reset with
+a particular value in =sk_phasor_reset=. If the the
+value is less than 0, it will use a default value of 0.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_phasor_reset(sk_phasor *phs, SKFLT val);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_phasor_reset(sk_phasor *phs, SKFLT val)
+{
+    if (val >= 0) phs->phs = val;
+    else phs->phs = 0;
+}
+#+END_SRC

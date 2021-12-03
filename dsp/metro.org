@@ -1,0 +1,170 @@
+#+TITLE: Metro
+* Overview
+The =metro= (short for =metronome=) algorithm implements a
+pretty common kind of signal generator that you see in all
+the computer music environments.
+
+=Metro= will produce a series of single-sample impulses at
+a specified rate. I personally like to call these impulses
+=ticks=, and the signal they produce a =clock=. A clock
+signal such as the one produced by metro can be used to
+drive things like sequencers and envelope generators
+(at the time of writing, these don't exist in =sndkit= yet,
+but it might be worth checking out Soundpipe modules like
+=tenv=, =tseq=, =tenvx=, =tgate=, and =trand=.).
+* Tangled Files
+As per usual, this tangles out to header/C combo
+=metro.c= and =metro.h=. =SK_METRO_PRIV= exposes the
+=sk_metro= struct.
+
+#+NAME: metro.h
+#+BEGIN_SRC c :tangle metro.h
+#ifndef SK_METRO_H
+#define SK_METRO_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_METRO_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+
+#+NAME: metro.c
+#+BEGIN_SRC c :tangle metro.c
+#define SK_METRO_PRIV
+#include "metro.h"
+<<funcs>>
+#+END_SRC
+
+* Struct Initialization
+Struct is called =sk_metro=. Initialized with
+=sk_metro_init=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_metro sk_metro;
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_metro_init(sk_metro *m, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_metro_init(sk_metro *m, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Struct Contents
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_metro {
+    SKFLT freq;
+    SKFLT phs;
+    int init;
+    SKFLT onedsr;
+};
+#+END_SRC
+
+=freq= is the metronome frequency.
+
+An arbitrary default value of 2 is used.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_metro_freq(m, 2.0);
+#+END_SRC
+
+=phs= is an internal @!(ref "phasor")!@ signal keeping track
+of time.
+
+#+NAME: init
+#+BEGIN_SRC c
+m->phs = 0;
+#+END_SRC
+
+=init= is a flag set at startup to guarantee an initial tick
+on the first sample.
+
+#+NAME: init
+#+BEGIN_SRC c
+m->init = 1;
+#+END_SRC
+
+=onedsr= is a constant that is =1 / sr=, or one divided by
+the sample rate.
+
+#+NAME: init
+#+BEGIN_SRC c
+m->onedsr = 1.0 / sr;
+#+END_SRC
+* Setting The Frequency
+Set the frequency of metro with =sk_metro_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_metro_freq(sk_metro *m, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_metro_freq(sk_metro *m, SKFLT freq)
+{
+    m->freq = freq;
+}
+#+END_SRC
+* Compute
+Compute a sample of audio with =sk_metro_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_metro_tick(sk_metro *m);
+#+END_SRC
+
+=metro= requires so few lines of code it's almost not worth
+saying anything all about it.
+
+The =init= flag is used to guarantee an initial tick at the
+beginning.
+
+The =phs= value acts as a normalized incrementor. When it
+reaches 1, it wraps around back to zero. The increment
+amount is calculated from the frequency parameter.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_metro_tick(sk_metro *m)
+{
+    SKFLT out;
+    SKFLT phs;
+    SKFLT freq;
+
+    phs = m->phs;
+    freq = m->freq;
+
+    out = 0;
+
+    if (m->init) {
+        m->init = 0;
+        out = 1.0;
+    } else {
+        phs += freq * m->onedsr;
+
+        if (phs >= 1) {
+            out = 1.0;
+            phs -= 1.0;
+        }
+    }
+
+    m->phs = phs;
+    return out;
+}
+#+END_SRC

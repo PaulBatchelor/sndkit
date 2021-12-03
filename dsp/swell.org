@@ -1,0 +1,356 @@
+#+TITLE: Swell
+* Overview
+swell is a special kind of smoothing filter on a control
+signal that takes in two smoothing parameters A and B. when
+the signal is increasing it uses smoothing parameter A, and
+when it is decreasing it uses parameter B. No change will
+continue using whatever paremeter was chosen last. This
+creates a certain kind of resistance that is very useful
+for swellling effects, which is where it gets its name.
+
+An inertia filter is included in this design to allow for
+changes between the two smoothing states to be more
+gradual. This is another one pole smoothing filter, applied
+to the signal switching between the two smoothing times.
+
+To summarize the topology of this filter design: Swell is a
+one-pole smoothing filter whose smoothing factor is
+determined by the direction of the input signal, placed
+through another one-pole smoothing filter for inertial
+control.
+* Tangled Files
+Tangles to files =swell.c= and =swell.h=.
+
+Defining =SK_SWELL_PRIV= exposes the contents =sk_swell=
+struct. Otherwise, it is opaque.
+
+#+NAME: swell.h
+#+BEGIN_SRC c :tangle swell.h
+#ifndef SK_SWELL_H
+#define SK_SWELL_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_SWELL_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: swell.c
+#+BEGIN_SRC c :tangle swell.c
+#include <math.h>
+#define SK_SWELL_PRIV
+#include "swell.h"
+<<funcs>>
+#+END_SRC
+* Initialization
+The struct for swell is called =sk_swell=. It is
+initialized with =sk_swell_init=. The sampling rate is
+required.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_swell sk_swell;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_swell {
+    <<sk_swell>>
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_swell_init(sk_swell *sw, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_swell_init(sk_swell *sw, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Filter Components
+There are two recursive one-pole IIR filters known as the
+smoothing filter and the switching filter. Both require 1
+sample of filter memory (which will be called =y=), as well
+as the coefficients used to
+compute the filter, which in a DSP context are known
+as =a1= and =b0=.
+
+The strength of the filters are each controlled by a
+variable in units of seconds, known as the half-time. This
+is time it takes for the function to slur itself over to
+the new value. This will be referred to as =amt=. This
+variable will be =cached= so that filter coefficients
+don't need to be updated every sample, called =pamt=.
+
+Here are the smoothing filter variables, prefixed with
+=smooth_=.
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT smooth_y;
+SKFLT smooth_a1;
+SKFLT smooth_b0;
+SKFLT smooth_pamt;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sw->smooth_y = 0;
+sw->smooth_b0 = 0;
+sw->smooth_a1 = 0;
+sw->smooth_pamt = -100;
+#+END_SRC
+
+Here are the inertia filter parameters, prefixed with =
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT inertia_y;
+SKFLT inertia_a1;
+SKFLT inertia_b0;
+SKFLT inertia_pamt;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sw->inertia_y = 0;
+sw->inertia_b0 = 0;
+sw->inertia_a1 = 0;
+sw->inertia_pamt = -100;
+#+END_SRC
+
+one divided by samplerate constant. Used to update filter
+coefficients.
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT onedsr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sw->onedsr = 1.0 / (SKFLT) sr;
+#+END_SRC
+* Unit Delay For Direction Detection
+In order to the direction of a sample, the previous
+sample is stored in what could be considered a
+1-sample delay, or =unit delay=.
+
+A more robust way to determine direction would be to
+examine more than just the previous sample. But this
+approach is faster, simpler, and good enough for the
+kinds of slow moving control signals that will be
+expected. Also, since there's also inertia filtering on
+top of this, having a flickering direction isn't too
+big of a deal.
+
+The variable, called =prev=, will be set to be an unlikely
+starting value of =-123.456=.
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT prev;
+#+END_SRC
+
+#+BEGIN_SRC c
+sw->prev = -123.456;
+#+END_SRC
+* Parameters
+Swell takes in three parameters: smooth factor A, smooth
+factor B, and inertia.
+
+Set smoothing factor A with =sk_swell_smootha=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_swell_smootha(sk_swell *sw, SKFLT smooth);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_swell_smootha(sk_swell *sw, SKFLT smooth)
+{
+    sw->sm_a = smooth;
+}
+#+END_SRC
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT sm_a;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_swell_smootha(sw, 10);
+#+END_SRC
+
+Set smoothing factor B with =sk_swell_smoothb=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_swell_smoothb(sk_swell *sw, SKFLT smooth);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_swell_smoothb(sk_swell *sw, SKFLT smooth)
+{
+    sw->sm_b = smooth;
+}
+#+END_SRC
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT sm_b;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_swell_smoothb(sw, 0.1);
+#+END_SRC
+
+Set inertia with =sk_swell_inertia=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_swell_inertia(sk_swell *sw, SKFLT inertia);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_swell_inertia(sk_swell *sw, SKFLT inertia)
+{
+    sw->inertia_amt = inertia;
+}
+#+END_SRC
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT inertia_amt;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_swell_inertia(sw, 0.001);
+#+END_SRC
+* Direction Storage Pointer
+At any point in time, the smoothing amount can either be
+parameter A or B. A pointer =dir= is used to store the
+address of one of these values.
+
+#+NAME: sk_swell
+#+BEGIN_SRC c
+SKFLT *dir;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sw->dir = &sw->sm_a;
+#+END_SRC
+* Computation
+The function =sk_swell_tick= computes one sample of audio
+from an input signal =in=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_swell_tick(sk_swell *sw, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_swell_tick(sk_swell *sw, SKFLT in)
+{
+    SKFLT out;
+    SKFLT switching;
+    SKFLT dir;
+    const SKFLT eps = 0.0001;
+    out = 0;
+    <<determine_direction>>
+    <<filter_switch_signal>>
+    <<snap_signal>>
+    <<compute_smoothing_filter>>
+    return out;
+}
+#+END_SRC
+
+The direction is determined by comparing the current input
+signal with the previous input signal. A positive change
+will select the A smoothing factor. A negative change will
+select the B smoothing factor. No change will hold onto the
+last selected factor. This will be referred to as the
+=switching= signal.
+
+#+NAME: determine_direction
+#+BEGIN_SRC c
+if (in > sw->prev) {
+    sw->dir = &sw->sm_a;
+} else if (in < sw->prev) {
+    sw->dir = &sw->sm_b;
+}
+sw->prev = in;
+dir = *sw->dir;
+switching = dir;
+#+END_SRC
+
+The switching signal is put through a 1-pole filter known
+as the inertia filter. Before computing this filter, the
+inertia parameter is checked to see if it needs to be
+updated via @!(ref "parameter_caching"
+"parameter caching")!@.
+
+#+NAME: filter_switch_signal
+#+BEGIN_SRC c
+if (sw->inertia_amt != sw->inertia_pamt) {
+    sw->inertia_pamt = sw->inertia_amt;
+    sw->inertia_a1 = pow(0.5, sw->onedsr/sw->inertia_amt);
+    sw->inertia_b0 = 1.0 - sw->inertia_a1;
+}
+
+switching =
+    sw->inertia_b0*switching +
+    sw->inertia_a1*sw->inertia_y;
+sw->inertia_y = switching;
+#+END_SRC
+
+The filtered switching signal is then snapped to the A/B
+smoothing parameter if it is within an epsilon boundary.
+This is done to prevent the next smoothing filter from
+constantly re-calculating filter coefficients. Calls to
+math functions like =exp= can be expensive, and should be
+avoided if possible.
+
+#+NAME: snap_signal
+#+BEGIN_SRC c
+if (fabs(switching - dir) < eps) switching = dir;
+#+END_SRC
+
+Using the filtered-and-snapped switching signal, the main
+smoothing filter can now be computed on the input signal.
+Similar to the inertia filter, parameter caching is also
+used.
+
+#+NAME: compute_smoothing_filter
+#+BEGIN_SRC c
+if (switching != sw->smooth_pamt) {
+    sw->smooth_pamt = switching;
+    sw->smooth_a1 = pow(0.5, sw->onedsr/switching);
+    sw->smooth_b0 = 1.0 - sw->smooth_a1;
+}
+
+out =
+    sw->smooth_b0*in +
+    sw->smooth_a1*sw->smooth_y;
+sw->smooth_y = out;
+#+END_SRC

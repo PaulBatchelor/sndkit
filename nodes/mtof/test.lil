@@ -1,0 +1,11 @@
+sine [mtof 60] [param 0.1]
+sine [mtof 64] [param 0.1]
+add zz zz
+sine [mtof 65] [param 0.1]
+add zz zz
+sine [mtof 67] [param 0.1]
+add zz zz
+sine [mtof 70] [param 0.1]
+add zz zz
+wavout zz "test.wav"
+computes 10

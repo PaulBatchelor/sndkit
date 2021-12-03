@@ -1,0 +1,5 @@
+chaosnoise 1.9 2000 0.141
+valp1 zz 300
+mul zz 0.5
+wavout zz "test.wav"
+computes 60

@@ -1,0 +1,3 @@
+buthp [mul [noise] 0.3] 1000
+wavout zz "buthp.wav"
+computes 10

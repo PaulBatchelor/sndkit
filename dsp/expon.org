@@ -1,0 +1,175 @@
+#+TITLE: expon
+* Overview
+A (re)triggerable exponential line generator. Go from A
+to B in a exponential swell over some duration in seconds.
+When it reaches B, hold indefinitely until retriggered.
+
+Note that values *cannot* be exactly 0.
+* Tangled files.
+=expon.h= and =expon.c=. =SK_EXPON_PRIV= exposes the
+=sk_expon= struct.
+
+#+NAME: expon.h
+#+BEGIN_SRC c :tangle expon.h
+#ifndef SK_EXPON_H
+#define SK_EXPON_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+#ifdef SK_EXPON_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+
+#+NAME: expon.c
+#+BEGIN_SRC c :tangle expon.c
+#include <math.h>
+#define SK_EXPON_PRIV
+#include "expon.h"
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+* Initialization
+The expon state is managed in a struct called =sk_expon=,
+and initialized  with =sk_expon_init=. The sampling rate
+=sr= must be provided.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_expon sk_expon;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_expon {
+    SKFLT a, dur, b;
+    SKFLT val, incr;
+    unsigned long sdur, stime;
+    int init;
+    int sr;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expon_init(sk_expon *e, int sr);
+#+END_SRC
+
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_expon_init(sk_expon *e, int sr)
+{
+    sk_expon_a(e, 0.000001);
+    sk_expon_b(e, 1);
+    sk_expon_dur(e, 1);
+    e->sr = sr;
+    e->init = 1;
+
+    expon_reinit(e);
+}
+#+END_SRC
+* Setting Parameters
+** A and B
+Go from value A to value B.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expon_a(sk_expon *e, SKFLT val);
+void sk_expon_b(sk_expon *e, SKFLT val);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_expon_a(sk_expon *e, SKFLT val)
+{
+    if (val != 0) e->a = val;
+}
+
+void sk_expon_b(sk_expon *e, SKFLT val)
+{
+    if (val != 0) e->b = val;
+}
+#+END_SRC
+
+** Duration
+Set the duration of the segment with =sk_expon_dur=.
+This is in units of seconds.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_expon_dur(sk_expon *e, SKFLT dur);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_expon_dur(sk_expon *e, SKFLT dur)
+{
+    e->dur = dur;
+}
+#+END_SRC
+* Calculating Multipler
+The function =expon_reinit= will recalculate the multiplier
+used to compute the exponential line.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void expon_reinit(sk_expon *e);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void expon_reinit(sk_expon *e)
+{
+    SKFLT onedsr;
+    e->stime = 0;
+    e->sdur = e->dur * e->sr;
+    onedsr = 1.0 / e->sr;
+
+    if ((e->a * e->b) > 0.0) {
+        e->incr = pow((SKFLT)(e->b / e->a), onedsr / e->dur);
+    } else {
+        e->incr = 1;
+        e->val = e->a;
+    }
+
+    e->val = e->a;
+}
+#+END_SRC
+* Computing a Sample
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_expon_tick(sk_expon *e, SKFLT trig);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_expon_tick(sk_expon *e, SKFLT trig)
+{
+    SKFLT out;
+
+    out = 0;
+
+    if (trig != 0) {
+        expon_reinit(e);
+        e->init = 0;
+    }
+
+    if (e->init) {
+        out = 0;
+    }
+
+    if (e->stime < e->sdur) {
+        SKFLT val = e->val;
+        e->val *= e->incr;
+        e->stime++;
+        out = val;
+    } else {
+        out = e->b;
+    }
+
+    return out;
+}
+#+END_SRC

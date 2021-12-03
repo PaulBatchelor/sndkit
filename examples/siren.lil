@@ -1,0 +1,28 @@
+sine 0.1 1
+hold
+regset zz 0
+
+fmpair \
+    [gensine [tabnew 8192]] \
+    [biscale [regget 0] 100 600] \
+    [param 1] \
+    [param 1] \
+    [biscale [regget 0] 0.1 2] \
+    [param 0]
+
+mul zz 0.5
+
+dup; dup
+
+bigverb zz zz 0.97 10000
+drop
+mul zz 0.1
+dcblocker zz
+
+add zz zz
+
+wavout zz "siren.wav"
+
+unhold [regget 0]
+
+computes 10

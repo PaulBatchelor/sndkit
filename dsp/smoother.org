@@ -1,0 +1,202 @@
+#+TITLE: Smoother
+* Overview.
+=smoother= is a one-pole smoothing filter.
+
+The smoothing filter, sometimes called a portamento filter
+is an indispensible tool for a sound designer. Mostly
+used to smooth out steppy control signals, smoothing filters
+are a particular kind of one-pole recurisve IIR filter,
+usually with parametric smoothing control amount. Signals
+that go through smoothing filters get a distinct syruppy
+responsiveness added to it (especially if you set the
+smoothing amount way up!).
+
+While smoothing filters usually have an association with
+smoothing out control signals from things like MIDI CC
+knobs, there are a few other useful things you can do with
+them. If you put audio-rate signal with note values through
+it, you get a really lovely legato portamento effect. A gate
+signal put through a smoothing filter produces an envelope
+with the most beautiful exponential curves perfect for short
+percusive sounds.
+* Tangled Files
+=smoother.c= and =smoother.h=. =SK_SMOOTHER_PRIV= exposes the
+struct.
+
+#+NAME: smoother.h
+#+BEGIN_SRC c :tangle smoother.h
+#ifndef SK_SMOOTHER_H
+#define SK_SMOOTHER_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_SMOOTHER_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+
+#endif
+#+END_SRC
+
+#+NAME: smoother.c
+#+BEGIN_SRC c :tangle smoother.c
+#include <math.h>
+#define SK_SMOOTHER_PRIV
+#include "smoother.h"
+<<funcs>>
+#+END_SRC
+* The Equation
+The one pole smoothing filter employs the following
+difference equation:
+
+@!(fig "smoother_eqn"
+``
+y(n) = b_0 x(n) - a_1 y(n - 1)
+``)!@
+
+Where @!(smallfig "smoother_a1" "a_1")!@ is @!(
+smallfig "smoother_a1_eqn" "0.5^{1/(tF_s)}")!@ and @!(
+smallfig "smoother_b0" "b_0")!@ is @!(
+smallfig "smoother_b0_eqn" "{1 - a_1}")!@. The
+variables @!(smallfig "smoother_t" "t")!@ and @!(smallfig
+"smoother_fs" "F_s")!@ are the smoothing half time and
+sampling rate, respectively. @!(smallfig "smoother_xn"
+"x(n)")!@ is the input signal.
+* Struct Initialized
+=sk_smoother= is the struct.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_smoother sk_smoother;
+#+END_SRC
+
+It is initalized with =sk_smoother_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_smoother_init(sk_smoother *s, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_smoother_init(sk_smoother *s, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Struct Contents
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_smoother {
+    SKFLT smooth;
+    SKFLT a1, b0, y0, psmooth;
+    SKFLT onedsr;
+};
+#+END_SRC
+
+=smooth= is the smoothing parameter, with =psmooth= being
+a cached variable that is used to check when the smooth
+parameter has changed.
+
+=smooth= is set to a reasonable default value of 10ms.
+=psmooth= is set to a different (and also invalid) value of
+-1. This will caused the filter coefficients to be
+calculated when the compute function is called for
+the first time.
+
+#+NAME: init
+#+BEGIN_SRC c
+s->smooth = 0.01;
+s->psmooth = -1;
+#+END_SRC
+
+=a1= and =b0= are filter coefficients computed from the
+=smooth= time parameter, with =y0= being the filter memory.
+
+#+NAME: init
+#+BEGIN_SRC c
+s->a1 = 0;
+s->b0 = 0;
+s->y0 = 0;
+#+END_SRC
+
+=onedsr= is the constant =1.0/sr=. This might not actually
+be all that helpful since a divide operation is still
+happening. Hmm.
+
+#+NAME: init
+#+BEGIN_SRC c
+s->onedsr = 1.0 / sr;
+#+END_SRC
+* Setting Smoothing Time
+Set the smoothinb time parameter with =sk_smoother_time=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_smoother_time(sk_smoother *s, SKFLT t);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_smoother_time(sk_smoother *s, SKFLT t)
+{
+    s->smooth = t;
+}
+#+END_SRC
+
+The smoothing time, also known as the half time, is the
+amount of time (in seconds) it takes to go to halfway to
+the trajectory value.
+* Resetting The Filter
+=sk_smoother_reset= will reset the smoothing filter, causing
+it to snap directly to the value =in=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_smoother_reset(sk_smoother *s, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_smoother_reset(sk_smoother *s, SKFLT in)
+{
+    s->y0 = in;
+}
+#+END_SRC
+* Compute
+Compute a sample with =sk_smoother_tick=. This expects an
+input signal, and returns a single output signal.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_smoother_tick(sk_smoother *s, SKFLT in);
+#+END_SRC
+
+This is implementing the equation displayed above.
+Parameter caching is used so that filter coefficients
+are only updated when the smoothing amount updates.
+Doing this shaves off a few redundant CPU instructions.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_smoother_tick(sk_smoother *s, SKFLT in)
+{
+    SKFLT out;
+
+    if (s->psmooth != s->smooth) {
+        s->a1 = pow(0.5, s->onedsr/s->smooth);
+        s->b0 = 1.0 - s->a1;
+        s->psmooth = s->smooth;
+    }
+
+    s->y0 = s->b0 * in + s->a1 * s->y0;
+    out = s->y0;
+
+    return out;
+}
+#+END_SRC

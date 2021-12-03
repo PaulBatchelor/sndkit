@@ -1,0 +1,700 @@
+#+TITLE: FM Pair Oscillator
+* Introduction
+This document outlines an implementation of a classic
+FM oscillator with frequency, C:M ratio, and modulation
+index control.
+
+There is quite a lot to be said about FM synthesis, but a
+classic FM oscillator implementation is poetic tribute to
+the technique. Requiring only two oscillators (usually sine
+waves), an FM operator pair is capable of generating very
+rich and dynamic spectrums. For how little computation is
+required, these suckers can pack a punch!
+
+The FM pair is the Bechamel sauce of the FM world. Creating
+one from scratch provides great sonic intution into the
+mostly unintuitive world of FM synthesis programming. It can
+be the building block for grokking more complex modulation
+configurations, such as those found on the DX7.
+* Some words on FM synthesis
+(I can't help but ramble a little bit about the topic of
+FM synthesis. Feel free to scroll/skip/page ahead.)
+
+FM synthesis, or Frequently Modulation synthesis, was first
+implemented by John Chowning while doing research at the
+Stanford Artificial Intelligence Laboratory (SAIL, whose
+spritual successor would become CCRMA, or the Center for
+Computer Research in Music and Acoustics). As the legend
+goes, Chowning stumbled upon the technique by accident.
+Experimenting with different vibrato speeds, he found that
+when vibrato got fast enough, it started changing timbre
+and spectrum.
+
+The humble beginings of FM synthesis started out with an FM
+pair configuration similar to this one. But can you imagine
+the surprise he got when he first heard that new FM sound?
+
+To paint a picture:
+
+At the time, computers were about the
+size of fridges. They were expensive devices owned by the
+University, and time spent using the computer was precious.
+Chowning no doubt had to fight to get his time slot. Being
+a composer amongst scientists and engineers, he probably
+could only work in late hours.
+
+Typing away at a mainframe 3am, Chowning would have to had
+to wait at least a day for the computer to run his FM
+synthesis program. Assuming it successfully ran without any
+errors, Chowning would then have to ship the output of that
+program off somewhere to get it converted to magnetic
+reel-to-reel tape. Back then,
+digital-to-analog converers (DACs) were things that you had
+to get in a car and drive to. Now-a-days, audio DACs are
+things found on pretty much every electronic device you own.
+
+So, if you're keeping track, that's at least a week from
+code to sound. That's an enormous amount of round-trip
+latency! To go that long, and to finally hear these new
+sounds must have been such a rewarding experience.
+
+Chowing's original FM synthesis algorithm would eventually
+become one of Stanford University's highest grossing patents
+of all time. The royalties of this
+patent helped to sustain the CCRMA facilities.
+
+Famously, the patent was sold to Yamaha, and that gave us
+things like the DX7 synthesizer (and all the cheesy music
+that came with it). Due to the efficiency of
+the algorithm, it also found itself in a whole generation of
+sound cards at the time, used in video game consoles and
+arcade machines. The most famous of these chips was the
+[[https://en.wikipedia.org/wiki/Yamaha_YM2151][YM2151]], also known as the OPM chip.
+* Overview of Algorithm and Implementation
+An FM Pair uses two oscillators, sometimes referred to as
+=operators=. One of these operators synthesizes audble sound.
+This known as the =carrier=, and can be remembered because
+it *carries* the sound signal to the speaker. The other
+operator *modulates* the frequency of the carrier, and it
+is known as the =modulator=.
+
+If you set the modulator to any frequency that is audio rate
+(give or take 20hz or higher), you will technically get some
+kind of FM synthesis. However, depending on the frequency of
+the carrier, the spectrum can range from being very pitched
+with harmonically related overtones, to something quite
+clangorous and not at all something you could easily play
+"Hot Cross Buns" on. So, to make an FM pair easier to use,
+three unit-less parameters are used to control the
+FM characteristics of the sound that work evenly across
+the spectrum: a carrier-to-modulator frequency ratio known
+as the C:M ratio, and something known as the modulation
+index, which can kind of be thought of as a thing that
+controls the amount of modulation.
+
+The C and M parameters are values that primarily multiply
+the frequency value of the carrier and modulator operators,
+respectively.
+
+The modulation index can be defined as having the following
+relationship (taken from the Computer Music Tutorial's
+chapter on Modulation synthesis, page 229):
+
+$$ I = D/M $$
+
+Where $I$ is the modulation index, $M$ is the modulation
+frequency (which would be the oscillator frequency multiplied
+by the modulator ratio), and $D$ is the amount of modulation
+=depth=. The equation can be reworked in terms of $D$:
+
+$$ D = MI $$
+
+This depth value can be thought of as the "amplitude" amount
+the modulator operator (in Hz). This will produce a signal
+that modulates the carrier frequency up the depth amount,
+and then down that same amount.
+
+In this implemetation, two table-lookup oscillators will be
+used for the operators, using an algorithm similar to the
+@!(ref "osc" "table lookup oscillator")!@, which employ a
+fixed-point phasor with linear interpolation. Details for
+the gory details of these oscillators are beyond the scope
+of this article, but are described in the implementation
+referenced above.
+* Tangled Files
+=fmpair.c= contains the ANSI C code required for the
+implementation.
+
+#+NAME: fmpair.c
+#+BEGIN_SRC c :tangle fmpair.c
+#include <math.h>
+#define SK_FMPAIR_PRIV
+#include "fmpair.h"
+<<constants>>
+<<funcs>>
+#+END_SRC
+
+=fmpair.h= is the corresponding header file for the C file.
+It contains all the forward declarations. If
+=SK_FMPAIR_PRIV= is defined, it exposes the structs.
+
+#+NAME: fmpair.h
+#+BEGIN_SRC c :tangle fmpair.h
+#ifndef SK_FMPAIR_H
+#define SK_FMPAIR_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<typedefs>>
+<<funcdefs>>
+#ifdef SK_FMPAIR_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+* Structs
+The main FM oscillator algorithm is encapsulated in a struct
+called =sk_fmpair=.
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_fmpair sk_fmpair;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_fmpair {
+    <<sk_fmpair>>
+};
+#+END_SRC
+* Table-lookup oscillator data and constants
+** Constants
+The constant =SK_FMPAIR_MAXLEN= is the maximum length a
+lookup table can be.
+
+The constant =SK_FMPAIR_PHASEMASK= is a bitmask used by
+the fixed point phasor.
+#+NAME: constants
+#+BEGIN_SRC c
+#define SK_FMPAIR_MAXLEN 0x1000000L
+#define SK_FMPAIR_PHASEMASK 0x0FFFFFFL
+#+END_SRC
+** Struct Data
+The FM oscillator implements two independent table-[ookup
+oscillators. Each one needs their own set of wavetables,
+incrementors, sizes, and cached phase positions.
+
+The convention used will this: any variables used for the
+carrier oscillator will begin with 'c':
+
+#+NAME: sk_fmpair
+#+BEGIN_SRC c
+SKFLT *ctab;
+int csz;
+int clphs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+fmp->ctab = ctab;
+fmp->csz = csz;
+#+END_SRC
+
+Any variables used for the modulator oscillator will begin
+with 'm':
+
+#+NAME: sk_fmpair
+#+BEGIN_SRC c
+SKFLT *mtab;
+int msz;
+int mlphs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+fmp->mtab = mtab;
+fmp->msz = msz;
+#+END_SRC
+
+In order to be used by the fixed point phasor,
+the initial phases need to be rescaled by =SK_FMPAIR_MAXLEN=
+and then converted to an integer value. These are
+stored in each respective variable keeping track
+of phase.
+
+#+NAME: init
+#+BEGIN_SRC c
+fmp->clphs = floor(ciphs * SK_FMPAIR_MAXLEN);
+fmp->mlphs = floor(miphs * SK_FMPAIR_MAXLEN);
+#+END_SRC
+
+A number of constants are used with these tables: =nlb=,
+=inlb=, =mask=, and =maxlens=. These are beyond the scope
+of this document, but are touched upon in @!(ref "osc")!@.
+Since these are all based on table size, two sets of
+constants are derived for the carrier and modulator.
+
+#+NAME: sk_fmpair
+#+BEGIN_SRC c
+/* carrier constants */
+int cnlb;
+SKFLT cinlb;
+unsigned long cmask;
+
+/* modulator constants */
+int mnlb;
+SKFLT minlb;
+unsigned long mmask;
+
+SKFLT maxlens;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+{
+    int tmp;
+
+    /* carrier */
+    tmp = SK_FMPAIR_MAXLEN / csz;
+    fmp->cnlb = 0;
+    while (tmp >>= 1) fmp->cnlb++;
+
+    /* modulator */
+    tmp = SK_FMPAIR_MAXLEN / msz;
+    fmp->mnlb = 0;
+    while (tmp >>= 1) fmp->mnlb++;
+}
+
+/* phase mask for dividing lower/upper bits */
+
+fmp->cmask = (1<<fmp->cnlb) - 1;
+fmp->mmask = (1<<fmp->mnlb) - 1;
+
+/* constant used to convert to floating point */
+
+fmp->cinlb = 1.0 / (1<<fmp->cnlb);
+fmp->minlb = 1.0 / (1<<fmp->mnlb);
+
+/* max table length in seconds */
+/* used to convert cycles-per-second units to cycles */
+
+fmp->maxlens = 1.0 * SK_FMPAIR_MAXLEN / sr;
+#+END_SRC
+* Initialization
+The FM oscillator is initialize with =sk_fmpair_init=.
+It needs the sampling rate =sr=, and two sets of
+wavetables (=cwt= and =mwt=),
+their sizes (=csz=) and (=msz=), and
+initial phases (=ciphs= and =miphs=) for the carrier (c)
+and modulator (m) oscillators.
+
+In a classic FM pair, these would be identical,
+and the wavetable would contain a sampled period of a
+sine wave.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_init(sk_fmpair *fmp, int sr,
+                    SKFLT *ctab, int csz, SKFLT ciphs,
+                    SKFLT *mtab, int msz, SKFLT miphs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_init(sk_fmpair *fmp, int sr,
+                    SKFLT *ctab, int csz, SKFLT ciphs,
+                    SKFLT *mtab, int msz, SKFLT miphs)
+{
+    <<init>>
+}
+#+END_SRC
+* Parameter Control
+** Frequency
+Set with =sk_fmpair_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_freq(sk_fmpair *fmp, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_freq(sk_fmpair *fmp, SKFLT freq)
+{
+    fmp->freq = freq;
+}
+#+END_SRC
+
+#+NAME: sk_fmpair
+#+BEGIN_SRC c
+SKFLT freq;
+#+END_SRC
+
+A sensible default of A440.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_fmpair_freq(fmp, 440);
+#+END_SRC
+** Carrier/Modulator Ratios
+Set with =sk_fmpair_modulator= and =sk_fmpair_carrier=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_modulator(sk_fmpair *fmp, SKFLT mod);
+void sk_fmpair_carrier(sk_fmpair *fmp, SKFLT car);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_modulator(sk_fmpair *fmp, SKFLT mod)
+{
+    fmp->mod = mod;
+}
+
+void sk_fmpair_carrier(sk_fmpair *fmp, SKFLT car)
+{
+    fmp->car = car;
+}
+#+END_SRC
+
+#+NAME: sk_fmpair
+#+BEGIN_SRC c
+SKFLT car;
+SKFLT mod;
+#+END_SRC
+
+A 1:1 ratio is a good strong and sensible default.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_fmpair_carrier(fmp, 1);
+sk_fmpair_modulator(fmp, 1);
+#+END_SRC
+** Modulation Index
+Set with =sk_fmpair_modindex=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_modindex(sk_fmpair *fmp, SKFLT index);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_modindex(sk_fmpair *fmp, SKFLT index)
+{
+    fmp->index = index;
+}
+#+END_SRC
+
+#+NAME: sk_fmpair
+#+BEGIN_SRC c
+SKFLT index;
+#+END_SRC
+
+A modulation index of 1 on with 1:1 C-to-M ratio produces
+a very warm and versatile initial sound.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_fmpair_modindex(fmp, 1);
+#+END_SRC
+* Computing a Sample
+A single sample of audio is computed with =sk_fmpair_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_fmpair_tick(sk_fmpair *fmp);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_fmpair_tick(sk_fmpair *fmp)
+{
+    SKFLT out;
+    SKFLT cfreq, mfreq;
+    SKFLT modout;
+    int ipos;
+    SKFLT frac;
+    SKFLT x[2];
+    out = 0;
+    <<calculate_frequencies>>
+    <<table_lookup_for_modulator>>
+    <<scale_modulator_output>>
+    <<modulate_carrier_frequency>>
+    <<table_lookup_for_carrier>>
+    <<update_phase_positions>>
+    return out;
+}
+#+END_SRC
+
+The carrier and modulator frequencies are calculated by
+multiplying their respective ratio values with
+the oscillator frequency.
+
+#+NAME: calculate_frequencies
+#+BEGIN_SRC c
+cfreq = fmp->freq * fmp->car;
+mfreq = fmp->freq * fmp->mod;
+#+END_SRC
+
+The modulator oscillator does its table-lookup and
+linear interpolation with some bitwise magic. The details of
+this can be found in @!(ref "osc")!@.
+
+#+NAME: table_lookup_for_modulator
+#+BEGIN_SRC c
+fmp->mlphs &= SK_FMPAIR_PHASEMASK;
+ipos = fmp->mlphs >> fmp->mnlb;
+x[0] = fmp->mtab[ipos];
+
+if (ipos == fmp->msz - 1) {
+    x[1] = fmp->mtab[0];
+} else {
+    x[1] = fmp->mtab[ipos + 1];
+}
+
+frac = (fmp->mlphs & fmp->mmask) * fmp->minlb;
+modout = (x[0] + (x[1] - x[0]) * frac);
+#+END_SRC
+
+Before it can modulate the carrier, the output of the
+modulator needs to be appropriately scaled. This amplitude
+amount is the modulator frequency and modulation
+index multiplied together.
+
+#+NAME: scale_modulator_output
+#+BEGIN_SRC c
+modout *= mfreq * fmp->index;
+#+END_SRC
+
+The frequency of the carrier oscillator is now ready to be
+modulated. Modulation is an addition operation; The output
+of the scaled modulator is tacked on the carrier frequency.
+
+#+NAME: modulate_carrier_frequency
+#+BEGIN_SRC c
+cfreq += modout;
+#+END_SRC
+
+A table-lookup operation computation happens for the
+carrier oscillator, similar to what happened with the
+modulator oscillator. This output is what gets returned.
+
+#+NAME: table_lookup_for_carrier
+#+BEGIN_SRC c
+fmp->clphs &= SK_FMPAIR_PHASEMASK;
+ipos = (fmp->clphs) >> fmp->cnlb;
+x[0] = fmp->ctab[ipos];
+
+if (ipos == fmp->csz - 1) {
+    x[1] = fmp->ctab[0];
+} else {
+    x[1] = fmp->ctab[ipos + 1];
+}
+
+frac = (fmp->clphs & fmp->cmask) * fmp->cinlb;
+out = (x[0] + (x[1] - x[0]) * frac);
+#+END_SRC
+
+To wrap things up, the phase increments and positions
+of both oscillators are updated, based on their respective
+frequencies.
+
+increment value is derived by multiplying oscillator
+frequency (in units of cycles-per-second) to the maximum
+length of the phasor (in units of seconds). The seconds unit
+cancels, and the resulting output is cycles. This value,
+truncated to an integer value, becomes the phase increment
+value.
+
+#+NAME: update_phase_positions
+#+BEGIN_SRC c
+fmp->clphs += floor(cfreq * fmp->maxlens);
+fmp->mlphs += floor(mfreq * fmp->maxlens);
+#+END_SRC
+* Feedback FM Variation
+@!(marker "feedback_fm")!@
+The original FM pair algorithm can be slightly modified to
+include =feedback=. To do this, the =sk_fmpair= struct is
+encapsulated in a new struct called =sk_fmpair_fdbk=.
+
+Feedback FM is based on the Two-oscillator feedback FM
+design outlined on page 248 of the Computer Music Tutorial
+by Curtis Roads.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_fmpair_fdbk sk_fmpair_fdbk;
+#+END_SRC
+
+Appenended to the new struct are two new values: =feedback=,
+and =prev=. The =feedback= variable controls the feedback
+amount, while the =prev= variable stores the state of the
+last oscillator.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_fmpair_fdbk {
+    sk_fmpair fmpair;
+    SKFLT prev;
+    SKFLT feedback;
+};
+#+END_SRC
+
+It is initialized with =sk_fmpair_fdbk_init= just like
+=sk_fmpair_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_init(sk_fmpair_fdbk *fmp, int sr,
+                         SKFLT *ctab, int csz, SKFLT ciphs,
+                         SKFLT *mtab, int msz, SKFLT miphs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_init(sk_fmpair_fdbk *fmp, int sr,
+                         SKFLT *ctab, int csz, SKFLT ciphs,
+                         SKFLT *mtab, int msz, SKFLT miphs)
+{
+    sk_fmpair_init(&fmp->fmpair, sr,
+                   ctab, csz, ciphs,
+                   mtab, msz, miphs);
+    fmp->prev = 0;
+    fmp->feedback = 0;
+}
+#+END_SRC
+
+The feedback amount can be set with =sk_fmpair_fdbk_amt=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_amt(sk_fmpair_fdbk *f, SKFLT amt);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_fmpair_fdbk_amt(sk_fmpair_fdbk *f, SKFLT amt)
+{
+    f->feedback = amt;
+}
+#+END_SRC
+
+Computation of the FM pair feedback is done with
+=sk_fmpair_fdbk_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_fmpair_fdbk_tick(sk_fmpair_fdbk *fmp);
+#+END_SRC
+
+This re-uses many named codeblocks seen in the
+=sk_fmpair_tick=: <<calculate_frequencies>>,
+<<table_lookup_for_modulator>>, <<scale_modulator_output>>,
+<<modulate_carrier_frequency>>,
+<<table_lookup_for_modulator>>, and
+<<update_phase_positions>>.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_fmpair_fdbk_tick(sk_fmpair_fdbk *f)
+{
+    SKFLT out;
+    SKFLT cfreq, mfreq;
+    SKFLT modout;
+    int ipos;
+    SKFLT frac;
+    SKFLT x[2];
+    sk_fmpair *fmp;
+    out = 0;
+    fmp = &f->fmpair;
+
+    <<calculate_frequencies>>
+    <<table_lookup_for_modulator>>
+
+    /* feedback-oscillator specific */
+    <<apply_feedback>>
+
+    <<scale_modulator_output>>
+
+    <<modulate_carrier_frequency>>
+    <<table_lookup_for_carrier>>
+    <<update_phase_positions>>
+    return out;
+}
+#+END_SRC
+
+In this function, feedback is added right before the
+modulator is scaled.
+
+This modulated value is then stored in the =prev= sample.
+
+#+NAME: apply_feedback
+#+BEGIN_SRC c
+modout += f->prev * f->feedback;
+f->prev = modout;
+#+END_SRC
+* C:M Ratio tips
+Some suggestions to get started with picking out good C,M
+and I parameters. For those starting out, these should help
+build some sonic intuition in FM.
+
+Generally speaking, the more rational C:M ratios are
+(1:1, 1:2, 3:2, etc), the more harmonic and pitched the
+spectrum will be. The more irrational they are
+(1:1.6180339..., 1:3.1415926..., etc) the more clangorous
+and unpitched the spectrum will be.
+
+Fractional or strange looking ratios that look irrational
+can sometimes be simple ratios in disguise. For example,
+1:0.5 is harmonically similar to 2:1.
+
+The carrier ratio value determines what the pitch will be.
+Whole integer values correspond with the harmonic series.
+A value of 1 is the base frequency, 2 is an octave, 3 is
+an octave and a fifth, etc.
+
+The modulator ratio can be thought of as how spread-out
+the harmonic spectrum will be. A 1:1 ratio will give you
+a denser spectrum than a 1:7 ratio. These spread out
+spectrums were what made classic DX7 keyboard tine sounds
+work so well. Using ratios with high M values, they were
+able to cut through a mix while also leaving room for other
+instruments.
+
+Adding small fractional values to the M ratio (ex: 1:1.007) can
+add some very unique spectral beating. FM pairs can be
+layered together with different fractional amounts to create
+thicker sounds.
+
+In an FM pair, the behavior of the modulation index can be
+thought of as a kind of tone control, similar to a filter
+cutoff control that you'd find in a subtractive synthesizer.
+It's a gross simplification for all the amazing things
+happening to the spectrum, but it's close enough.
+
+Controlling the modulation index of a 1:1 FM pair kind of
+feels like controlling a subtractive synthesizer, especially
+for lower modulation index values.
+
+FM sounds can alias like crazy, especially when frequency,
+modulator, and modulation index values are high. When you
+crank up the modulation index crazy high, you can get some
+very interesting alias noises, but finding the sweet spots
+can be a bit of a treasure hunt. The plugin
+[[https://www.kvraudio.com/product/mr-alias-by-insert-piz-here][Mr.Alias]] is built around this concept.
+
+Keyboard/frequency scaling the modulation index is a Good
+Idea. As frequencies get lower, the modulation index can
+get larger without risk of aliasing. More modulation index
+means more harmonic content, means more sonic beef for
+lower notes.
+
+The modulation index spectrum behavior is determined by
+[[https://en.wikipedia.org/wiki/Bessel_function#Bessel_functions_of_the_first_kind][Bessel Functions of the First kind]].
+The wiki page on this has a good chart of this that
+plots the amplitudes first 3 harmonics. You can see how
+ahey dip in and out. One should at least be passively aware
+that this happens. Changing the modulation index on a bass
+sound, for example, can sometimes cause the fundamental
+to drop out, which can produces thin patches of sound.

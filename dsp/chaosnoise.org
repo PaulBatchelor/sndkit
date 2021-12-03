@@ -1,0 +1,272 @@
+#+TITLE: ChaosNoise
+* Overview
+The =chaosnoise= algorithm is noise generator that uses
+a chaos function to produce sound.
+
+At it's core, chaosnoise is essentially an unstable 2-pole
+filter with a nonlinearity.
+In other words, it makes noise doing things DSP engineers
+work very hard to avoid under normal circumstances.
+
+The underlying chaos function is largely based on the one
+found in the Crackle Ugen found in SuperCollider. In this
+implementation, however, there is an added =rate= parameter
+similar to the one found in @!(ref "bitnoise")!@. This
+is used to change the tone quality of the algorithm.
+* Tangled Files
+This tangles to =chaosnoise.c= and =chaosnoise.h=. Defining
+=SK_CHAOSNOISE_PRIV= will expose the core struct in the
+header file.
+
+#+NAME: chaosnoise.c
+#+BEGIN_SRC c :tangle chaosnoise.c
+#include <math.h>
+#define SK_CHAOSNOISE_PRIV
+#include "chaosnoise.h"
+<<macros>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: chaosnoise.h
+#+BEGIN_SRC c :tangle chaosnoise.h
+#ifndef SK_CHAOSNOISE_H
+#define SK_CHAOSNOISE_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_CHAOSNOISE_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+* Struct
+Data for ChaosNoise is contained in a struct called
+=sk_chaosnoise=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_chaosnoise sk_chaosnoise;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_chaosnoise {
+    <<sk_chaosnoise>>
+};
+#+END_SRC
+* Filter Memory
+chaosnoise is technically a 2-pole filter, requiring
+memory for 2 samples of signal.
+
+#+NAME: sk_chaosnoise
+#+BEGIN_SRC c
+SKFLT y[2];
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+cn->y[0] = init;
+cn->y[1] = 0;
+#+END_SRC
+* Sample and Hold Constants and Parameters
+The signal is clocked with a sample and hold generator. This
+sample and hold will use a fixed-point phasor to keep track
+of time, similar to the ones found in @!(ref "bitnoise")!@ and
+@!(ref "rline")!@. More details on how this works can be
+found in these pages.
+
+A 32-bit integer called =phs= keeps track of the phase
+position.
+
+#+NAME: sk_chaosnoise
+#+BEGIN_SRC c
+long phs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+cn->phs = 0;
+#+END_SRC
+
+The constant =SK_CHAOSNOISE_PHSMAX= defines the maximum
+length (and resolution) of the phasor, set to be
+=0x1000000=.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_CHAOSNOISE_PHSMAX 0x1000000L
+#+END_SRC
+
+The constant =SK_CHAOSNOISE_PHSMSK= defines the masking
+value of the phasor, set to be =0x0FFFFFF=.
+
+#+NAME: macros
+#+BEGIN_SRC c
+#define SK_CHAOSNOISE_PHSMSK 0x0FFFFFFL
+#+END_SRC
+
+The floating point value =maxlens= is
+=SK_CHAOSNOISE_PHSMAX=, converted to seconds. It is used
+to calculate the increment amount for the phase position.
+When a rate value (in units of Hz, or cycles/second) get
+multiplied by this value, the result is a value in units
+of phase cycles.
+
+#+NAME: sk_chaosnoise
+#+BEGIN_SRC c
+SKFLT maxlens;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+cn->maxlens = SK_CHAOSNOISE_PHSMAX / (SKFLT) sr;
+#+END_SRC
+* Parameters
+** Chaos
+The =chaos= parameter is variable that controls the chaos
+level. It is typically a value between 1 and 2.
+
+It can be set with =sk_chaosnoise_chaos=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chaosnoise_chaos(sk_chaosnoise *cn, SKFLT chaos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chaosnoise_chaos(sk_chaosnoise *cn, SKFLT chaos)
+{
+    cn->chaos = chaos;
+}
+#+END_SRC
+
+#+NAME: sk_chaosnoise
+#+BEGIN_SRC c
+SKFLT chaos;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_chaosnoise_chaos(cn, 1.5);
+#+END_SRC
+** Rate
+The =rate= value controls the rate of computation. This
+is a value measure in Hertz.
+
+It can be set with =sk_chaosnoise_rate=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chaosnoise_rate(sk_chaosnoise *cn, SKFLT rate);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chaosnoise_rate(sk_chaosnoise *cn, SKFLT rate)
+{
+    cn->rate = rate;
+}
+#+END_SRC
+
+#+NAME: sk_chaosnoise
+#+BEGIN_SRC c
+SKFLT rate;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_chaosnoise_rate(cn, 8000);
+#+END_SRC
+* Initialization
+Initialized with =sk_chaosnoise_init=. Sampling rate and an
+initial value must be supplied as arguments. The initial
+value is a floating point value that expects to be in range
+0-1.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_chaosnoise_init(sk_chaosnoise *cn, int sr, SKFLT init);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_chaosnoise_init(sk_chaosnoise *cn, int sr, SKFLT init)
+{
+    <<init>>
+}
+#+END_SRC
+* Computation
+A single sample of audio is computed with
+=sk_chaosnoise_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_chaosnoise_tick(sk_chaosnoise *cn);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_chaosnoise_tick(sk_chaosnoise *cn)
+{
+    SKFLT out;
+    out = 0;
+
+    <<update_phasor>>
+    <<compute_noise>>
+    <<copy_to_out>>
+
+    return out;
+}
+#+END_SRC
+
+First, the phasor value is updated by an increment value,
+computed with =rate*maxlens=.
+
+#+NAME: update_phasor
+#+BEGIN_SRC c
+cn->phs += floor(cn->rate * cn->maxlens);
+#+END_SRC
+
+If the phasor reaches (or goes above) the end, a new
+sample gets computed.
+
+This uses the following difference equation:
+
+@!
+(fig "chaosnoise_eqn"
+``y(n) = | c y(n - 1) - y(n - 2) - \gamma |``)
+!@
+
+Where @!(smallfig "chaosnoise_c" "c")!@ is the chaos value,
+and @!(smallfig "chaosnoise_gamma" "\\gamma")!@ is a
+nonlinearity set to be =0.05=.
+
+After the output value is computed, the coefficients are
+updated.
+
+#+NAME: compute_noise
+#+BEGIN_SRC c
+if (cn->phs >= SK_CHAOSNOISE_PHSMAX) {
+    SKFLT y;
+
+    cn->phs &= SK_CHAOSNOISE_PHSMSK;
+    y = fabs(cn->chaos * cn->y[0] - cn->y[1] - 0.05);
+    cn->y[1] = cn->y[0];
+    cn->y[0] = y;
+}
+#+END_SRC
+
+The output is always set to be the filter memory variable
+=y[0]=.
+
+#+NAME: copy_to_out
+#+BEGIN_SRC c
+out = cn->y[0];
+#+END_SRC

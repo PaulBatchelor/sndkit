@@ -1,0 +1,875 @@
+#+TITLE: Vowel
+* Overview
+Vowel is a vowel filter. It is implented as a parallel bank
+of up to five formant filters, which can be tuned to
+produce specific vowel sounds in the output. When the filter
+is applied to something that approximates the signal the human
+glottis makes such as a narrow pulse wave, impulse train, or
+@!(ref "glottis" "mathematical model")!@, something very
+resembling human speech can come out the other end!
+
+In addition to the filter, some helper functions have been
+created to assist in morphing between vowel shapes.
+* What is Formant Synthesis?
+Before diving into the implementation, a few words on
+formant synthesis.
+
+Vowel implements a common approach to synthesize the human
+voice known as =formant synthesis=.
+
+In case you didn't know,
+the things that differentiate an "oo" sound from an "ah"
+sound are fixed resonances in the spectrum known as
+formants. These get naturually produced as the result of
+the acoustics of our vocal tract. However, it is possible
+to measure these formants ahead of time and place them
+inside of a signal by boosting those particular frequency
+regions. The thing that can do this is known as a formant
+filter. Layering a bunch of them together and tuning them
+in just the right way will produce something that sounds
+like a vowel.
+
+A formant filter can be any resonant filter than is able to
+narrowly boost a specific region in a spectrum. Typically
+they are implemented using a bandpass filter, though it is
+doable with resonators and modal filters.
+* Tangled Files
+As per usual, =vowel= tangles to two files =vowel.c=
+and =vowel.h=. Define =SK_VOWEL_PRIV= exposes the struct.
+
+#+NAME: vowel.c
+#+BEGIN_SRC c :tangle vowel.c
+#include <math.h>
+#define SK_VOWEL_PRIV
+#include "vowel.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<vowel_params>>
+<<vowel_parts_table>>
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: vowel.h
+#+BEGIN_SRC c :tangle vowel.h
+#ifndef SK_VOWEL_H
+#define SK_VOWEL_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<vowel_externs>>
+#ifdef SK_VOWEL_PRIV
+<<structs>>
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+* A Single Formant Filter
+This particular implementation uses a resonant bandpass
+filter design, which has been adapted from the FAUST
+standard library. Five instances of this filter makes up a
+filter bank, which is most of what Vowel is.
+
+#+NAME: formant_filter_struct
+#+BEGIN_SRC c
+struct formant_filter {
+    <<formant_filter>>
+};
+#+END_SRC
+
+The basic bandpass formant filter is contained in a
+struct called =formant_filter=. And is initialized
+with =formant_filter_init=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void formant_filter_init(struct formant_filter *ff);
+#+END_SRC
+
+Filters usually need to
+be initialized with a sampling rate, but this one omits
+it because it will be part of a filter bank.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void formant_filter_init(struct formant_filter *ff)
+{
+    <<formant_filter_init>>
+}
+#+END_SRC
+
+Computing a sample of input with the bandpass filter is done
+with =formant_filter_tick=. The sampling rate must be
+supplied upfront.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT formant_filter_tick(struct formant_filter *ff,
+                                 int sr, SKFLT in);
+#+END_SRC
+
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT formant_filter_tick(struct formant_filter *ff,
+                                 int sr, SKFLT in)
+{
+    SKFLT out;
+    SKFLT *x, *y, *a, *b;
+    int update;
+
+    out = 0;
+
+    <<update_coefficients>>
+    <<compute_difference_equation>>
+    <<update_filter_memory>>
+
+    return out;
+}
+#+END_SRC
+
+
+The resonant bandpass filter is a second order IIR filter.
+The filter design is derived in the "analog" domain
+(s-plane), and then discretized into the
+"digital domain" (z-plane), using the bilinear transform.
+
+The Bilinear Transform in this document will remain an
+opaque process. Rigorously (or even gently) defining
+the bilinear transform in mathematical notation and deriving
+it in C code below is a bit beyond the scope of this
+document.
+
+Being a second order filter requires memory and
+coefficients for the corresponding difference equation used
+to compute the filter: 3 B coefficients and memory for the
+last 3 samples of input (including memory), and 2 A
+coefficients and memory for the last 2 samples of output.
+
+#+NAME: formant_filter
+#+BEGIN_SRC c
+SKFLT b[3], x[3];
+SKFLT a[2], y[2];
+#+END_SRC
+
+#+NAME: formant_filter_init
+#+BEGIN_SRC c
+{
+    int i;
+
+    for (i = 0; i < 3; i++) {
+        ff->b[i] = 0;
+        ff->x[i] = 0;
+    }
+
+    for (i = 0; i < 2; i++) {
+        ff->a[i] = 0;
+        ff->y[i] = 0;
+    }
+}
+#+END_SRC
+
+The bandpass filter takes in 3 parameters: the center
+frequency, the gain, and the quality factor (Q).
+
+#+NAME: formant_filter
+#+BEGIN_SRC c
+SKFLT freq, pfreq;
+SKFLT gain, pgain;
+SKFLT Q, pQ;
+#+END_SRC
+
+#+NAME: formant_filter_init
+#+BEGIN_SRC c
+ff->freq = 0;
+ff->pfreq = -1;
+ff->gain = 0;
+ff->pgain = -1;
+ff->Q = 0;
+ff->pQ = -1;
+#+END_SRC
+
+Any time any of these are updated, the coefficients must be
+updated. First the coefficients are computed for a filter in
+the S-plane, the converted to Z-plane coefficients using the
+bilinear transform.
+
+#+NAME: update_coefficients
+#+BEGIN_SRC c
+update =
+    ff->gain != ff->pgain ||
+    ff->Q != ff->pQ ||
+    ff->freq != ff->pfreq;
+
+if (update) {
+    SKFLT b2, b1, b0;
+    SKFLT a1, a0;
+    SKFLT wc;
+    SKFLT c, csq, d;
+
+    ff->pgain = ff->gain;
+    ff->pQ = ff->Q;
+    ff->pfreq = ff->freq;
+
+    wc = ff->freq * 2 * M_PI;
+
+    if (ff->Q == 0) ff->Q = 0.0000001;
+
+    a1 = 1.0 / ff->Q;
+    a0 = 1.0;
+    b2 = 0.0;
+    b1 = ff->gain;
+    b0 = 0.0;
+
+    c = 1.0 / tan(wc*0.5/(SKFLT)sr);
+    csq = c*c;
+    d = a0 + a1 * c + csq;
+
+    ff->b[0] = (b0 + b1 * c + b2 * csq) / d;
+    ff->b[1] = 2.0 * (b0 - b2 * csq) / d;
+    ff->b[2] = (b0 - b1*c + b2*csq) / d;
+
+    ff->a[0] = 2 * (a0 - csq) / d;
+    ff->a[1] = (a0 - a1*c + csq) / d;
+}
+#+END_SRC
+
+The function =formant_filter_tick= computes a single sample
+of audio for the bandpass filter. In addition to an input
+signal, sampling rate must be provided.
+
+Computing a bandpass filter is done using its difference
+equation. You plug that in correctly, and the result will
+be the filtered signal. Magic!
+
+*Note:* To make the the C code more closely resemble the
+textbook definition of the difference equation, =x[0]= is
+used to store the current input signal, rather than use the
+input variable directly. This is a purely cosmetic choice.
+A more memory-stingy choice would be to only have filter
+memory for 2 =x= samples rather than 3.
+
+#+NAME: compute_difference_equation
+#+BEGIN_SRC c
+x = ff->x;
+y = ff->y;
+a = ff->a;
+b = ff->b;
+
+x[0] = in;
+
+out =
+    b[0]*x[0] + b[1]*x[1] + b[2]*x[2]
+    -a[0]*y[0] - a[1]*y[1];
+#+END_SRC
+
+After the difference equation is computed, the filter memory
+needs to be updated. What was once the previous sample is
+now the previous previous sample, etc.
+
+#+NAME: update_filter_memory
+#+BEGIN_SRC c
+y[1] = y[0];
+y[0] = out;
+
+x[2] = x[1];
+x[1] = x[0];
+#+END_SRC
+* The Main Struct
+The Vowel Filter is a filter bank with
+5 instances of the resonant bandpass filter described
+previously. These will process the input signal in parallel.
+(A series configuration is also valid too, but parallel has
+been chosen for a stronger output signal).
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_vowel sk_vowel;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+<<formant_filter_struct>>
+struct sk_vowel {
+    int sr;
+    struct formant_filter filt[5];
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vowel_init(sk_vowel *vow, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_vowel_init(sk_vowel *vow, int sr)
+{
+    int i;
+    vow->sr = sr;
+
+    for (i = 0; i < 5; i++) {
+        formant_filter_init(&vow->filt[i]);
+    }
+}
+#+END_SRC
+* Computation
+When Vowel computes a sample of audio, all it needs to do
+is compute the each filter on the bank, sum them together,
+and scale it.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_vowel_tick(sk_vowel *vow, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_vowel_tick(sk_vowel *vow, SKFLT in)
+{
+    SKFLT out;
+    int i;
+
+    out = 0;
+    for (i = 0; i < 5; i++) {
+        out += formant_filter_tick(&vow->filt[i], vow->sr, in);
+    }
+
+    out *= 0.2;
+
+    return out;
+}
+#+END_SRC
+* Vowel Formant Frequencies
+DSP-wise, this algorithm would be completely dull and
+boring, if it weren't for the magic numbers that dictate
+vowel sounds. Fortunately, these measurements are easy to
+find online. In particular, my favorite measurements come
+from the appendix of the Csound Book. It is one of the few
+places that has formant measurements for up to 5 formant
+frequencies (3 is the bare minimum). The tables have
+measurements for 5 vowel sounds (A, E, I, O, U) and 5
+different voice parts (Soprano, Alto, Counter-Tenor, Tenor,
+and Bass).
+
+Formant values have been coded into C struct known as
+=sk_vowel_formant=. An array of =sk_vowel_formants= builds
+up a particular vowel sound, which in the speech and
+language world is regarded as a kind of =phoneme=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct {
+    SKFLT freq, amp, bw;
+} sk_vowel_formant;
+#+END_SRC
+** Bass
+#+NAME: vowel_externs
+#+BEGIN_SRC c
+extern const sk_vowel_formant sk_vowel_bass_a[];
+extern const sk_vowel_formant sk_vowel_bass_o[];
+extern const sk_vowel_formant sk_vowel_bass_i[];
+extern const sk_vowel_formant sk_vowel_bass_e[];
+extern const sk_vowel_formant sk_vowel_bass_u[];
+#+END_SRC
+
+#+NAME: vowel_params
+#+BEGIN_SRC c
+const sk_vowel_formant sk_vowel_bass_a[] = {
+    {600, 0, 60},
+    {1040, -7, 70},
+    {2250, -9, 110},
+    {2450, -9, 120},
+    {2750, -20, 130},
+};
+
+const sk_vowel_formant sk_vowel_bass_e[] = {
+    {400, 0, 40},
+    {1620, -12, 80},
+    {2400, -9, 100},
+    {2800, -12, 120},
+    {3100, -18, 120},
+};
+
+const sk_vowel_formant sk_vowel_bass_i[] = {
+    {250, 0, 60},
+    {1750, -30, 90},
+    {2600, -16, 100},
+    {3050, -22, 120},
+    {3340, -28, 120},
+};
+
+const sk_vowel_formant sk_vowel_bass_o[] = {
+    {400, 0, 40},
+    {750, -11, 80},
+    {2400, -21, 100},
+    {2600, -20, 120},
+    {2900, -40, 120},
+};
+
+const sk_vowel_formant sk_vowel_bass_u[] = {
+    {350, 0, 40},
+    {600, -20, 80},
+    {2400, -32, 100},
+    {2675, -28, 120},
+    {2950, -36, 120},
+};
+
+static const sk_vowel_formant *vowel_bass[] = {
+    sk_vowel_bass_a,
+    sk_vowel_bass_e,
+    sk_vowel_bass_i,
+    sk_vowel_bass_o,
+    sk_vowel_bass_u
+};
+#+END_SRC
+** Tenor
+#+NAME: vowel_externs
+#+BEGIN_SRC c
+extern const sk_vowel_formant sk_vowel_alto_a[];
+extern const sk_vowel_formant sk_vowel_alto_o[];
+extern const sk_vowel_formant sk_vowel_alto_i[];
+extern const sk_vowel_formant sk_vowel_alto_e[];
+extern const sk_vowel_formant sk_vowel_alto_u[];
+#+END_SRC
+
+#+NAME: vowel_params
+#+BEGIN_SRC c
+const sk_vowel_formant sk_vowel_tenor_a[] = {
+    {650, 0, 80},
+    {1080, -6, 90},
+    {2650, -7, 120},
+    {2900, -8, 130},
+    {3250, -22, 140},
+};
+
+const sk_vowel_formant sk_vowel_tenor_e[] = {
+    {440, 0, 70},
+    {1700, -14, 80},
+    {2600, -12, 100},
+    {3200, -14, 120},
+    {3580, -20, 120},
+};
+
+const sk_vowel_formant sk_vowel_tenor_i[] = {
+    {290, 0, 40},
+    {1870, -15, 90},
+    {2800, -18, 100},
+    {3250, -20, 120},
+    {3540, -30, 120},
+};
+
+const sk_vowel_formant sk_vowel_tenor_o[] = {
+    {400, 0, 70},
+    {800, -10, 80},
+    {2600, -12, 100},
+    {2800, -12, 130},
+    {3000, -26, 135},
+};
+
+const sk_vowel_formant sk_vowel_tenor_u[] = {
+    {350, 0, 40},
+    {600, -20, 60},
+    {2700, -17, 100},
+    {2900, -14, 120},
+    {3300, -26, 120},
+};
+
+static const sk_vowel_formant *vowel_tenor[] = {
+    sk_vowel_tenor_a,
+    sk_vowel_tenor_e,
+    sk_vowel_tenor_i,
+    sk_vowel_tenor_o,
+    sk_vowel_tenor_u
+};
+#+END_SRC
+** Countertenor
+#+NAME: vowel_externs
+#+BEGIN_SRC c
+extern const sk_vowel_formant sk_vowel_countertenor_a[];
+extern const sk_vowel_formant sk_vowel_countertenor_o[];
+extern const sk_vowel_formant sk_vowel_countertenor_i[];
+extern const sk_vowel_formant sk_vowel_countertenor_e[];
+extern const sk_vowel_formant sk_vowel_countertenor_u[];
+#+END_SRC
+
+#+NAME: vowel_params
+#+BEGIN_SRC c
+const sk_vowel_formant sk_vowel_countertenor_a[] = {
+    {660, 0, 80},
+    {1120, -6, 90},
+    {2750, -23, 120},
+    {3000, -24, 130},
+    {3350, -38, 140},
+};
+
+const sk_vowel_formant sk_vowel_countertenor_e[] = {
+    {440, 0, 70},
+    {1800, -14, 80},
+    {2700, -18, 100},
+    {3000, -20, 120},
+    {3300, -20, 120},
+};
+
+const sk_vowel_formant sk_vowel_countertenor_i[] = {
+    {270, 0, 40},
+    {1850, -24, 90},
+    {2900, -24, 100},
+    {3350, -36, 120},
+    {3590, -36, 120},
+};
+
+const sk_vowel_formant sk_vowel_countertenor_o[] = {
+    {430, 0, 40},
+    {820, -10, 80},
+    {2700, -26, 100},
+    {3000, -22, 120},
+    {3300, -34, 120},
+};
+
+const sk_vowel_formant sk_vowel_countertenor_u[] = {
+    {370, 0, 40},
+    {630, -20, 60},
+    {2750, -23, 100},
+    {3000, -30, 120},
+    {3400, -34, 120},
+};
+
+const static sk_vowel_formant *vowel_countertenor[] = {
+    sk_vowel_countertenor_a,
+    sk_vowel_countertenor_e,
+    sk_vowel_countertenor_i,
+    sk_vowel_countertenor_o,
+    sk_vowel_countertenor_u
+};
+#+END_SRC
+** Alto
+#+NAME: vowel_externs
+#+BEGIN_SRC c
+extern const sk_vowel_formant sk_vowel_alto_a[];
+extern const sk_vowel_formant sk_vowel_alto_o[];
+extern const sk_vowel_formant sk_vowel_alto_i[];
+extern const sk_vowel_formant sk_vowel_alto_e[];
+extern const sk_vowel_formant sk_vowel_alto_u[];
+#+END_SRC
+
+#+NAME: vowel_params
+#+BEGIN_SRC c
+const sk_vowel_formant sk_vowel_alto_a[] = {
+    {800, 0, 80},
+    {1150, -4, 90},
+    {2800, -20, 120},
+    {3500, -36, 130},
+    {4950, -60, 140},
+};
+
+const sk_vowel_formant sk_vowel_alto_e[] = {
+    {400, 0, 60},
+    {1600, -24, 80},
+    {2700, -30, 120},
+    {3300, -35, 150},
+    {4950, -60, 200},
+};
+
+const sk_vowel_formant sk_vowel_alto_i[] = {
+    {350, 0, 50},
+    {1700, -20, 100},
+    {2700, -30, 120},
+    {3700, -36, 150},
+    {4950, -60, 200},
+};
+
+const sk_vowel_formant sk_vowel_alto_o[] = {
+    {450, 0, 70},
+    {800, -9, 80},
+    {2830, -16, 100},
+    {3500, -28, 130},
+    {4950, -55, 135},
+};
+
+const sk_vowel_formant sk_vowel_alto_u[] = {
+    {325, 0, 50},
+    {700, -12, 60},
+    {2530, -30, 170},
+    {3500, -40, 180},
+    {4950, -64, 200},
+};
+
+static const sk_vowel_formant *vowel_alto[] = {
+    sk_vowel_alto_a,
+    sk_vowel_alto_e,
+    sk_vowel_alto_i,
+    sk_vowel_alto_o,
+    sk_vowel_alto_u
+};
+#+END_SRC
+** Soprano
+#+NAME: vowel_externs
+#+BEGIN_SRC c
+extern const sk_vowel_formant sk_vowel_soprano_a[];
+extern const sk_vowel_formant sk_vowel_soprano_o[];
+extern const sk_vowel_formant sk_vowel_soprano_i[];
+extern const sk_vowel_formant sk_vowel_soprano_e[];
+extern const sk_vowel_formant sk_vowel_soprano_u[];
+#+END_SRC
+
+#+NAME: vowel_params
+#+BEGIN_SRC c
+const sk_vowel_formant sk_vowel_soprano_a[] = {
+    {800, 0, 80},
+    {1150, -6, 90},
+    {2900, -32, 120},
+    {3900, -20, 130},
+    {4950, -50, 140},
+};
+
+const sk_vowel_formant sk_vowel_soprano_e[] = {
+    {350, 0, 60},
+    {2000, -20, 100},
+    {2800, -15, 120},
+    {3600, -40, 150},
+    {4950, -56, 200},
+};
+
+const sk_vowel_formant sk_vowel_soprano_i[] = {
+    {270, 0, 60},
+    {2140, -12, 90},
+    {2950, -26, 100},
+    {3900, -26, 120},
+    {4950, -44, 120},
+};
+
+const sk_vowel_formant sk_vowel_soprano_o[] = {
+    {450, 0, 40},
+    {800, -11, 80},
+    {2830, -22, 100},
+    {3800, -22, 120},
+    {4950, -50, 120},
+};
+
+const sk_vowel_formant sk_vowel_soprano_u[] = {
+    {325, 0, 50},
+    {700, -16, 60},
+    {2700, -35, 170},
+    {3800, -40, 180},
+    {4950, -60, 200},
+};
+
+static const sk_vowel_formant *vowel_soprano[] = {
+    sk_vowel_soprano_a,
+    sk_vowel_soprano_e,
+    sk_vowel_soprano_i,
+    sk_vowel_soprano_o,
+    sk_vowel_soprano_u
+};
+#+END_SRC
+** All The Vowels
+Used for interpolation
+
+#+NAME: vowel_externs
+#+BEGIN_SRC c
+extern const sk_vowel_formant **sk_vowel_parts[];
+#+END_SRC
+
+#+NAME: vowel_parts_table
+#+BEGIN_SRC c
+const sk_vowel_formant **sk_vowel_parts[] = {
+    vowel_bass,
+    vowel_tenor,
+    vowel_countertenor,
+    vowel_alto,
+    vowel_soprano,
+};
+#+END_SRC
+* Phoneme Interpolation
+Interpolating between phonemes is an important part of
+making this filter interesting. Mixing takes in two phoneme
+states, then crossfades between them by some amount.
+This interpolation is done with a function called
+=sk_vowel_mix=. This takes in two predefined target phonemes
+=ph1= and =ph2=, each with =size= formants, linearly
+interpolates based on =pos=, and writes the result to =out=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vowel_mix(const sk_vowel_formant *ph1,
+                  const sk_vowel_formant *ph2,
+                  sk_vowel_formant *out,
+                  int size,
+                  SKFLT pos);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void formant_lerp(const sk_vowel_formant *ph1,
+                         const sk_vowel_formant *ph2,
+                         sk_vowel_formant *out,
+                         SKFLT pos)
+{
+    out->freq =
+        (1 - pos)*ph1->freq + pos*ph2->freq;
+    out->amp =
+        (1 - pos)*ph1->amp + pos*ph2->amp;
+    out->bw =
+        (1 - pos)*ph1->bw + pos*ph2->bw;
+}
+
+void sk_vowel_mix(const sk_vowel_formant *ph1,
+                  const sk_vowel_formant *ph2,
+                  sk_vowel_formant *out,
+                  int size,
+                  SKFLT pos)
+{
+    int i;
+
+    for (i = 0; i < size; i++) {
+        formant_lerp(&ph1[i], &ph2[i], &out[i], pos);
+    }
+}
+#+END_SRC
+
+The function =sk_vowel_morph= provides more "fun" high level
+control over vowel states. The morph function creates a
+phoneme based on two normalized input values: vowel
+position =pos=, and voice
+part =part=. The position will smoothly interpolate between
+A E I O and U vowels (in that order). The part variable
+will smoothly interpolate between voice parts bass, tenor,
+coutner-tenor, alto, and soprano.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vowel_morph(sk_vowel_formant *out,
+                    sk_vowel_formant *tmp,
+                    int size,
+                    SKFLT pos, SKFLT part);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_vowel_morph(sk_vowel_formant *out,
+                    sk_vowel_formant *tmp,
+                    int size,
+                    SKFLT pos, SKFLT part)
+{
+    const sk_vowel_formant *ph[2];
+    const sk_vowel_formant **voice[2];
+    int ipos;
+    int ipart;
+
+    pos *= (size - 2);
+    part *= 4;
+
+    ipos = floor(pos);
+    ipart = floor(part);
+
+    if (ipart >= 4) {
+        voice[0] = sk_vowel_parts[4];
+        voice[1] = voice[0];
+    } else {
+        voice[0] = sk_vowel_parts[ipart];
+        voice[1] = sk_vowel_parts[ipart + 1];
+    }
+
+    if (ipos >= 4) {
+        ph[0] = voice[0][4];
+        ph[1] = ph[0];
+    } else {
+        ph[0] = voice[0][ipos];
+        ph[1] = voice[0][ipos + 1];
+    }
+
+    pos = pos - ipos;
+
+    sk_vowel_mix(ph[0], ph[1], tmp, size, pos);
+
+    if (ipos >= 4) {
+        ph[0] = voice[1][4];
+        ph[1] = ph[0];
+    } else {
+        ph[0] = voice[1][ipos];
+        ph[1] = voice[1][ipos + 1];
+    }
+
+    sk_vowel_mix(ph[0], ph[1], out, size, pos);
+
+    pos = part - ipart;
+
+    sk_vowel_mix(tmp, out, out, size, pos);
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_vowel_set_filter(sk_vowel *v, int pos,
+                         SKFLT freq, SKFLT gain, SKFLT Q);
+void sk_vowel_set_phoneme(sk_vowel *v,
+                          sk_vowel_formant *ph,
+                          int nformants);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+#define DB2LIN(db) (pow(10.0, 0.05 * (db)));
+
+void sk_vowel_set_filter(sk_vowel *v, int pos,
+                         SKFLT freq, SKFLT gain, SKFLT Q)
+{
+    if (pos < 0 || pos >= 5) return;
+
+    v->filt[pos].freq = freq;
+    v->filt[pos].gain = DB2LIN(gain);
+    v->filt[pos].Q = Q;
+}
+
+void sk_vowel_set_phoneme(sk_vowel *v,
+                          sk_vowel_formant *ph,
+                          int nformants)
+{
+    int n;
+
+    for (n = 0; n < nformants; n++) {
+        sk_vowel_set_filter(v, n,
+                            ph[n].freq,
+                            ph[n].amp, ph[n].freq/ph[n].bw);
+    }
+}
+#+END_SRC
+* Gest Struct with Phoneme Output
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_vowel_withphoneme sk_vowel_withphoneme;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_vowel_withphoneme {
+    sk_vowel vowel;
+    sk_vowel_formant phoneme[5];
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_vowel * sk_vowel_vowel(sk_vowel_withphoneme * vowph);
+sk_vowel_formant * sk_vowel_phoneme(sk_vowel_withphoneme *vowph);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_vowel * sk_vowel_vowel(sk_vowel_withphoneme *vowph)
+{
+    return &vowph->vowel;
+}
+
+sk_vowel_formant * sk_vowel_phoneme(sk_vowel_withphoneme *vowph)
+{
+    return vowph->phoneme;
+}
+#+END_SRC

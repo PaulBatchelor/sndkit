@@ -1,0 +1,174 @@
+#+TITLE: Bezier
+* Overview
+=bezier= implements a quadratic
+[[https://en.wikipedia.org/wiki/B%C3%A9zier_curve][bezier curve]] mapper.
+An input value between 0 and 1 goes in,
+and a bezier curve output comes out. The control
+point is controlled via X and Y parameters, presumably in
+the normalized range 0-1.
+* Tangled Files
+#+NAME: bezier.c
+#+BEGIN_SRC c :tangle bezier.c
+#include <math.h>
+#include "bezier.h"
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: bezier.h
+#+BEGIN_SRC c :tangle bezier.h
+#ifndef SK_BEZIER_H
+#define SK_BEZIER_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+<<funcdefs>>
+#endif
+#+END_SRC
+* A bit of math
+The equation for a quadratic Bezier curve is the following:
+
+@!(fig "bezier_eqn"
+"
+B(t) = (1 - t)^2 P_0 + 2(1 - t)tP_1 + t^2 P_2
+"
+)!@
+
+Where @!(smallfig "bezier_t")!@ is a normalized time
+value between 0 and 1,
+and @!(smallfig "bezier_pn" "P_n")!@ refers to a
+2-dimensional point with a (x,y) coordinate.
+
+The issue with the classic equation above is that the value
+is derived from @!(smallfig "bezier_t")!@, allowing
+@!(smallfig "bezier_x" "x")!@ to be fractional. This is
+problematic because the system implemented here is
+discrete, restricted to whole-integer values of @!(smallfig
+"bezier_x")!@.
+
+The solution to this problem is to rework the equation
+above to solve for $t$ in terms of the current sample
+position @!(smallfig "bezier_xn")!@. Once $t$ is found, it can be used to
+compute the result, which is the y component of the bezier
+curve in terms of t.
+
+The Bezier x component @!(smallfig "bezier_bx" "B_x")!@ can
+be rearranged to be a quadratic equation for @!(smallfig
+"bezier_t" "t")!@, given the x bezier control points
+@!(smallfig "bezier_x0" "x_0")!@,
+@!(smallfig "bezier_x1" "x_1")!@, and
+@!(smallfig "bezier_x2" "x_2")!@, as well as the current
+sample position @!(smallfig "bezier_xn" "x_n")!@.
+
+@!(fig "bezier_derive"
+"\\eqalign{
+    x_n &= (1 - t)^2 x_0 + 2(1 - t)tx_1 + t^2 x_2 \\cr
+        &= (1 - 2t + t^2)x_0 + (2t - 2t^2)x_1 + t^2x_2 \\cr
+        &= x_0 - 2tx_0 + t^2x_0 + 2tx_1 - 2t^2x_1 + t^2x_2 \\cr
+        &= (x_0 - 2x_1 + x_2)t^2 + 2(-x_0 + x_1)t + x_0 \\cr
+      0 &= (x_0 - 2x_1 + x_2)t^2 + 2(-x_0 + x_1)t + x_0 - x_n\\cr
+}")!@
+
+This yields the following
+
+@!(smallfig "bezier_a" "a")!@,
+@!(smallfig "bezier_b" "b")!@, and
+@!(smallfig "bezier_c" "c")!@ quadratic equation
+coefficients:
+
+@!(fig "bezier_coefs"
+"\\eqalign{
+    a &= x_0 - 2x_1 + x2 \\cr
+    b &= 2(-x_0 + x_1), \\cr
+    c &= x_0 - x_n \\cr
+}")!@
+
+Using those variables and the quadratic equation, the value
+of @!(smallfig "bezier_t")!@ can be found if it is a real
+value.
+
+This value is implemented in a C function called =find_t=,
+along with a quadratic equation =quadratic_equation=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT find_t(SKFLT x0, SKFLT x1, SKFLT x2, SKFLT x);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT find_t(SKFLT x0, SKFLT x1, SKFLT x2, SKFLT x)
+{
+    SKFLT a, b, c;
+
+    a = (x0 - 2.0 * x1 + x2);
+    b = 2.0 * (-x0 + x1);
+    c = x0 - x;
+
+    if (a) {
+        return quadratic_equation(a, b, c);
+    } else {
+        return (x - x0) / b;
+    }
+}
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT quadratic_equation(SKFLT a, SKFLT b, SKFLT c);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT quadratic_equation(SKFLT a, SKFLT b, SKFLT c)
+{
+    SKFLT det; /* determinant */
+
+    det = b*b - 4*a*c;
+
+    if (det >= 0) {
+        return ((-b + sqrt(det))/(2.0*a));
+    } else {
+        return 0;
+    }
+}
+#+END_SRC
+* Bezier Compute
+Now, with all the mathematical derivations out of the way,
+a bezier curve can be computed given an x position =xpos=,
+and a control point at =cx= and =cy=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_bezier_tick(SKFLT xpos, SKFLT cx, SKFLT cy);
+#+END_SRC
+
+In total the bezier takes in 3 points, with the
+middle point being the control point, and the end
+points being with the normalized ranges (0, 0) and
+(1, 1).
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_bezier_tick(SKFLT xpos, SKFLT cx, SKFLT cy)
+{
+    SKFLT x[3];
+    SKFLT y[3];
+    SKFLT t;
+    SKFLT val;
+
+    x[0] = 0;
+    x[1] = cx;
+    x[2] = 1;
+
+    y[0] = 0;
+    y[1] = cy;
+    y[2] = 1;
+
+    t = find_t(x[0], x[1], x[2], xpos);
+
+    val = (1.0-t)*(1.0-t)*y[0] + 2.0*(1 - t)*t*y[1] + t*t*y[2];
+    return val;
+}
+#+END_SRC

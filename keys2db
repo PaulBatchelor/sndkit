@@ -1,0 +1,15 @@
+#!/usr/bin/awk -f
+BEGIN {
+    FS="\t"
+    print("DROP TABLE IF EXISTS keywords;")
+    print("CREATE TABLE keywords(page TEXT, keyword TEXT, line INTEGER);")
+    print("BEGIN;");
+}
+
+{
+    print "INSERT INTO keywords(page, keyword, line) " \
+    "VALUES(\""$1"\",\""$2"\","$3");"
+}
+END {
+    print("COMMIT;");
+}

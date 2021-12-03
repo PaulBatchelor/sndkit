@@ -1,0 +1,411 @@
+#+TITLE: Glottis
+* Overview
+=glottis= implements an analytical model that approximates
+a signal that the human glottis makes. It is based on the
+works of Liljencrants and Fant. Unlike the corresponding
+vocal tract that usually accompanies this vocla tract, the
+glottis is an anlytical model rather than physically based.
+This undelrying waveform is generated via a mathematical
+equation derived emprically rather than from physical
+principles.
+
+The implementation used here is based off of the one found
+in Pink Trombone by Neil Thapen.
+* Tangled Files
+This tangles to two files: =glottis.c= and =glottis.h=.
+Defining =SK_GLOTTIS= will expose the contents in the
+struct.
+
+#+NAME: glottis.c
+#+BEGIN_SRC c :tangle glottis.c
+#include <math.h>
+#include <stdlib.h>
+#define SK_GLOTTIS_PRIV
+#include "glottis.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: glottis.h
+#+BEGIN_SRC c :tangle glottis.h
+#ifndef SK_GLOTTIS_H
+#define SK_GLOTTIS_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_GLOTTIS_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+* Struct and Initialization
+The glottis is initialized with =sk_glottis_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_glottis_init(sk_glottis *glot, SKFLT sr);
+#+END_SRC
+
+The struct is defined in a struct called =sk_glottis=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_glottis sk_glottis;
+#+END_SRC
+
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_glottis_init(sk_glottis *glot, SKFLT sr)
+{
+    glot->freq = 140; /* 140Hz frequency by default */
+    glot->tenseness = 0.6; /* value between 0 and 1 */
+    glot->T = 1.0/sr; /* big T */
+    glot->time_in_waveform = 0;
+    setup_waveform(glot);
+}
+#+END_SRC
+
+Contents of =sk_glottis= displayed below. This will
+eventually be elaborated more:
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_glottis {
+    SKFLT freq;
+    SKFLT tenseness;
+    SKFLT Rd;
+    SKFLT waveform_length;
+    SKFLT time_in_waveform;
+
+    SKFLT alpha;
+    SKFLT E0;
+    SKFLT epsilon;
+    SKFLT shift;
+    SKFLT delta;
+    SKFLT Te;
+    SKFLT omega;
+
+    SKFLT T;
+};
+#+END_SRC
+* Parameters
+** Frequency
+Set with =sk_glottis_freq=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_glottis_freq(sk_glottis *glot, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_glottis_freq(sk_glottis *glot, SKFLT freq)
+{
+    glot->freq = freq;
+}
+#+END_SRC
+** Tenseness
+Set with =sk_glottis_tenseness=
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_glottis_tenseness(sk_glottis *glot, SKFLT tenseness);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_glottis_tenseness(sk_glottis *glot, SKFLT tenseness)
+{
+    glot->tenseness = tenseness;
+}
+#+END_SRC
+* Calculating the waveform
+The glottis model works by mathematically generating a
+new waveform every time a new period begins. The period
+length is determined by the given frequency.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void setup_waveform(sk_glottis *glot);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void setup_waveform(sk_glottis *glot)
+{
+    SKFLT Rd;
+    SKFLT Ra;
+    SKFLT Rk;
+    SKFLT Rg;
+
+    SKFLT Ta;
+    SKFLT Tp;
+    SKFLT Te;
+
+    SKFLT epsilon;
+    SKFLT shift;
+    SKFLT delta;
+    SKFLT rhs_integral;
+
+    SKFLT lower_integral;
+    SKFLT upper_integral;
+
+    SKFLT omega;
+    SKFLT s;
+    SKFLT y;
+    SKFLT z;
+
+    SKFLT alpha;
+    SKFLT E0;
+
+    <<calculate_waveform_length>>
+    <<calculate_rd>>
+    <<calculate_ra_rk>>
+    <<calculate_rg>>
+    <<calculate_timing_parameters>>
+    <<calculate_epsilon_shift_delta>>
+    <<calculate_integrals>>
+
+    omega = M_PI / Tp;
+    s = sin(omega * Te);
+
+    y = -M_PI * s * upper_integral / (Tp*2);
+    z = log(y);
+    alpha = z / (Tp/2 - Te);
+    E0 = -1 / (s * exp(alpha*Te));
+
+    <<update_variables_in_struct>>
+}
+#+END_SRC
+
+To begin, both =waveform_length= and
+@!(smallfig "glottis_rd")!@ (=Rd=) are calcuated.
+
+The variable =waveform_length= is the period of the waveform
+based on the current frequency.
+
+#+NAME: calculate_waveform_length
+#+BEGIN_SRC c
+glot->waveform_length = 1.0 / glot->freq;
+#+END_SRC
+
+@!(smallfig "glottis_rd")!@ is part of a set of normalized
+timing parameters used
+to calculate the time coefficients described in the LF
+model, as described in a 1997 Fant paper.
+
+@!(smallfig "glottis_rd")!@ is derived from the
+=tenseness= parameter, and then clamped to be in between
+0.5 and 2.7, as these
+are good approximations (as observed in a paper titled
+"Glottal Source Modelling for Singing Voice Synthesis" by
+Hui-Ling Lu and Julius O Smith in 2000).
+
+#+NAME: calculate_rd
+#+BEGIN_SRC c
+glot->Rd = 3 * (1 - glot->tenseness);
+Rd = glot->Rd;
+if (Rd < 0.5) Rd = 0.5;
+if (Rd > 2.7) Rd = 2.7;
+#+END_SRC
+
+The other timing parameters
+@!(smallfig "glottis_ra" "R_{ap}")!@ (=Ra=),
+@!(smallfig "glottis_rg" "R_{gp}")!@ (=Rg=),
+and @!(smallfig "glottis_rg" "R_{kp}")!@ (=Rk=)
+can be computed in terms of @!(smallfig "glottis_rd" "R_d")!@
+(=Rd=), which is why this gets
+computed first. The equations described below have been
+derived using linear regression:
+
+@!(fig "glottis_ra_rk_eqn"
+``
+\eqalign{
+R_{ap} &= {(-1 + 4.8R_d) \over 100} \cr
+R_{kp} &= {(22.4 + 11.8R_d) \over 100} \cr
+}
+``)!@
+
+In code, these have been worked out to shave off a division
+operation.
+
+#+NAME: calculate_ra_rk
+#+BEGIN_SRC c
+Ra = -0.01 + 0.048*Rd;
+Rk = 0.224 + 0.118*Rd;
+#+END_SRC
+
+@!(smallfig "glottis_rg")!@ (=Rg=) is derived using the
+results from @!(smallfig "glottis_ra")!@ and
+@!(smallfig "glottis_rk")!@ in the following equation
+described in the Fant 1997 paper:
+
+@!(fig "glottis_rd_fant"
+`
+R_d = (1/0.11)(0.5 + 1.2R_{kp})(R_{kp} / 4R_{gp} + R_{ap})
+`)!@
+
+Which yields:
+
+@!(fig "glottis_rg_derivation"
+`
+R_{gp} = {(R_{kp}/4)(0.5 + 1.2R_{kp})\over
+(0.11R_d - R_{ap}*(0.5+1.2R_{kp}))}
+`)!@
+
+#+NAME: calculate_rg
+#+BEGIN_SRC c
+Rg = (Rk/4)*(0.5 + 1.2*Rk)/(0.11*Rd-Ra*(0.5+1.2*Rk));
+#+END_SRC
+
+The parameters approximating =R_a=, =R_g=, and =R_k=
+can be used to calculate the timing parameters
+=T_a=, =T_p=, and =T_e= in the LF model:
+
+@!(fig "glottis_timing_coefficients"
+``
+\eqalign {
+T_a &= R_{ap} \cr
+T_p &= 2R_{gp}^{-1} \cr
+T_e &= T_p + T_pR_{kp}
+}
+``)!@
+
+#+NAME: calculate_timing_parameters
+#+BEGIN_SRC c
+Ta = Ra;
+Tp = (SKFLT)1.0 / (2*Rg);
+Te = Tp + Tp*Rk;
+#+END_SRC
+
+At this point, the timing variables can be used
+to calculate three more variables needed: =epsilon=,
+=shift=, and =delta=.
+
+#+NAME: calculate_epsilon_shift_delta
+#+BEGIN_SRC c
+epsilon = (SKFLT)1.0 / Ta;
+shift = exp(-epsilon * (1 - Te));
+delta = 1 - shift;
+#+END_SRC
+
+These are then used to calculate the integrals (TODO:
+understand this a bit better).
+
+#+NAME: calculate_integrals
+#+BEGIN_SRC c
+rhs_integral = (SKFLT)(1.0/epsilon) * (shift-1) + (1-Te)*shift;
+rhs_integral = rhs_integral / delta;
+lower_integral = - (Te - Tp) / 2 + rhs_integral;
+upper_integral = -lower_integral;
+#+END_SRC
+
+More components here. The original Voc program didn't
+describe these in much detail, so...
+
+Finally, update the variables in the struct.
+
+#+NAME: update_variables_in_struct
+#+BEGIN_SRC c
+glot->alpha = alpha;
+glot->E0 = E0;
+glot->epsilon = epsilon;
+glot->shift = shift;
+glot->delta = delta;
+glot->Te = Te;
+glot->omega = omega;
+#+END_SRC
+* Computation
+A single sample of audio is computed with =sk_glottis_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_glottis_tick(sk_glottis *glot);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_glottis_tick(sk_glottis *glot)
+{
+    SKFLT out;
+    SKFLT aspiration;
+    SKFLT noise;
+    SKFLT t;
+
+    out = 0;
+
+    <<increment_waveform_timer>>
+    <<update_waveform_if_needed>>
+
+    <<compute_waveform>>
+    <<compute_aspiration_noise>>
+
+    return out;
+}
+#+END_SRC
+
+The waveform timer is incremented. This measures the
+duration in the period.
+
+#+NAME: increment_waveform_timer
+#+BEGIN_SRC c
+glot->time_in_waveform += glot->T;
+#+END_SRC
+
+If the waveform reaches the end of the period,
+update the parameters for the next period.
+
+#+NAME: update_waveform_if_needed
+#+BEGIN_SRC c
+if (glot->time_in_waveform > glot->waveform_length) {
+    glot->time_in_waveform -= glot->waveform_length;
+    setup_waveform(glot);
+
+}
+#+END_SRC
+
+Compute the glottal waveform component. This varies
+depending on where it is in the period. This presumably
+comes from the LF model, but I'll need to check the papers
+again because I forget.
+
+#+NAME: compute_waveform
+#+BEGIN_SRC c
+t = (glot->time_in_waveform / glot->waveform_length);
+
+if (t > glot->Te) {
+    out = (-exp(-glot->epsilon * (t-glot->Te)) + glot->shift) / glot->delta;
+} else {
+    out = glot->E0 * exp(glot->alpha * t) * sin(glot->omega * t);
+}
+#+END_SRC
+
+Aspiration noise is approximated using white noise, and
+mixed into the glottal signal. How much is mixed in is
+inversely proportionally to the tenseness amount.
+
+At the time of writing, the built-in =rand= function is used
+to produce the noise. It works well enough, but varies from
+platform to platform slightly. The hope is to later build an
+internal random number generator that is more consistent
+and portable.
+
+#+NAME: compute_aspiration_noise
+#+BEGIN_SRC c
+/* TODO: build more portable RNG */
+noise = 2.0 * ((SKFLT) rand() / RAND_MAX) - 1;
+aspiration = (1 - sqrt(glot->tenseness)) * 0.3 * noise;
+aspiration *= 0.2;
+out += aspiration;
+#+END_SRC

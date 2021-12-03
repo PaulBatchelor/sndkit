@@ -1,0 +1,363 @@
+#+TITLE: PeakEQ
+* Overview
+PeakEQ is an implementation of a single
+[[https://ccrma.stanford.edu/~jos//filters/Peaking_Equalizers.html][peaking equalizer filter]], with sweepable
+frequency, bandwidth, and gain.
+When used in series, the PeakEQ filter can be used
+to construct parametric and graphic equalizers commonly
+found in DAWs.
+* Algorithm Details
+The filter design based on the 2nd-order equalization filter
+design by Reglia and Mitra, from the paper
+"Tunable Digital Frequency Response Equalization Filters",
+IEEE Trans. on Ac., Sp. and Sig Proc., 35 (1), 1987
+
+This implementation takes the original filter design and
+converts it to a direct-form 2 filter configuration, which
+has better numerical stability.
+* Conversion to Direct Form 2
+We begin with the transfer function, described in the 1987
+paper:
+
+@!(fig "peakeq_tforiginal"
+``
+{
+\alpha + \beta(1 + \alpha)z^{-1} + z^{-2}
+\over
+1 + \beta(1 + \alpha)z^{-1} + \alpha z^{-2}
+}
+``)!@
+
+This has the following difference equation:
+
+@!
+(fig "peakeq_df1_difference"
+``
+\eqalign {
+y(n) = &\alpha x(n) + \beta(1 + \alpha)x(n - 1) + x(n - 2)
+\cr
+- &\beta(1 + \alpha)y(n - 1)  - \alpha y(n - 2)
+}
+``)
+!@
+
+The
+[[https://ccrma.stanford.edu/~jos/filters/Direct_Form_II.html][Direct Form II Structure]]. can be
+represented in this generalized difference equation:
+
+@!(fig "peakeq_df2_structure"
+``
+\eqalign{
+v(n) &= x(n) - a_1 v(n - 1) - a_2 v(n - 2) \cr
+y(n) &= b_0 v(n) + b_1 v(n - 1) + b_2 v(n - 2)
+}
+``)!@
+
+Converting to direct form II is a matter of putting
+coefficients in their correct places. Placing in the
+coefficients from the Reglia and Mitra design yields the
+following difference equation:
+
+@!(fig "peakeq_df2_difference"
+``
+\eqalign{
+v(n) &= x(n) - \beta(1 + \alpha)v(n - 1) - \alpha v(n - 2)
+\cr
+y(n) &= \alpha v(n) + \beta(1 + \alpha) v(n - 1) + v(n - 2)
+}
+``
+)!@
+
+Which can be translated to C code.
+* Tangled Files
+Tangles to files =peakeq.c= and =peakeq.h=.
+
+#+NAME: peakeq.c
+#+BEGIN_SRC c :tangle peakeq.c
+#include <math.h>
+#define SK_PEAKEQ_PRIV
+#include "peakeq.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<funcs>>
+#+END_SRC
+
+When =SK_PEAKEQ_PRIV= is defined, it exposes the main
+struct.
+
+#+NAME: peakeq.h
+#+BEGIN_SRC c :tangle peakeq.h
+#ifndef SK_PEAKEQ_H
+#define SK_PEAKEQ_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_PEAKEQ_PRIV
+<<structs>>
+#endif
+#endif
+#+END_SRC
+* Struct
+Everything is stored in a struct called =sk_peakeq=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_peakeq sk_peakeq;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_peakeq {
+    <<sk_peakeq>>
+};
+#+END_SRC
+* Init
+PeakEQ is initialized with =sk_peakeq_init=. The sampling
+rate is required here.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_peakeq_init(sk_peakeq *eq, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_peakeq_init(sk_peakeq *eq, int sr)
+{
+    <<init>>
+}
+#+END_SRC
+* Filter State Memory and Constants
+The direct-form 2 form can be thought of as a 2-pole filter,
+followed by a 2-zero filter.
+
+The memory for the 2-pole filter is stored in a variable
+called =v=.
+
+#+NAME: sk_peakeq
+#+BEGIN_SRC c
+SKFLT v[2];
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+eq->v[0] = 0;
+eq->v[1] = 0;
+#+END_SRC
+
+The alpha and beta coefficients are stored as variables
+called =a= and =b=.
+
+#+NAME: sk_peakeq
+#+BEGIN_SRC c
+SKFLT a;
+SKFLT b;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+eq->a = 0;
+eq->b = 0;
+#+END_SRC
+
+The sampling rate is required to calculate new coefficients
+on-the-fly. A copy is stored in this struct.
+
+#+NAME: sk_peakeq
+#+BEGIN_SRC c
+int sr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+eq->sr = sr;
+#+END_SRC
+* Parameters
+** Frequency
+Set with =sk_peakeq_freq=. Used to set the center frequency
+of the filter, in units of Hz.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_peakeq_freq(sk_peakeq *eq, SKFLT freq);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_peakeq_freq(sk_peakeq *eq, SKFLT freq)
+{
+    eq->freq = freq;
+}
+#+END_SRC
+
+This parameter uses caching to detect if the parameter
+changes.
+
+#+NAME: sk_peakeq
+#+BEGIN_SRC c
+SKFLT freq;
+SKFLT pfreq;
+#+END_SRC
+
+=pfreq= is set to be a negative value to force initial
+coefficient calculation.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_peakeq_freq(eq, 1000);
+eq->pfreq = -1;
+#+END_SRC
+** Bandwidth
+Set with =sk_peakeq_bandwidth=. This parameter sets the
+bandwidth of the EQ filter, in units of Hz.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_peakeq_bandwidth(sk_peakeq *eq, SKFLT bw);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_peakeq_bandwidth(sk_peakeq *eq, SKFLT bw)
+{
+    eq->bw = bw;
+}
+#+END_SRC
+
+This parameter uses caching in order to detect if the
+parameter changes.
+
+#+NAME: sk_peakeq
+#+BEGIN_SRC c
+SKFLT bw;
+SKFLT pbw;
+#+END_SRC
+
+Like with freq, =pbw= is set to be a negative value to force
+coefficient calculation at the initial computation.
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_peakeq_bandwidth(eq, 1000);
+eq->pbw = -1;
+#+END_SRC
+** Gain
+This sets the gain of the filter. Positive values will cause
+a boost. Negative values will create a cut.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_peakeq_gain(sk_peakeq *eq, SKFLT gain);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_peakeq_gain(sk_peakeq *eq, SKFLT gain)
+{
+    eq->gain = gain;
+}
+#+END_SRC
+
+#+NAME: sk_peakeq
+#+BEGIN_SRC c
+SKFLT gain;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_peakeq_gain(eq, 1.0);
+#+END_SRC
+* Compute
+=sk_peakeq_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_peakeq_tick(sk_peakeq *eq, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_peakeq_tick(sk_peakeq *eq, SKFLT in)
+{
+    SKFLT out;
+    SKFLT v;
+    SKFLT y;
+    out = 0;
+
+    <<update_coefficients>>
+    <<compute_difference_equations>>
+    <<compute_gain>>
+    <<update_filter_state>>
+
+    return out;
+}
+#+END_SRC
+
+Update coefficients, if needed. This happens at init time
+or when any of the parameters change.
+
+The coefficents computed are alpha and beta. The beta
+coefficient is the negative cosine of the center frequency
+in units of radians. The alpha coefficient is the expression
+=(1 - c) / (1 + c)=, where =c= is the tangent of the
+bandwidth, times =PI=, divided by the sampling rate. More
+details on the both coefficient derivations can be found in
+the original Reglia and Mitra paper.
+
+#+NAME: update_coefficients
+#+BEGIN_SRC c
+if (eq->bw != eq->pbw || eq->freq != eq->pfreq) {
+    SKFLT c;
+    eq->b = -cos(2 * M_PI * eq->freq / eq->sr);
+    c = tan(M_PI * eq->bw / eq->sr);
+    eq->a = (1.0 - c) / (1.0 + c);
+
+    eq->pbw = eq->bw;
+    eq->pfreq = eq->freq;
+}
+#+END_SRC
+
+Compute difference equations. First the 2-pole filter,
+followed by the 2-zero filter. The output of the 2-pole
+filter goes into the 2-zero filter. See the previous section
+on conversion to direct-form 2 for more information.
+
+#+NAME: compute_difference_equations
+#+BEGIN_SRC c
+v = in - eq->b*(1.0 + eq->a)*eq->v[0] - eq->a*eq->v[1];
+y = eq->a*v + eq->b*(1.0 + eq->a)*eq->v[0] + eq->v[1];
+#+END_SRC
+
+Compute the gain. This is done with the following equation:
+
+@!(fig "peakeq_compute_gain"
+``
+y = {(x + f) + g (x - f) \over 2}
+``
+)!@
+
+#+NAME: compute_gain
+#+BEGIN_SRC c
+out = ((in + y) + eq->gain*(in - y)) * 0.5;
+#+END_SRC
+
+Where $y$ is the output, $x$ is the input signal, $g$ is
+the gain amount, and =f= is the filtered version of =x=.
+
+Update filter state. The output of the 2-pole filter becomes
+=v[0]=, or $v(n - 1)$, and the previous =v[0]= becomes
+=v[1]=, or $v(n - 2)$.
+
+#+NAME: update_filter_state
+#+BEGIN_SRC c
+eq->v[1] = eq->v[0];
+eq->v[0] = v;
+#+END_SRC

@@ -1,0 +1,4 @@
+glottis 120 0.8
+tractxy zz [rline 0 1 1] [rline 0 1 10]
+wavout zz "test.wav"
+computes 10

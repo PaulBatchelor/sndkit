@@ -1,0 +1,22 @@
+# a synth bass line instrument, using subtractive synthesis
+
+set key 36
+
+env [metro [expr (4 * 96) / 60]] 0.001 0.01 0.12
+blsaw [mtof $key]
+blsaw [mtof [expr $key - 11.8]]
+add zz zz
+blsaw [mtof [expr $key + 11.9]]
+add zz zz
+mul zz 0.2
+
+chorus zz 1.0 0.5 0.02 0.1
+dcblocker zz
+
+butlp zz 1000
+butlp zz 1000
+mul zz zz
+
+wavout zz "synthbass.wav"
+
+computes 10

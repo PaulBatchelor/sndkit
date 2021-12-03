@@ -1,0 +1,3 @@
+butlp [mul [noise] 0.3] 1000
+wavout zz "butlp.wav"
+computes 10

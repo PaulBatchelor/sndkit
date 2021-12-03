@@ -1,0 +1,280 @@
+#+TITLE: Unit Generator Reference for LIL
+Work in progress.
+* biscale
+See: @!(ref "scale" "biscale")!@.
+
+#+BEGIN_SRC lil
+biscale in min max
+#+END_SRC
+* scale
+See: @!(ref "scale" "scale")!@.
+
+#+BEGIN_SRC lil
+scale in min max
+#+END_SRC
+* wavout
+#+BEGIN_SRC lil
+wavout in filename
+#+END_SRC
+* wavouts
+#+BEGIN_SRC lil
+wavouts inL inR filename
+#+END_SRC
+* wavin
+#+BEGIN_SRC lil
+wavin filename
+#+END_SRC
+* sine
+Sine wave abstraction around @!(ref "osc" "osc")!@.
+
+#+BEGIN_SRC lil
+sine freq amp
+#+END_SRC
+* dcblocker
+See: @!(ref "dcblocker" "dcblocker")!@.
+
+#+BEGIN_SRC lil
+dcblocker in
+#+END_SRC
+* rephasor
+See: @!(ref "rephasor" "rephasor")!@.
+
+#+BEGIN_SRC lil
+rephasor in scale
+#+END_SRC
+* phsdiv
+See: @!(ref "rephasor")!@.
+
+#+BEGIN_SRC lil
+phsdiv in div
+#+END_SRC
+* phsmul
+See: @!(ref "rephasor")!@.
+
+#+BEGIN_SRC lil
+phsmul in mul
+#+END_SRC
+* fmpair
+See: @!(ref "fmpair" "fmpair")!@.
+
+#+BEGIN_SRC lil
+fmpair tbl freq amp car mod index
+#+END_SRC
+* osc
+See: @!(ref "osc" "osc")!@.
+
+#+BEGIN_SRC lil
+osc tbl freq amp
+#+END_SRC
+* phasor
+See: @!(ref "phasor" "phasor")!@.
+
+#+BEGIN_SRC lil
+phasor freq iphs
+#+END_SRC
+* add
+#+BEGIN_SRC lil
+add x0 x1
+#+END_SRC
+* mul
+#+BEGIN_SRC lil
+mul x0 x1
+#+END_SRC
+* sub
+#+BEGIN_SRC lil
+sub x0 x1
+#+END_SRC
+* div
+#+BEGIN_SRC lil
+div x0 x1
+#+END_SRC
+* bigverb
+See: @!(ref "bigverb")!@.
+
+#+BEGIN_SRC lil
+bigverb inL inR feedback cutoff
+#+END_SRC
+* gensine
+See: @!(ref "gen")!@.
+
+#+BEGIN_SRC lil
+gensine tbl
+#+END_SRC
+* smoother
+See: @!(ref "smoother")!@.
+
+#+BEGIN_SRC lil
+smoother in smoothtime
+#+END_SRC
+* tsmoother
+See: @!(ref "smoother")!@.
+
+#+BEGIN_SRC lil
+smoother in trig smoothtime
+#+END_SRC
+* metro
+See: @!(ref "metro")!@.
+
+#+BEGIN_SRC lil
+metro rate
+#+END_SRC
+* expon
+See: @!(ref "expon")!@.
+
+#+BEGIN_SRC lil
+expon trig A dur B
+#+END_SRC
+* rline
+See: @!(ref "rline")!@.
+
+#+BEGIN_SRC lil
+rline min max rate
+#+END_SRC
+* vardelay
+See: @!(ref "vardelay")!@.
+
+#+BEGIN_SRC lil
+vardelay in feedback delay maxdelay
+#+END_SRC
+* expmap
+See: @!(ref "expmap")!@.
+
+#+BEGIN_SRC lil
+expmap in slope
+#+END_SRC
+* biramp
+See: @!(ref "biramp")!@.
+
+#+BEGIN_SRC lil
+biramp in div
+#+END_SRC
+* flipper
+See: @!(ref "biramp")!@.
+
+#+BEGIN_SRC lil
+flipper in
+#+END_SRC
+* phasewarp
+See: @!(ref "phasewarp")!@.
+
+#+BEGIN_SRC lil
+phasewarp in pos
+#+END_SRC
+* oscf
+See: @!(ref "oscf")!@.
+
+#+BEGIN_SRC lil
+oscf tbl freq iphs
+#+END_SRC
+* modalres
+See: @!(ref "modalres")!@.
+
+#+BEGIN_SRC lil
+modalres in freq Q
+#+END_SRC
+* chorus
+See: @!(ref "chorus")!@.
+
+#+BEGIN_SRC lil
+chorus in rate depth mix
+#+END_SRC
+* bezier
+See: @!(ref "bezier")!@.
+
+#+BEGIN_SRC lil
+bezier in cx cy
+#+END_SRC
+* bitnoise
+See: @!(ref "bitnoise")!@.
+
+#+BEGIN_SRC lil
+bitnoise rate mode
+#+END_SRC
+* chaosnoise
+See: @!(ref "chaosnoise")!@.
+
+#+BEGIN_SRC lil
+chaosnoise chaos rate
+#+END_SRC
+* peakeq
+See: @!(ref "peakeq")!@.
+
+#+BEGIN_SRC lil
+peakeq in freq bandwidth gain
+#+END_SRC
+* valp1
+See: @!(ref "valp1")!@.
+
+#+BEGIN_SRC lil
+valp1 in freq
+#+END_SRC
+* bitosc
+See: @!(ref "bitosc")!@.
+
+#+BEGIN_SRC lil
+bitosc pos wave size
+#+END_SRC
+* env
+See: @!(ref "env")!@.
+
+#+BEGIN_SRC lil
+env trig attack hold release
+#+END_SRC
+* glottis
+See: @!(ref "glottis")!@.
+
+#+BEGIN_SRC lil
+glottis freq tenseness
+#+END_SRC
+* tractxy
+See: @!(ref "tract")!@.
+
+#+BEGIN_SRC lil
+tractxy in tx ty
+#+END_SRC
+* blsaw
+See: @!(ref "blep")!@.
+
+#+BEGIN_SRC lil
+blsaw freq
+#+END_SRC
+* blsquare
+See: @!(ref "blep")!@.
+
+#+BEGIN_SRC lil
+blsquare freq
+#+END_SRC
+* bltri
+See: @!(ref "blep")!@.
+
+#+BEGIN_SRC lil
+bltri freq
+#+END_SRC
+* mtof
+See: @!(ref "mtof")!@.
+
+#+BEGIN_SRC lil
+mtof note
+#+END_SRC
+* phsclk
+See: @!(ref "phsclk")!@.
+
+#+BEGIN_SRC lil
+phsclk in nticks
+#+END_SRC
+* clkphs
+See: @!(ref "clkphs")!@.
+
+#+BEGIN_SRC lil
+clkphs in
+#+END_SRC
+* noise
+#+BEGIN_SRC lil
+noise
+#+END_SRC
+* sparse
+See: @!(ref "sparse")!@.
+
+#+BEGIN_SRC lil
+sparse freq
+#+END_SRC

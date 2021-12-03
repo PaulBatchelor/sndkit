@@ -1,0 +1,3 @@
+chaosnoise 1.9 4000 0.141
+wavout zz "test.wav"
+computes 10
