@@ -85,8 +85,8 @@ SRC+=graforge/graforge.c graforge/graforge.h
 include nodes/config.mk
 include extra/config.mk
 
-OBJ+=lil/lil.c99
-OBJ+=lil/lil_main.c99
+OBJ+=lil/lil.o
+OBJ+=lil/lil_main.o
 OBJ+=nodes/loader.o
 OBJ+=nodes/sklil.o
 

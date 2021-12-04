@@ -781,11 +781,16 @@ static void skip_spaces(lil_t lil)
 
 static lil_value_t get_bracketpart(lil_t lil)
 {
-    size_t cnt = 1;
-    int save_eol = lil->ignoreeol;
+    size_t cnt;
+    int save_eol;
+    lil_value_t val, cmd;
+
+    cnt = 1;
+    save_eol = lil->ignoreeol;
     lil->ignoreeol = 0;
-    lil_value_t val, cmd = alloc_value(NULL);
+    cmd = alloc_value(NULL);
     lil->head++;
+
     while (lil->head < lil->clen) {
         if (lil->code[lil->head] == '[') {
             lil->head++;
