@@ -53,10 +53,9 @@ Registers are for more persitently used values.
 #+END_SRC
 * Engine Management
 All this behavior is defined in a struct called =sk_core=.
-
+** new/del
 Creating/freeing is done with =sk_core_new= and
 =sk_core_del=.
-
 #+NAME: funcdefs
 #+BEGIN_SRC c
 sk_core * sk_core_new(int sr);
@@ -95,12 +94,12 @@ void sk_core_del(sk_core *core)
     gf_patch_destroy(core->patch);
     gf_patch_free_nodes(core->patch);
     free(core->patch);
-
+    sk_dict_clean(&core->dict);
     free(core);
     core = NULL;
 }
 #+END_SRC
-
+** core struct
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct sk_core sk_core;
@@ -112,10 +111,11 @@ struct sk_core {
     gf_patch *patch;
     sk_stack stack;
     sk_regtbl regtbl;
+    sk_dict dict;
     unsigned long rng;
 };
 #+END_SRC
-
+** computing a block of audio
 A internal block of audio can be computed with
 =sk_core_compute=. Usually this size is 64 samples.
 
@@ -131,7 +131,7 @@ void sk_core_compute(sk_core *core)
     gf_patch_compute(core->patch);
 }
 #+END_SRC
-
+** computing seconds of audio
 =sk_core_computes= is like =sk_core_compute=, but computes
 an approximuate number of seconds of audio. This value
 gets rounded to the nearest block. The number of blocks
@@ -156,7 +156,7 @@ size_t sk_core_computes(sk_core *core, SKFLT secs)
     return nblocks;
 }
 #+END_SRC
-
+** patch getter
 Building up nodes involves interacting with the graforge
 API. To get the top level struct of that opaquely, use
 =sk_core_patch=.
@@ -173,7 +173,7 @@ gf_patch * sk_core_patch(sk_core *core)
     return core->patch;
 }
 #+END_SRC
-
+** seconds to blocks
 The function =sk_core_seconds_to_blocks= converts
 seconds to a number of render blocks.
 
@@ -1617,6 +1617,29 @@ int sk_dict_append(sk_dict *d,
     return 0;
 }
 #+END_SRC
+
+The core interface can do this with =sk_core_append=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_append(sk_core *core,
+                   const char *key,
+                   int sz,
+                   void *p,
+                   void (*del)(void*));
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_append(sk_core *core,
+                   const char *key,
+                   int sz,
+                   void *p,
+                   void (*del)(void*))
+{
+    return sk_dict_append(&core->dict, key, sz, p, del);
+}
+#+END_SRC
 ** Lookup An Entry
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -1651,6 +1674,28 @@ int sk_dict_lookup(sk_dict *d,
     return 1;
 }
 #+END_SRC
+
+Do lookup on the core internal dictionary with
+=sk_core_lookup=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_lookup(sk_core *core,
+                   const char *key,
+                   int sz,
+                   void **p);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_lookup(sk_core *core,
+                   const char *key,
+                   int sz,
+                   void **p)
+{
+    return sk_dict_lookup(&core->dict, key, sz, p);
+}
+#+END_SRC
 ** Remove An Entry
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -1661,7 +1706,51 @@ int sk_dict_remove(sk_dict *d, const char *key, int sz);
 #+BEGIN_SRC c
 int sk_dict_remove(sk_dict *d, const char *key, int sz)
 {
-    /* TODO */
+    int pos;
+    struct dict_entry *ent, *prv;
+
+    pos = hash(key, sz, 64);
+
+    ent = d->ent[pos];
+
+    prv = NULL;
+
+    while (ent != NULL) {
+        if (ent->sz == sz && !strncmp(key, ent->key, sz)) {
+
+            if (prv == NULL) {
+                d->ent[pos] = ent->nxt;
+            } else {
+                prv->nxt = ent->nxt;
+            }
+            if (ent->del) ent->del(ent->val);
+            free(ent->key);
+            free(ent);
+            return 0;
+        }
+        prv = ent;
+        ent = ent->nxt;
+    }
     return 1;
+}
+#+END_SRC
+
+Do lookup on the core internal dictionary with
+=sk_core_remove=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_remove(sk_core *core,
+                   const char *key,
+                   int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_remove(sk_core *core,
+                   const char *key,
+                   int sz)
+{
+    return sk_dict_remove(&core->dict, key, sz);
 }
 #+END_SRC

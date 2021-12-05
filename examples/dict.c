@@ -14,13 +14,14 @@ static void clean(void *ptr)
 
 int main(int argc, char *argv)
 {
-    int data[2];
+    int data[3];
     sk_dict *d;
     void *ud;
     int rc;
 
     data[0] = 12345;
     data[1] = 88888;
+    data[2] = 66666;
 
     d = malloc(sk_dict_sizeof());
 
@@ -53,6 +54,8 @@ int main(int argc, char *argv)
         printf("foop (4 characters) was not found. as it should be!\n");
     }
 
+    sk_dict_remove(d, "foo", 3);
+    sk_dict_append(d, "foo", 3, &data[2], clean);
 
     sk_dict_clean(d);
 
