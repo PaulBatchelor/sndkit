@@ -79,6 +79,7 @@ sk_core * sk_core_new(int sr)
 
     sk_stack_init(&core->stack);
     sk_regtbl_init(&core->regtbl);
+    sk_dict_init(&core->dict);
 
     sk_core_srand(core, 0);
     return core;
