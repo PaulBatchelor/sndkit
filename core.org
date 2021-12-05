@@ -47,6 +47,7 @@ Registers are for more persitently used values.
 #include "graforge.h"
 #define SK_CORE_PRIV
 #include "core.h"
+<<static_funcdefs>>
 <<enums>>
 <<funcs>>
 #+END_SRC
@@ -1444,5 +1445,223 @@ SKFLT sk_core_randf(sk_core *core);
 SKFLT sk_core_randf(sk_core *core)
 {
     return (SKFLT)sk_core_rand(core) / SK_CORE_RANDMAX;
+}
+#+END_SRC
+* Data Dictionary
+The =Data Dictionary= is an implementation of a small
+and simple hash table for storing allocated C data such
+as structs.
+
+This interface is designed to make it easier to create
+bindings in high level languages. Because it's a dictionary,
+it allows objects to be referenced as strings, rather than
+trying to wrap the pointer data more directly. Also, memory
+is explicitely managed within the dictionary rather than
+at the whims of the garbage collection. Every word entry
+has a user-defined destructor callback that gets called when
+an entry is deleted.
+
+The kinds of data expected to be managed are expected to be
+more persistent during the runtime of the program.
+** Struct
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_dict sk_dict;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct dict_entry {
+    char *key;
+    int sz;
+    void *val;
+    void (*del)(void*);
+    struct dict_entry *nxt;
+};
+
+struct sk_dict {
+    struct dict_entry *ent[64];
+    int sz;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+size_t sk_dict_sizeof(void);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+size_t sk_dict_sizeof(void)
+{
+    return sizeof(sk_dict);
+}
+#+END_SRC
+** Dictionary Hash Function
+CJB hash function.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static int hash(const char *str, int sz, int mod);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC sh
+static int hash(const char *str, int sz, int mod)
+{
+    unsigned long h;
+    int i;
+
+    h = 5381;
+    i = 0;
+
+    for(i = 0; i < sz; i++) {
+        h = ((h << 5) + h) ^ str[i];
+        h %= 0x7FFFFFFF;
+    }
+
+    return h % mod;
+}
+#+END_SRC
+** Initializing the Dictionary
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_dict_init(sk_dict *d);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_dict_init(sk_dict *d)
+{
+    int n;
+
+    for (n = 0; n < 64; n++) {
+        d->ent[n] = NULL;
+    }
+
+    d->sz = 0;
+}
+#+END_SRC
+** Freeing the dictionary
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_dict_clean(sk_dict *d);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_dict_clean(sk_dict *d)
+{
+    int e;
+
+    for (e = 0; e < 64; e++) {
+        struct dict_entry *ent, *nxt;
+        ent = d->ent[e];
+
+        while (ent != NULL) {
+            nxt = ent->nxt;
+            if (ent->del != NULL) ent->del(ent->val);
+            free(ent->key);
+            free(ent);
+            ent = nxt;
+        }
+    }
+
+    return 0;
+}
+#+END_SRC
+** Append An Entry
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_dict_append(sk_dict *d,
+                   const char *key,
+                   int sz,
+                   void *p,
+                   void (*del)(void*));
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_dict_append(sk_dict *d,
+                   const char *key,
+                   int sz,
+                   void *val,
+                   void (*del)(void*))
+{
+    int pos;
+    struct dict_entry *ent;
+    int i;
+
+    pos = hash(key, sz, 64);
+
+    ent = d->ent[pos];
+
+    while (ent != NULL) {
+        if (ent->sz == sz && !strcmp(key, ent->key)) {
+            return 1;
+        }
+        ent = ent->nxt;
+    }
+
+    ent = malloc(sizeof(struct dict_entry));
+    ent->key = malloc(sz + 1);
+    ent->sz = sz;
+
+    for (i = 0; i < sz; i++) ent->key[i] = key[i];
+    ent->key[sz] = '\0';
+
+    ent->val = val;
+    ent->del = del;
+    ent->nxt = d->ent[pos];
+    d->ent[pos] = ent;
+    return 0;
+}
+#+END_SRC
+** Lookup An Entry
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_dict_lookup(sk_dict *d,
+                   const char *key,
+                   int sz,
+                   void **p);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_dict_lookup(sk_dict *d,
+                   const char *key,
+                   int sz,
+                   void **p)
+{
+    int pos;
+    struct dict_entry *ent;
+
+    pos = hash(key, sz, 64);
+
+    ent = d->ent[pos];
+
+    while (ent != NULL) {
+        if (ent->sz == sz && !strncmp(key, ent->key, sz)) {
+            *p = ent->val;
+            return 0;
+        }
+        ent = ent->nxt;
+    }
+
+    return 1;
+}
+#+END_SRC
+** Remove An Entry
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_dict_remove(sk_dict *d, const char *key, int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_dict_remove(sk_dict *d, const char *key, int sz)
+{
+    /* TODO */
+    return 1;
 }
 #+END_SRC
