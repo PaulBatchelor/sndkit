@@ -92,3 +92,5 @@ butterworth filters.
 
 @!(ref "softclip")!@ applies soft clipping to a signal with
 drive control via a tanh approximation.
+
+@!(ref "tseq")!@ is a basic triggerable sequencer.

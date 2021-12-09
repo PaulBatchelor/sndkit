@@ -58,6 +58,7 @@ ALGOS=\
 	sparse \
 	softclip \
 	crossfade \
+	tseq \
 
 # GNU Make is very convenient here...
 

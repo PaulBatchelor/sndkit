@@ -52,6 +52,7 @@ void sklil_load_butterworth(lil_t lil);
 void sklil_load_cable(lil_t lil);
 void sklil_load_sparse(lil_t lil);
 void sklil_load_softclip(lil_t lil);
+void sklil_load_tseq(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -100,6 +101,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_cable(lil);
     sklil_load_sparse(lil);
     sklil_load_softclip(lil);
+    sklil_load_tseq(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

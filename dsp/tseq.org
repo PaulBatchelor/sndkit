@@ -1,0 +1,97 @@
+#+TITLE: tseq
+* Overview
+=tseq= is a simple sequencer that reads values from a table,
+and is clocked by a trigger. Eventually, it will have
+programable modes.
+* Tangled Files
+=tseq.h= and =tseq.c=.
+
+#+NAME: tseq.h
+#+BEGIN_SRC c :tangle tseq.h
+#ifndef SK_TSEQ_H
+#define SK_TSEQ_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_TSEQ_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+
+#+NAME: tseq.c
+#+BEGIN_SRC c :tangle tseq.c
+#define SK_TSEQ_PRIV
+#include "tseq.h"
+
+<<funcs>>
+#+END_SRC
+* Struct and Initialization
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_tseq sk_tseq;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_tseq {
+    SKFLT *seq;
+    int sz;
+    int pos;
+    int mode; /* TODO */
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tseq_init(sk_tseq *ts, SKFLT *seq, int sz);
+#+END_SRC
+
+The position is explicitely set to -1 so that if there
+is an initial tick in the beginning, it will increment
+to the first value (0).
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tseq_init(sk_tseq *ts, SKFLT *seq, int sz)
+{
+    ts->seq = seq;
+    ts->sz = sz;
+    ts->pos = -1;
+    ts->mode = 0; /* TODO */
+}
+#+END_SRC
+
+* Computation
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_tseq_tick(sk_tseq *ts, SKFLT trig);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_tseq_tick(sk_tseq *ts, SKFLT trig)
+{
+    SKFLT out;
+
+    out = 0;
+
+    if (trig != 0) {
+        ts->pos++;
+        if (ts->pos >= ts->sz) ts->pos = 0;
+    }
+
+    if (ts->pos < 0) ts->pos = 0;
+    if (ts->pos >= ts->sz) ts->pos = ts->sz - 1;
+
+    out = ts->seq[ts->pos];
+
+    return out;
+}
+#+END_SRC

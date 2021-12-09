@@ -49,3 +49,4 @@ include nodes/butterworth/config.mk
 include nodes/cable/config.mk
 include nodes/sparse/config.mk
 include nodes/softclip/config.mk
+include nodes/tseq/config.mk

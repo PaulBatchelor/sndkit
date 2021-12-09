@@ -51,4 +51,8 @@ int sk_node_clkphs(sk_core *core);
 int sk_node_noise(sk_core *core);
 int sk_node_sparse(sk_core *core);
 int sk_node_softclip(sk_core *core);
+int sk_node_tseq(sk_core *core);
+int sk_node_gensaw(sk_core *core);
+int sk_tab_sinesum(sk_core *core, const char *argstr);
+int sk_tab_vals(sk_core *core, const char *argstr);
 #endif
