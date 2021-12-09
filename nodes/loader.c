@@ -113,6 +113,24 @@ static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t compute(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    core = lil_get_data(lil);
+
+
+    if (argc > 0) {
+        int nblks, b;
+        nblks = lil_to_integer(argv[0]);
+        for (b = 0; b < nblks; b++) {
+            sk_core_compute(core);
+        }
+    } else {
+        sk_core_compute(core);
+    }
+    return NULL;
+}
+
 static lil_value_t param(lil_t lil, size_t argc, lil_value_t *argv)
 {
     sk_core *core;
@@ -231,12 +249,31 @@ static lil_value_t l_grab(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t l_blkset(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int sz;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "blkset", argc, 1);
+
+    sz = lil_to_integer(argv[0]);
+    rc = sk_core_blkset(core, sz);
+
+    SKLIL_ERROR_CHECK(lil, rc, "blkset failed.");
+
+    return NULL;
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
     core = sk_core_new(44100);
     lil_set_data(lil, core);
     sklil_nodes(lil);
+    lil_register(lil, "compute", compute);
     lil_register(lil, "computes", computes);
     lil_register(lil, "param", param);
     lil_register(lil, "regnxt", regnxt);
@@ -246,6 +283,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "rand", l_rand);
     lil_register(lil, "randf", l_randf);
     lil_register(lil, "grab", l_grab);
+    lil_register(lil, "blkset", l_blkset);
 }
 
 void sklil_clean(lil_t lil)

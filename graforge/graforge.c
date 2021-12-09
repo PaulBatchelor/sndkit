@@ -93,7 +93,6 @@ void gf_node_init(gf_node *node, int blksize)
     node->next = NULL;
 }
 
-
 int gf_node_get_id(gf_node *node)
 {
     return node->id;
@@ -1139,6 +1138,21 @@ gf_stack *gf_patch_stack(gf_patch *patch)
 int gf_patch_blksize(gf_patch *patch)
 {
     return patch->blksize;
+}
+
+int gf_patch_blksize_set(gf_patch *patch, int blksize)
+{
+    int maxsize;
+
+    maxsize = 64; /* TODO: don't hardcode */
+
+    if (blksize <= 0 || blksize > maxsize) {
+        return GF_NOT_OK;
+    }
+
+    patch->blksize = blksize;
+
+    return GF_OK;
 }
 
 gf_bufferpool *gf_patch_pool(gf_patch *patch)

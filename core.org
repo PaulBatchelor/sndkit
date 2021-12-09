@@ -196,6 +196,22 @@ size_t sk_core_seconds_to_blocks(sk_core *core, SKFLT secs)
     return nblocks;
 }
 #+END_SRC
+** resizing the internal block size
+Note that this can only be between 1 and the max
+block size (hard-coded to be 64).
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_blkset(sk_core *core, int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_blkset(sk_core *core, int sz)
+{
+    return gf_patch_blksize_set(core->patch, sz);
+}
+#+END_SRC
 * Stack
 ** Core Data Types
 An item on a stack is contained in a thing known as a

@@ -196,6 +196,7 @@ int gf_patch_append_userdata(gf_patch*patch,
                              void*ud);
 gf_stack*gf_patch_stack(gf_patch*patch);
 int gf_patch_blksize(gf_patch*patch);
+int gf_patch_blksize_set(gf_patch *patch, int blksize);
 gf_bufferpool*gf_patch_pool(gf_patch*patch);
 void gf_patch_srate_set(gf_patch*patch,int sr);
 int gf_patch_srate_get(gf_patch*patch);
