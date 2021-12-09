@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+
 #include "lil/lil.h"
 #include "graforge.h"
 #include "core.h"
@@ -206,6 +208,29 @@ static lil_value_t l_randf(lil_t lil, size_t argc, lil_value_t *argv)
     return lil_alloc_double(sk_core_randf(core));
 }
 
+static lil_value_t l_grab(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    const char *key;
+    int rc;
+
+    SKLIL_ARITY_CHECK(lil, "grab", argc, 1);
+
+    core = lil_get_data(lil);
+
+    key = lil_to_string(argv[0]);
+
+    rc = sk_core_grab(core, key, strlen(key));
+
+    if (rc == 1) {
+        lil_set_error(lil, "Could not find key.");
+    } else if (rc == 2) {
+        lil_set_error(lil, "Could not push to stack.");
+    }
+
+    return NULL;
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -220,6 +245,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "srand", l_srand);
     lil_register(lil, "rand", l_rand);
     lil_register(lil, "randf", l_randf);
+    lil_register(lil, "grab", l_grab);
 }
 
 void sklil_clean(lil_t lil)

@@ -1755,3 +1755,31 @@ int sk_core_remove(sk_core *core,
     return sk_dict_remove(&core->dict, key, sz);
 }
 #+END_SRC
+** Grab: Lookup and Push onto the Stack
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_grab(sk_core *core,
+                 const char *key,
+                 int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_grab(sk_core *core,
+                 const char *key,
+                 int sz)
+{
+    int rc;
+    void *ptr;
+
+    rc = sk_core_lookup(core, key, sz, &ptr);
+
+    if (rc) return 1;
+
+    rc = sk_core_generic_push(core, ptr);
+
+    if (rc) return 2;
+
+    return 0;
+}
+#+END_SRC
