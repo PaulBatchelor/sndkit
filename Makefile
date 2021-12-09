@@ -59,6 +59,7 @@ ALGOS=\
 	softclip \
 	crossfade \
 	tseq \
+	thresh \
 
 # GNU Make is very convenient here...
 

@@ -53,6 +53,7 @@ void sklil_load_cable(lil_t lil);
 void sklil_load_sparse(lil_t lil);
 void sklil_load_softclip(lil_t lil);
 void sklil_load_tseq(lil_t lil);
+void sklil_load_thresh(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -102,6 +103,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_sparse(lil);
     sklil_load_softclip(lil);
     sklil_load_tseq(lil);
+    sklil_load_thresh(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
@@ -269,6 +271,15 @@ static lil_value_t l_blkset(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t l_stackpos(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+
+    core = lil_get_data(lil);
+
+    return lil_alloc_integer(sk_core_stackpos(core));
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -286,6 +297,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "randf", l_randf);
     lil_register(lil, "grab", l_grab);
     lil_register(lil, "blkset", l_blkset);
+    lil_register(lil, "stkpos", l_stackpos);
 }
 
 void sklil_clean(lil_t lil)

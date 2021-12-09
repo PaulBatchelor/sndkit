@@ -1,0 +1,138 @@
+#+TITLE: thresh
+* Overview
+=thresh= is a threshold generator. It will listen
+to a signal and produce a tick signal when it
+crosses a threshold value. Thresh has 3 modes:
+0: tick when crosses from below, 1: from above,
+and 2: from below and above.
+* Tangled Files
+=thresh.h= and =thresh.c=.
+
+#+NAME: thresh.h
+#+BEGIN_SRC c :tangle thresh.h
+#ifndef SK_THRESH_H
+#define SK_THRESH_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_THRESH_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: thresh.c
+#+BEGIN_SRC c :tangle thresh.c
+#define SK_THRESH_PRIV
+#include "thresh.h"
+<<funcs>>
+#+END_SRC
+* Stateless Implementation
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_thresh_stateless(SKFLT in, SKFLT prev, SKFLT thresh, int mode);
+#+END_SRC
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_thresh_stateless(SKFLT in, SKFLT prev, SKFLT thresh, int mode)
+{
+    SKFLT out;
+
+    if (in == prev) return 0;
+
+    out = 0;
+    switch (mode) {
+        case 0:
+            out = in > thresh && prev < thresh;
+            break;
+        case 1:
+            out = in < thresh && prev > thresh;
+            break;
+        case 2:
+            out =
+                (in > thresh && prev < thresh) ||
+                (in < thresh && prev > thresh);
+            break;
+        default:
+            break;
+    }
+
+    return out;
+}
+#+END_SRC
+* Stateful Implementation
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_thresh sk_thresh;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_thresh {
+    SKFLT value;
+    int mode;
+    SKFLT prev;
+    int init;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_thresh_init(sk_thresh *th);
+void sk_thresh_mode(sk_thresh *th, int mode);
+void sk_thresh_value(sk_thresh *th, SKFLT value);
+SKFLT sk_thresh_tick(sk_thresh *th, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_thresh_init(sk_thresh *th)
+{
+    sk_thresh_mode(th, 0);
+    sk_thresh_value(th, 0);
+    th->prev = -1;
+    th->init = 0;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_thresh_mode(sk_thresh *th, int mode)
+{
+    th->mode = mode;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_thresh_value(sk_thresh *th, SKFLT value)
+{
+    th->value = value;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_thresh_tick(sk_thresh *th, SKFLT in)
+{
+    SKFLT out;
+
+    if (th->init) {
+        th->prev = in;
+        th->init = 0;
+        return 0;
+    }
+
+    out = sk_thresh_stateless(in, th->prev, th->value, th->mode);
+
+    th->prev = in;
+
+    return out;
+}
+#+END_SRC

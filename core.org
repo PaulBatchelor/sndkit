@@ -851,6 +851,19 @@ int sk_core_generic_pop(sk_core *core, void **ptr)
     return rc;
 }
 #+END_SRC
+** Get Stack Position
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_stackpos(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_stackpos(sk_core *core)
+{
+    return core->stack.pos;
+}
+#+END_SRC
 * Registers
 A register interface is used alongside the stack
 interface to store and retrieve data. A value stored
