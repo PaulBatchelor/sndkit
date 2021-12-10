@@ -192,7 +192,8 @@ copy: $(TANGLED) $(ALGO_HEADERS)
 	@rsync -Rrvt $(TANGLED) $(ALGO_HEADERS) $(SRC) $(OUTDIR)
 
 clean:
-	$(RM) $(TANGLED)
-	$(RM) worgle/worglite
-	$(RM) libsndkit.a
-	$(RM) $(OBJ)
+	@echo "Cleaning"
+	@$(RM) $(TANGLED)
+	@$(RM) worgle/worglite
+	@$(RM) libsndkit.a
+	@$(RM) $(OBJ)
