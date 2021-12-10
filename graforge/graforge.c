@@ -19,7 +19,6 @@ struct gf_buffer {
 struct gf_node {
     gf_patch *patch;
     int id;
-    gf_function setup;
     gf_function destroy;
     gf_function compute;
     void *ud;
@@ -83,7 +82,6 @@ static void free_cables(gf_node *node)
 void gf_node_init(gf_node *node, int blksize)
 {
     node->id = -1;
-    node->setup = empty;
     node->compute = empty;
     node->destroy = free_cables;
     node->ncables = 0;
@@ -103,11 +101,6 @@ void gf_node_set_id(gf_node *node, int id)
     node->id = id;
 }
 
-void gf_node_set_setup(gf_node *node, gf_function fun)
-{
-    node->setup = fun;
-}
-
 void gf_node_set_compute(gf_node *node, gf_function fun)
 {
     node->compute = fun;
@@ -118,11 +111,6 @@ void gf_node_set_destroy(gf_node *node, gf_function fun)
     node->destroy = fun;
 }
 
-
-void gf_node_setup(gf_node *node)
-{
-    node->setup(node);
-}
 
 void gf_node_compute(gf_node *node)
 {
@@ -987,19 +975,6 @@ void gf_patch_free_nodes(gf_patch *patch)
 
     patch->nnodes = 0;
 
-}
-
-void gf_patch_setup(gf_patch *patch)
-{
-    int n;
-    gf_node *node;
-    gf_node *next;
-    node = patch->nodes;
-    for (n = 0; n < patch->nnodes; n++) {
-	next = gf_node_get_next(node);
-	gf_node_setup(node);
-	node = next;
-    }
 }
 
 void gf_patch_destroy(gf_patch *patch)
