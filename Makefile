@@ -168,7 +168,7 @@ sndkit: main.o $(OBJ)
 	@echo "Building $@"
 	@$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
-install: libsndkit.a sndkit
+install: libsndkit.a sndkit $(WORGLE)
 	mkdir -p /usr/local/lib
 	mkdir -p /usr/local/bin
 	mkdir -p /usr/local/include/sndkit
@@ -179,6 +179,7 @@ install: libsndkit.a sndkit
 	cp libsndkit.a /usr/local/lib
 	cp $(ALGO_HEADERS) /usr/local/include/sndkit/dsp
 	cp sndkit /usr/local/bin
+	cp $(WORGLE) /usr/local/bin/skorgle
 	cp nodes/dr_wav.h /usr/local/include/sndkit/nodes
 	cp nodes/sklil.h /usr/local/include/sndkit/nodes
 	cp nodes/sknodes.h /usr/local/include/sndkit/nodes
