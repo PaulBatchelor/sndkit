@@ -1828,3 +1828,49 @@ int sk_core_grab(sk_core *core,
     return 0;
 }
 #+END_SRC
+** Append a Table
+=sk_core_append_table= will allocate append a table to
+the dictionary.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_append_table(sk_core *core,
+                         const char *key,
+                         int sz,
+                         int tabsz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void deltab(void *ptr)
+{
+    sk_table *tab;
+
+    tab = ptr;
+
+    free(tab->tab);
+    free(tab);
+}
+
+int sk_core_append_table(sk_core *core,
+                         const char *key,
+                         int sz,
+                         int tabsz)
+{
+    int rc;
+    sk_table *tab;
+
+    tab = calloc(1, sizeof(sk_table));
+
+    tab->tab = calloc(tabsz, sizeof(SKFLT));
+    tab->sz = tabsz;
+
+    rc = sk_core_append(core, key, sz, tab, deltab);
+    SK_ERROR_CHECK(rc);
+
+    rc = sk_core_table_push(core, tab);
+    SK_ERROR_CHECK(rc);
+
+    return 0;
+}
+#+END_SRC
