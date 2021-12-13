@@ -61,6 +61,7 @@
 (ww-add-link "coding_conventions" "doc/coding_conventions.org")
 (ww-add-link "crossfade" "dsp/crossfade.org")
 (ww-add-link "tseq" "dsp/tseq.org")
+(ww-add-link "adsr" "dsp/adsr.org")
 
 # sync and close
 

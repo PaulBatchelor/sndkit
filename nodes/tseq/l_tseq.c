@@ -14,11 +14,13 @@ static lil_value_t tseq(lil_t lil, size_t argc, lil_value_t *argv)
     int rc;
     core = lil_get_data(lil);
 
-    SKLIL_ARITY_CHECK(lil, "tseq", argc, 2);
+    SKLIL_ARITY_CHECK(lil, "tseq", argc, 3);
 
     rc = sklil_param(core, argv[0]);
     SKLIL_PARAM_CHECK(lil, rc, "tseq");
     rc = sklil_param(core, argv[1]);
+    SKLIL_PARAM_CHECK(lil, rc, "tseq");
+    rc = sklil_param(core, argv[2]);
     SKLIL_PARAM_CHECK(lil, rc, "tseq");
 
     rc = sk_node_tseq(core);

@@ -60,6 +60,7 @@ ALGOS=\
 	crossfade \
 	tseq \
 	thresh \
+	adsr \
 
 # GNU Make is very convenient here...
 

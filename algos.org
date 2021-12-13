@@ -94,3 +94,6 @@ butterworth filters.
 drive control via a tanh approximation.
 
 @!(ref "tseq")!@ is a basic triggerable sequencer.
+
+@!(ref "adsr")!@ is an ADSR generator that uses a one-pole
+lowpass filter.

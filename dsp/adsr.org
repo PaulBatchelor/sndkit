@@ -1,0 +1,255 @@
+#+TITLE: ADSR
+* Overview
+This is a classic ADSR envelope generator. Many digital
+implementations of ADSRs are produced via simple line
+segment generators. This ADSR uses a gate put through a
+one-pole lowpass filter to produce envelope. The resulting
+envelope produces naturally exponential curves, very
+similar to how it would be done in an analogue circuit.
+
+The input signal to an ADSR is a gate signal. When it
+goes from 0 to 1, it triggers the gate signal. It
+will continue to stay on until the gate goes back to 0,
+which will then trigger the release segment.
+* Tangled Files
+#+NAME: adsr.h
+#+BEGIN_SRC c :tangle adsr.h
+#ifndef SK_ADSR_H
+#define SK_ADSR_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_ADSR_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+
+#+NAME: adsr.c
+#+BEGIN_SRC c :tangle adsr.c
+#include <math.h>
+#define SK_ADSR_PRIV
+#include "adsr.h"
+<<envelope_states>>
+<<funcs>>
+#+END_SRC
+* Struct Initialization
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_adsr sk_adsr;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_adsr {
+    /* times */
+    SKFLT atk;
+    SKFLT dec;
+    SKFLT sus;
+    SKFLT rel;
+
+    /* timer */
+    unsigned long timer;
+    unsigned long atk_time;
+
+    /* filter coefficients */
+    SKFLT a;
+    SKFLT b;
+    SKFLT y;
+    SKFLT x;
+
+    /* previous sample */
+    SKFLT prev;
+
+    /* envelope mode */
+    int mode;
+
+    /* sample rate */
+    int sr;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_adsr_init(sk_adsr *adsr, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_adsr_init(sk_adsr *adsr, int sr)
+{
+    adsr->sr = sr;
+    /* initial ADSR times and sustain */
+    sk_adsr_attack(adsr, 0.1);
+    sk_adsr_decay(adsr, 0.1);
+    sk_adsr_sustain(adsr, 0.5);
+    sk_adsr_release(adsr, 0.3);
+
+    /* zero out timer, filter coefs, and memory */
+    adsr->timer = 0;
+    adsr->a = 0;
+    adsr->b = 0;
+    adsr->y = 0;
+    adsr->x = 0;
+    adsr->prev = 0;
+
+    /* set up initial attack time timer */
+    adsr->atk_time = adsr->atk * adsr->sr;
+
+    /* initial state: CLEAR */
+    adsr->mode = CLEAR;
+}
+#+END_SRC
+* Parameters
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_adsr_attack(sk_adsr *adsr, SKFLT atk);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_adsr_attack(sk_adsr *adsr, SKFLT atk)
+{
+    adsr->atk = atk;
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_adsr_decay(sk_adsr *adsr, SKFLT dec);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_adsr_decay(sk_adsr *adsr, SKFLT dec)
+{
+    adsr->dec = dec;
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_adsr_sustain(sk_adsr *adsr, SKFLT sus);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_adsr_sustain(sk_adsr *adsr, SKFLT sus)
+{
+    adsr->sus = sus;
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_adsr_release(sk_adsr *adsr, SKFLT rel);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_adsr_release(sk_adsr *adsr, SKFLT rel)
+{
+    adsr->rel = rel;
+}
+#+END_SRC
+* Envelope States
+The envelope is broken up into explicit states, with
+flags represented as enums.
+
+The =CLEAR= state means it is "clear" of all envelope
+activity, and should only return 0.
+
+The =ATTACK= state corresponds to the beginning rise
+of the envelope.
+
+The =DECAY= segment follows the =ATTACK= segment after
+a period of time,
+and makes the envelope fall down to a sustain point.
+
+Sustain is an implicit state, and there doesn't need to be
+a state for it.
+
+The =RELEASE= state happens when the input gate signal goes
+back to 0. This will trigger the final tail that eventually
+will decay to 0, and eventually back to the =CLEAR= state
+when it goes below an epsilon value.
+
+#+NAME: envelope_states
+#+BEGIN_SRC c
+enum {CLEAR, ATTACK, DECAY, RELEASE};
+#+END_SRC
+* Computation
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_adsr_tick(sk_adsr *adsr, SKFLT gate);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT tau2pole(SKFLT tau, int sr)
+{
+    return exp(-1.0 / (tau * sr));
+}
+
+static SKFLT adsr_filter(sk_adsr *p)
+{
+    p->y = p->b * p->x  + p->a * p->y;
+    return p->y;
+}
+
+SKFLT sk_adsr_tick(sk_adsr *adsr, SKFLT gate)
+{
+    SKFLT out;
+    SKFLT pole;
+    out = 0;
+
+    if (adsr->prev < gate && adsr->mode != DECAY) {
+        adsr->mode = ATTACK;
+        adsr->timer = 0;
+
+        /* 60% attack time was done empirically */
+        pole = tau2pole(adsr->atk * 0.6, adsr->sr);
+        adsr->atk_time = adsr->atk * adsr->sr;
+        adsr->a = pole;
+        adsr->b = 1 - pole;
+    } else if (adsr->prev > gate) {
+        adsr->mode = RELEASE;
+        pole = tau2pole(adsr->rel, adsr->sr);
+        adsr->a = pole;
+        adsr->b = 1 - pole;
+    }
+
+    adsr->x = gate;
+    adsr->prev = gate;
+
+    switch (adsr->mode) {
+        case CLEAR:
+            out = 0;
+            break;
+        case ATTACK:
+            adsr->timer++;
+            out = adsr_filter(adsr);
+            if (out > 0.99) {
+                adsr->mode = DECAY;
+                pole = tau2pole(adsr->dec, adsr->sr);
+                adsr->a = pole;
+                adsr->b = 1 - pole;
+            }
+            break;
+        case DECAY:
+        case RELEASE:
+            adsr->x *= adsr->sus;
+            out = adsr_filter(adsr);
+        default:
+            break;
+    }
+
+    return out;
+}
+#+END_SRC

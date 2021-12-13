@@ -51,3 +51,4 @@ include nodes/sparse/config.mk
 include nodes/softclip/config.mk
 include nodes/tseq/config.mk
 include nodes/thresh/config.mk
+include nodes/adsr/config.mk
