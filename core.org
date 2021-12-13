@@ -212,6 +212,19 @@ int sk_core_blkset(sk_core *core, int sz)
     return gf_patch_blksize_set(core->patch, sz);
 }
 #+END_SRC
+** Stack getter
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_stack* sk_core_stack(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_stack* sk_core_stack(sk_core *core)
+{
+    return &core->stack;
+}
+#+END_SRC
 * Stack
 ** Core Data Types
 An item on a stack is contained in a thing known as a
@@ -249,6 +262,19 @@ void sk_stacklet_init(sk_stacklet *s)
     s->type = SK_TYPE_NONE;
     s->f = 0;
     s->ptr = NULL;
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_stacklet_constant(sk_stacklet *s);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_stacklet_constant(sk_stacklet *s)
+{
+    return s->f;
 }
 #+END_SRC
 
@@ -307,6 +333,43 @@ enum {
    SK_TYPE_TABLE,
    SK_TYPE_GENERIC
 };
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_stacklet_isnone(sk_stacklet *s);
+int sk_stacklet_isconstant(sk_stacklet *s);
+int sk_stacklet_iscable(sk_stacklet *s);
+int sk_stacklet_istable(sk_stacklet *s);
+int sk_stacklet_isgeneric(sk_stacklet *s);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_stacklet_isnone(sk_stacklet *s)
+{
+    return s->type == SK_TYPE_NONE;
+}
+
+int sk_stacklet_isconstant(sk_stacklet *s)
+{
+    return s->type == SK_TYPE_CONSTANT;
+}
+
+int sk_stacklet_iscable(sk_stacklet *s)
+{
+    return s->type == SK_TYPE_CABLE;
+}
+
+int sk_stacklet_istable(sk_stacklet *s)
+{
+    return s->type == SK_TYPE_TABLE;
+}
+
+int sk_stacklet_isgeneric(sk_stacklet *s)
+{
+    return s->type == SK_TYPE_GENERIC;
+}
 #+END_SRC
 ** Push/Pop
 Push and pop are the core operations for the stack. Both
@@ -735,14 +798,6 @@ its index position. A constant parameter will set the node
 cable as a consant. A cable parameter will be connected to
 the node cable.
 ** Pushing Constants
-Constant values can be pushed to the stack with the
-function =sk_core_constant=.
-
-#+NAME: funcdefs
-#+BEGIN_SRC c
-int sk_core_constant(sk_core *core, SKFLT x);
-#+END_SRC
-
 #+NAME: funcs
 #+BEGIN_SRC c
 int sk_core_constant(sk_core *core, SKFLT x)
