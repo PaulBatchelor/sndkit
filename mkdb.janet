@@ -60,6 +60,7 @@
 (ww-add-link "softclip" "dsp/softclip.org")
 (ww-add-link "coding_conventions" "doc/coding_conventions.org")
 (ww-add-link "crossfade" "dsp/crossfade.org")
+(ww-add-link "tseq" "dsp/tseq.org")
 
 # sync and close
 
