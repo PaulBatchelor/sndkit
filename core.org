@@ -798,6 +798,14 @@ its index position. A constant parameter will set the node
 cable as a consant. A cable parameter will be connected to
 the node cable.
 ** Pushing Constants
+Variables that do not change can be pushed to the stack
+as constants, using the function =sk_core_constant=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_constant(sk_core *core, SKFLT x);
+#+END_SRC
+
 #+NAME: funcs
 #+BEGIN_SRC c
 int sk_core_constant(sk_core *core, SKFLT x)
