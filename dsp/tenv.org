@@ -1,0 +1,196 @@
+#+TITLE: TEnv
+* Overview
+Triggerable linear envelope generator with attack, hold,
+and release. Ported from Soundpipe.
+
+This is a bit of a mess at the moment.
+* Top Files
+#+NAME: tenv.h
+#+BEGIN_SRC c :tangle tenv.h
+#ifndef SK_TENV_H
+#define SK_TENV_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_TENV_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+
+#endif
+#+END_SRC
+
+#+NAME: tenv.c
+#+BEGIN_SRC c :tangle tenv.c
+#define SK_TENV_PRIV
+#include "tenv.h"
+<<funcs>>
+#+END_SRC
+* Struct and Initialization
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_tenv sk_tenv;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_tenv {
+    unsigned long pos, atk_end, rel_start, totaldur;
+    SKFLT atk, rel, hold;
+    SKFLT atk_slp, rel_slp;
+    SKFLT last;
+    int sigmode;
+    SKFLT input;
+    int started;
+    int sr;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tenv_init(sk_tenv *te, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tenv_init(sk_tenv *te, int sr)
+{
+    te->pos = 0;
+    te->last = 0;
+    te->atk = 0.1;
+    te->hold = 0.3;
+    te->rel = 0.2;
+    te->sigmode = 0;
+    te->input = 0;
+
+    te->sr = sr;
+    te->atk_end = te->sr * te->atk;
+    te->rel_start = te->sr * (te->atk + te->hold);
+    te->atk_slp = 1.0 / te->atk_end;
+    te->rel_slp = -1.0 / (te->sr * te->rel);
+    te->totaldur = sr * (te->atk + te->hold + te->rel);
+
+    te->started = 0;
+}
+#+END_SRC
+* Compute
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_tenv_tick(sk_tenv *te, SKFLT trig);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+<<reinit>>
+<<envelope>>
+SKFLT sk_tenv_tick(sk_tenv *te, SKFLT trig)
+{
+    SKFLT out;
+    out = 0;
+
+    if (trig != 0) {
+        reinit(te);
+        te->started = 1;
+    }
+
+    if (te->started) out = envelope(te);
+
+    return out;
+}
+#+END_SRC
+
+#+NAME: envelope
+#+BEGIN_SRC c
+static SKFLT envelope(sk_tenv *env)
+{
+    SKFLT sig;
+    unsigned long pos;
+    SKFLT out;
+
+    out = 0;
+    sig = 0;
+    pos = env->pos;
+
+    if (pos < env->atk_end) {
+        sig = env->last + env->atk_slp;
+    } else if (pos < env->rel_start) {
+        sig = 1.0;
+    } else if (pos < env->totaldur) {
+        sig = env->last + env->rel_slp;
+    } else{
+        sig = 0.0;
+    }
+
+    sig = (sig > 1.0) ? 1.0 : sig;
+    sig = (sig < 0.0) ? 0.0 : sig;
+
+    /* Internal input signal mode */
+    if (env->sigmode) {
+        out = env->input * sig;
+    } else {
+        out = sig;
+    }
+
+    env->pos++;
+    env->last = sig;
+
+    return out;
+}
+#+END_SRC
+
+#+NAME: reinit
+#+BEGIN_SRC c
+static void reinit(sk_tenv *te)
+{
+    te->pos = 0;
+    te->atk_end = te->sr * te->atk;
+    te->rel_start = te->sr * (te->atk + te->hold);
+    te->atk_slp = 1.0 / te->atk_end;
+    te->rel_slp = -1.0 / (te->sr * te->rel);
+    te->totaldur = te->sr * (te->atk + te->hold + te->rel);
+}
+#+END_SRC
+* Parameters
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tenv_attack(sk_tenv *te, SKFLT atk);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tenv_attack(sk_tenv *te, SKFLT atk)
+{
+    te->atk = atk;
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tenv_hold(sk_tenv *te, SKFLT hold);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tenv_hold(sk_tenv *te, SKFLT hold)
+{
+    te->hold = hold;
+}
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tenv_release(sk_tenv *te, SKFLT rel);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tenv_release(sk_tenv *te, SKFLT rel)
+{
+    te->rel = rel;
+}
+#+END_SRC

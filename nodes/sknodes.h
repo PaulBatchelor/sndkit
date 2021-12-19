@@ -57,4 +57,5 @@ int sk_tab_sinesum(sk_core *core, const char *argstr);
 int sk_tab_vals(sk_core *core, const char *argstr);
 int sk_node_thresh(sk_core *core);
 int sk_node_adsr(sk_core *core);
+int sk_node_tenv(sk_core *core);
 #endif

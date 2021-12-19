@@ -61,6 +61,7 @@ ALGOS=\
 	tseq \
 	thresh \
 	adsr \
+	tenv \
 
 # GNU Make is very convenient here...
 

@@ -1,0 +1,5 @@
+tenv [metro 0.5] 0.2 0.2 0.4
+sine 800 0.5
+mul zz zz
+wavout zz "test.wav"
+computes 10
