@@ -235,3 +235,8 @@ int lil_main(int argc, char* argv[],
     if (argc < 2) return repl(loader, clean);
     else return nonint(argc, argv, loader, clean);
 }
+
+void lil_set_errcode(int err)
+{
+    exit_code = err;
+}

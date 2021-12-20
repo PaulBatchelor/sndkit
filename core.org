@@ -653,6 +653,25 @@ typedef struct {
     } data;
 } sk_param;
 #+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+gf_cable* sk_param_cable(sk_param *p);
+SKFLT sk_param_constant(sk_param *p);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+gf_cable* sk_param_cable(sk_param *p)
+{
+    return p->data.c;
+}
+
+SKFLT sk_param_constant(sk_param *p)
+{
+    return p->data.f;
+}
+#+END_SRC
 ** Getting a Parameter
 Get a parameter from the core stack via =sk_param_get=.
 
