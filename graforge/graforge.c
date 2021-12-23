@@ -49,8 +49,6 @@ struct gf_patch {
     gf_node *nodes;
     gf_node *last;
     int nnodes;
-    gf_cable *out;
-    gf_cable zero;
     int blksize;
     int counter;
     int nodepos;
@@ -940,7 +938,6 @@ void gf_patch_realloc(gf_patch *patch,
 
 void gf_patch_reinit(gf_patch *patch)
 {
-    gf_cable_init(NULL, &patch->zero);
     patch->counter = 0;
     patch->nodepos = 0;
 
@@ -954,7 +951,6 @@ void gf_patch_reinit(gf_patch *patch)
 
 void gf_patch_clear(gf_patch *patch)
 {
-    patch->out = &patch->zero;
     patch->nodes = NULL;
     patch->last = NULL;
     patch->nnodes = 0;
@@ -1006,37 +1002,12 @@ void gf_patch_compute(gf_patch *patch)
     }
 }
 
-void gf_patch_set_out(gf_patch *patch, gf_cable *cable)
-{
-    patch->out = cable;
-}
-
-gf_cable *gf_patch_get_out(gf_patch *patch)
-{
-    return patch->out;
-}
-
 size_t gf_patch_size(void)
 {
     return sizeof(gf_patch);
 }
 
-GFFLT gf_patch_tick(gf_patch *patch)
-{
-    GFFLT smp;
-    gf_cable *out;
-    if (patch->counter == 0) {
-	gf_patch_compute(patch);
-    }
-
-    out = gf_patch_get_out(patch);
-    smp = gf_cable_get(out, patch->counter);
-    patch->counter = (patch->counter + 1) % patch->blksize;
-
-    return smp;
-}
-
-int gf_patch_new_node(gf_patch *patch, gf_node ** node)
+int gf_patch_new_node(gf_patch *patch, gf_node **node)
 {
     gf_node *tmp;
     int rc;
@@ -1044,8 +1015,7 @@ int gf_patch_new_node(gf_patch *patch, gf_node ** node)
     if (patch == NULL)
 	return GF_NULL_VALUE;
 
-    if (patch->err != GF_OK)
-	return patch->err;
+    if (patch->err != GF_OK) return patch->err;
 
     rc = gf_memory_alloc(patch, sizeof(gf_node), (void **) &tmp);
 
@@ -1057,9 +1027,9 @@ int gf_patch_new_node(gf_patch *patch, gf_node ** node)
     gf_node_set_patch(tmp, patch);
 
     if (patch->nnodes == 0) {
-	patch->nodes = tmp;
+        patch->nodes = tmp;
     } else {
-	gf_node_set_next(patch->last, tmp);
+        gf_node_set_next(patch->last, tmp);
     }
 
 
@@ -1262,7 +1232,6 @@ void gf_subpatch_save(gf_patch *patch, gf_subpatch *subpatch)
     subpatch->nodes = patch->nodes;
     subpatch->last = patch->last;
     subpatch->nnodes = patch->nnodes;
-    subpatch->out = patch->out;
     subpatch->plist = patch->plist;
 }
 
@@ -1271,7 +1240,6 @@ void gf_subpatch_restore(gf_patch *patch, gf_subpatch *subpatch)
     patch->nodes = subpatch->nodes;
     patch->last = subpatch->last;
     patch->nnodes = subpatch->nnodes;
-    patch->out = subpatch->out;
     patch->plist = subpatch->plist;
 }
 
@@ -1282,9 +1250,9 @@ void gf_subpatch_compute(gf_subpatch *subpatch)
     gf_node *next;
     node = subpatch->nodes;
     for (n = 0; n < subpatch->nnodes; n++) {
-	next = gf_node_get_next(node);
-	gf_node_compute(node);
-	node = next;
+        next = gf_node_get_next(node);
+        gf_node_compute(node);
+        node = next;
     }
 }
 
@@ -1295,9 +1263,9 @@ void gf_subpatch_destroy(gf_subpatch *subpatch)
     gf_node *next;
     node = subpatch->nodes;
     for (n = 0; n < subpatch->nnodes; n++) {
-	next = gf_node_get_next(node);
-	gf_node_destroy(node);
-	node = next;
+        next = gf_node_get_next(node);
+        gf_node_destroy(node);
+        node = next;
     }
 }
 
@@ -1308,18 +1276,13 @@ void gf_subpatch_free(gf_subpatch *subpatch)
     gf_node *next;
     node = subpatch->nodes;
     for (n = 0; n < subpatch->nnodes; n++) {
-	next = gf_node_get_next(node);
-	free(node);
-	node = next;
+        next = gf_node_get_next(node);
+        free(node);
+        node = next;
     }
     subpatch->nnodes = 0;
     gf_pointerlist_free(&subpatch->plist);
     gf_pointerlist_init(&subpatch->plist);
-}
-
-gf_cable *gf_subpatch_out(gf_subpatch *subpatch)
-{
-    return subpatch->out;
 }
 
 int gf_memory_alloc(gf_patch *p, size_t size, void **ud)
