@@ -286,6 +286,21 @@ static lil_value_t l_stackpos(lil_t lil, size_t argc, lil_value_t *argv)
     return lil_alloc_integer(sk_core_stackpos(core));
 }
 
+static lil_value_t l_unholdall(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    gf_patch *patch;
+    gf_bufferpool *pool;
+
+    core = lil_get_data(lil);
+    patch = sk_core_patch(core);
+    pool = gf_patch_pool(patch);
+
+    gf_bufferpool_unholdu_all(pool);
+
+    return lil_alloc_integer(sk_core_stackpos(core));
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -304,6 +319,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "grab", l_grab);
     lil_register(lil, "blkset", l_blkset);
     lil_register(lil, "stkpos", l_stackpos);
+    lil_register(lil, "unholdall", l_unholdall);
 }
 
 void sklil_clean(lil_t lil)
