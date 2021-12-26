@@ -14,6 +14,7 @@ static lil_value_t l_verify(lil_t lil, size_t argc, lil_value_t *argv)
     sk_core *core;
     char md5[33];
     const char *cmp;
+    int rc;
 
     core = lil_get_data(lil);
 
@@ -21,7 +22,9 @@ static lil_value_t l_verify(lil_t lil, size_t argc, lil_value_t *argv)
 
     cmp = lil_to_string(argv[0]);
 
-    sk_verify(core, md5);
+    rc = sk_verify(core, md5);
+
+    SKLIL_ERROR_CHECK(lil, rc, "verify: empty stack");
 
     if (strcmp(cmp, md5)) {
         /* technically not secure. try not to stack smash this. */

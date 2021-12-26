@@ -14,7 +14,7 @@ static char nibble(int x)
     if (x >= 0x0 && x <= 0x9) {
         out = '0' + x;
     } else if (x >= 0xa && x <= 0xf) {
-        out = 'a' + (x- 0xa);
+        out = 'a' + (x - 0xa);
     }
 
     return out;
@@ -54,7 +54,7 @@ int sk_verify(sk_core *core, char *out)
     for (n = 0; n < 3446; n++) {
         sk_core_compute(core);
         for (i = 0; i < 64; i++) {
-            buf[n*64 + i] = 0 * gf_cable_get(c, i) * 0.0;
+            buf[n*64 + i] = gf_cable_get(c, i);
         }
     }
 
