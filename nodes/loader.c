@@ -301,6 +301,21 @@ static lil_value_t l_unholdall(lil_t lil, size_t argc, lil_value_t *argv)
     return lil_alloc_integer(sk_core_stackpos(core));
 }
 
+static lil_value_t l_pop(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    SKFLT x;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    x = 0;
+    rc = sk_param_get_constant(core, &x);
+    SKLIL_ERROR_CHECK(lil, rc, "value is not a constant");
+
+    return lil_alloc_double(x);
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -320,6 +335,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "blkset", l_blkset);
     lil_register(lil, "stkpos", l_stackpos);
     lil_register(lil, "unholdall", l_unholdall);
+    lil_register(lil, "pop", l_pop);
 }
 
 void sklil_clean(lil_t lil)
