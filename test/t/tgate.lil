@@ -1,0 +1,8 @@
+metro 2
+tgate zz 0.1
+smoother zz 0.002
+blsaw 300
+mul zz 0.3
+butlp zz 800
+mul zz zz
+verify fb8cc12e11d9b8fe5ff08c3d08e5b56d

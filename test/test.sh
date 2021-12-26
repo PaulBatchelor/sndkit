@@ -16,3 +16,4 @@ check () {
 check zero
 check sine
 check noise
+check tgate

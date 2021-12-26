@@ -18,13 +18,16 @@ static lil_value_t l_verify(lil_t lil, size_t argc, lil_value_t *argv)
 
     core = lil_get_data(lil);
 
-    SKLIL_ARITY_CHECK(lil, "verify", argc, 1);
-
-    cmp = lil_to_string(argv[0]);
-
     rc = sk_verify(core, md5);
 
     SKLIL_ERROR_CHECK(lil, rc, "verify: empty stack");
+
+    if (argc == 0) {
+        printf("%s\n", md5);
+        return NULL;
+    }
+
+    cmp = lil_to_string(argv[0]);
 
     if (strcmp(cmp, md5)) {
         /* technically not secure. try not to stack smash this. */
