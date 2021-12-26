@@ -63,6 +63,7 @@
 (ww-add-link "tseq" "dsp/tseq.org")
 (ww-add-link "adsr" "dsp/adsr.org")
 (ww-add-link "tenv" "dsp/tenv.org")
+(ww-add-link "tgate" "dsp/tgate.org")
 
 # sync and close
 

@@ -97,3 +97,5 @@ drive control via a tanh approximation.
 
 @!(ref "adsr")!@ is an ADSR generator that uses a one-pole
 lowpass filter.
+
+@!(ref "tgate")!@ is a triggerable gate generator.

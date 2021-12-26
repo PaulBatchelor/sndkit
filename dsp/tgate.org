@@ -1,0 +1,100 @@
+#+TITLE: tgate
+* Overview
+A triggerable gate generator. Takes in a trigger signal,
+and produces a gate whose duration is measured in seconds.
+* Tangled Files
+#+NAME: tgate.h
+#+BEGIN_SRC c :tangle tgate.h
+#ifndef SK_TGATE_H
+#define SK_TGATE_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_TGATE_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: tgate.c
+#+BEGIN_SRC c :tangle tgate.c
+#define SK_TGATE_PRIV
+#include "tgate.h"
+<<funcs>>
+#+END_SRC
+* Struct And Initialization
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_tgate sk_tgate;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_tgate {
+    SKFLT dur;
+    unsigned long timer;
+    int sr;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tgate_init(sk_tgate *tg, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tgate_init(sk_tgate *tg, int sr)
+{
+    tg->sr = sr;
+    tg->dur = 0;
+    tg->timer = 0;
+}
+#+END_SRC
+* Gate Time
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tgate_dur(sk_tgate *tg, SKFLT dur);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tgate_dur(sk_tgate *tg, SKFLT dur)
+{
+    tg->dur = dur;
+}
+#+END_SRC
+* Computation
+=sk_tgate_tick= expects a trigger input signal.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_tgate_tick(sk_tgate *tg, SKFLT trig);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_tgate_tick(sk_tgate *tg, SKFLT trig)
+{
+    SKFLT out;
+
+    out = 0;
+
+    if (trig != 0) {
+        tg->timer = tg->dur * tg->sr;
+    }
+
+    if (tg->timer != 0) {
+        out = 1.0;
+        tg->timer--;
+    }
+
+    return out;
+}
+#+END_SRC

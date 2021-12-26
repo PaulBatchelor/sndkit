@@ -54,3 +54,4 @@ include nodes/thresh/config.mk
 include nodes/adsr/config.mk
 include nodes/tenv/config.mk
 include nodes/tick/config.mk
+include nodes/tgate/config.mk

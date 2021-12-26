@@ -62,6 +62,7 @@ ALGOS=\
 	thresh \
 	adsr \
 	tenv \
+	tgate \
 
 # GNU Make is very convenient here...
 
