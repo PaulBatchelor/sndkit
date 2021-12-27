@@ -1,3 +1,5 @@
+#!/bin/bash
+
 runtest () {
     ../sndkit t/$1.lil
 
