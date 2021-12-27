@@ -76,8 +76,9 @@ struct sk_rline {
 #+END_SRC
 * Constants and Variables
 The value from the LCG is often scaled to be normalized
-between 0 and 1. The constant required for this is
-$1/(2^31 - 1$, or =1/((1L<<31) - 1)=. This value is
+between 0 and 1. The constant required for this
+is @!(smallfig "rline_rngscale" "1/(2^31 - 1")!@,
+or =1/((1L<<31) - 1)=. This value is
 stored in a constant.
 
 #+NAME: sk_rline
@@ -184,17 +185,20 @@ used to generate sequences of pseudo-random numbers.
 
 It is the following equation
 
-$$
-y(n) = ((y(n - 1) * a + c) \gg 1)
-\& m
-$$
+@!
+(fig "rline_lcg" ``
+y(n) = ((ay(n - 1) + c) \gg 1) \, \& \, m
+``)
+!@
 
-Where $m$ is the masking value =0x7ffffff=, $a$ is a
-=multiplier=, and $c$ is the =increment=. In this
-implementation, $a$ will be =0x343fd=, and $c$ will be
+Where @!(smallfig "rline_m" "m")!@ is the masking value
+=0x7ffffff=, @!(smallfig "rline_a" "a")!@ is a
+=multiplier=, and @!(smallfig "rline_c" "c")!@ is the
+=increment=. In this
+implementation, @!(smallfig "rline_a")!@ will be =0x343fd=,
+and @!(smallfig "rline_c")!@ will be
 =0x2693ec3=. These constants come from the wikipedia page
-on LCGs, and originate the Microsoft Visual C/C++ standard
-library.
+on LCGs.
 
 The LCG here can be implemented as a stateless function or
 macro. In this case, we will go with the macro.
@@ -349,14 +353,19 @@ to wait for the next line.
 
 The normalized output can be computed with the expression:
 
-$$
+@!
+(fig "rline_normalized_output"
+``
 y = x_1 + pc
-$$
+``)
+!@
 
-Where $x_1$ is the starting point of the line, $p$ is
+Where @!(smallfig "rline_x1" "x_1")!@ is the starting point
+of the line, @!(smallfig "rline_p" "p")!@ is
 the current phase increment, represented in fixed point, and
-$c$ is the constant that normalizes and scales the phase to
-be the amount of progress to value $x_2$.
+@!(smallfig "rline_c" "c")!@ is the constant that normalizes
+and scales the phase to be the amount of progress to value
+@!(smallfig "rline_x2" "x_2")!@
 
 #+NAME: compute_current_sample
 #+BEGIN_SRC c
