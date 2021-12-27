@@ -1,0 +1,3 @@
+fmpair [gensine [tabnew 8192]] 440 1 1 1 0
+mul zz 0.5
+verify 784bb16aead5bc3a0381823340f8564d

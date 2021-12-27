@@ -1,0 +1,13 @@
+sparse 30
+butlp zz 4000
+buthp zz 1000
+mul zz 0.4
+
+noise
+mul zz 0.02
+buthp zz 1300
+butlp zz 1300
+add zz zz
+
+dup
+verify 48c1f88dc13bb88a8dbb2256f0b6245f

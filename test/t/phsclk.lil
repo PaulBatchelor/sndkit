@@ -1,0 +1,6 @@
+phasor 1 0
+phsclk zz 1
+env zz 0.001 0.01 0.001
+sine 1000 0.5
+mul zz zz
+verify d752dfb04a9b442cf9c51570f92bace4

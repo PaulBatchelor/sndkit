@@ -1,0 +1,10 @@
+regset [gensine [tabnew 8192]] 0
+regget 0
+osc [regget 0] 0.2 1 0
+biscale zz 300 800
+osc zz zz 0.4 0
+dup
+vardelay zz 0.8 0.3 1
+mul zz 0.3
+add zz zz
+verify 75e367a191f51f285943e8795c890c23

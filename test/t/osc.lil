@@ -1,0 +1,2 @@
+osc [gensine [tabnew 8192]] [mtof 60] [param 0.5] [param 0]
+verify 227089ddf15c08d997cedab455411130

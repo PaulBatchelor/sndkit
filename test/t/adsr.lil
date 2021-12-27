@@ -1,0 +1,6 @@
+tseq [genvals [tabnew 1] "1 0 0 1 0 0 1 0"] [metro 4] [param 0]
+adsr zz 0.001 0.001 0.3 0.01
+sine [mtof 67] 0.5
+mul zz zz
+
+verify 250432782f1311d8fd4425991600c1eb

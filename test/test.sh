@@ -10,7 +10,8 @@ runtest () {
 }
 
 check () {
-    printf "%s:\t%s\n" $1 $(runtest $1)
+    NSPACES=$(expr 16 - ${#1})
+    printf "%s:%"$NSPACES"s\n" $1 $(runtest $1)
 }
 
 check zero
@@ -18,3 +19,42 @@ check sine
 check noise
 check tgate
 check tract
+check vowel
+check adsr
+check bezier
+check bigverb
+check biramp
+check bitnoise
+check bitosc
+check blep
+check chaosnoise
+check chorus
+check clkphs
+check env
+check expmap
+check expon
+check fmpair
+check glottis
+check metro
+check modalres
+check mtof
+check noise
+check oscf
+check peakeq
+check phasewarp
+check phsclk
+check rephasor
+check rline
+check softclip
+check sparse
+check tenv
+check thresh
+check tick
+check tract
+check tseq
+check valp1
+check vardelay
+check osc
+check phasor
+check scale
+check smoother

@@ -1,0 +1,4 @@
+env [tick] 0.001 0.01 0.1
+sine 1000 0.5
+mul zz zz
+verify 8b437231765dcd1f17f646086816fedf

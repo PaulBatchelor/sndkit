@@ -1,0 +1,8 @@
+set nn 30
+blsaw [mtof $nn]
+blsaw [mtof [expr $nn + 0.01]]
+blsaw [mtof [expr $nn - 0.01]]
+add zz zz
+valp1 zz [scale [biramp [phasor 8 0] 0.1] 100 2000]
+mul zz 0.3
+verify f2c175e534dcb476e72d10a10d261b78

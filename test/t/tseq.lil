@@ -1,0 +1,8 @@
+tseq [genvals [tabnew 1] "0 2 4 7"] [metro 8] [param 0]
+add zz 60
+smoother zz 0.001
+mtof zz
+blsaw zz
+mul zz 0.3
+butlp zz 300
+verify a7b50e1acf555dfffb5549ab06a245d7

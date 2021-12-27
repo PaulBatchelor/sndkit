@@ -1,0 +1,2 @@
+sine [rline 300 400 10] 0.5
+verify 4269e83eb5d1e8a6cb785ad9c633e48d

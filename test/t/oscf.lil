@@ -1,0 +1,14 @@
+regset [gensine [tabnew 8192]] 0
+
+
+oscf [regget 0] 300 0
+
+# build oscilator use external phasor
+oscfext [regget 0] [phasor 302 0]
+
+add zz zz
+
+mul zz 0.3
+
+
+verify a9922b5146a589c0c3211b10de0c3762

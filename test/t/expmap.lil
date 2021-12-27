@@ -1,0 +1,3 @@
+scale [expmap [phasor 0.3 0] 4] 300 500
+sine zz 0.5
+verify d5e6417e92ce47c74536c6cfdcdc72c1

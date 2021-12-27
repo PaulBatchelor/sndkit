@@ -1,3 +1,9 @@
+if [ "$#" -lt 2 ]
+then
+    printf "Usage: $0 in.lil out.lil\n"
+    exit 1
+fi
+
 IN=$1
 OUT=$2
 sed -e "/^wavout/d" -e "/^computes/d" < $IN > $OUT

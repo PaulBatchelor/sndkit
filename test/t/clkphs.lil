@@ -1,0 +1,22 @@
+sine 1 1
+biscale zz 1 4
+metro zz
+hold zz
+regset zz 0
+
+regget 0
+clkphs zz
+scale zz 300 600
+sine zz 0.3
+
+regget 0
+env zz 0.001 0.1 0.001
+sine 1000 0.3
+mul zz zz
+
+add zz zz
+
+verify 538b75845cd1362ec36a461b62f87878
+
+regget 0
+unhold zz

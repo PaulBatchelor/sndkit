@@ -1,0 +1,22 @@
+sine 0.2 1
+hold
+regset zz 0
+
+mtof [biscale [regget 0] 30 37]
+
+
+gensine [tabnew 8192]
+swap
+fmpair zz zz [param 3] [param 2.1] \
+    [scale [flipper [phasor 0.2 0]] 1 7] [param 0.5]
+mul zz 0.8
+
+softclip zz 10
+butlp zz 1000
+
+mul zz 0.5
+
+regget 0
+unhold zz
+
+verify 3bed6cd629363c9d0b07ead0102eb237

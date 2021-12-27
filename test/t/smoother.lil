@@ -1,0 +1,9 @@
+metro 0.5
+tgate zz 1
+smoother zz 0.1
+mul zz 12
+add zz 48
+mtof zz
+bltri zz
+mul zz 0.5
+verify c60b5a771822be92b86d6cf43178ae9a

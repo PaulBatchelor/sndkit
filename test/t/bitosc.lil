@@ -1,0 +1,7 @@
+scale [phasor 8 0] 0 12
+add zz 72
+mtof zz
+phasor zz 0
+bitosc zz 3 6
+mul zz 0.3
+verify 6be96ec44d3a78ec79ca005c7eb238ce

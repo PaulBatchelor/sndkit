@@ -1,0 +1,6 @@
+flipper [phasor 2 0]
+scale zz 48 60
+mtof zz
+blsquare zz
+mul zz 0.3
+verify 24397ebc1fbf9cc6a953ef51640725ac

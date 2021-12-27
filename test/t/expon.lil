@@ -1,0 +1,4 @@
+expon [metro 1] 1 0.1 0.0001
+sine 1000 0.5
+mul zz zz
+verify 0e5d185c3078bb7a4cdf7d694d540c84

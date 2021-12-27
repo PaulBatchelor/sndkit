@@ -1,0 +1,3 @@
+phasor 200 0
+wavout zz "test.wav"
+computes 10

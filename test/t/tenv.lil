@@ -1,0 +1,4 @@
+tenv [metro 0.5] 0.2 0.2 0.4
+sine 800 0.5
+mul zz zz
+verify 00f02104ce92cb76b91e90f0ab1b7fed

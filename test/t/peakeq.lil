@@ -1,0 +1,5 @@
+# TODO: we really need a real noise module
+chaosnoise 1.9 4000 0.141
+mul zz 0.5
+peakeq zz 2000 300 5
+verify 3a26a81e9f00d3117b9c3f7d83e9051a

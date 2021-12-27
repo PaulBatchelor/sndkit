@@ -1,0 +1,3 @@
+bitnoise 8000 0
+mul zz 0.3
+verify 99fb32552133e5f22930e17f50c4d1b1
