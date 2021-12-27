@@ -20,7 +20,6 @@ check zero
 check sine
 check noise
 check tgate
-check tract
 check vowel
 check adsr
 check bezier

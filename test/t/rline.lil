@@ -1,2 +1,3 @@
+srand 12345
 sine [rline 300 400 10] 0.5
-verify 4269e83eb5d1e8a6cb785ad9c633e48d
+verify ed5d6fc79a95095d3f71582db8651bcc

@@ -1,5 +1,6 @@
+srand 12345
 metro 6
 modalres zz [mtof 74] [rline 10 400 5]
 dcblocker zz
 mul zz 0.5
-verify 74d0a1deb2f33ed95e7f892683d9fd65
+verify dea85f12ef67bc7780e6e05b1c2fed5e

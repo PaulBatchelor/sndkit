@@ -75,8 +75,7 @@ int sk_node_rline(sk_core *core)
 
     sr = gf_patch_srate_get(patch);
 
-    /* create initial seed using system RNG */
-    sk_rline_init(&rline->rline, sr, rand());
+    sk_rline_init(&rline->rline, sr, sk_core_rand(core));
 
     rc = gf_patch_new_node(patch, &node);
     SK_GF_ERROR_CHECK(rc);
