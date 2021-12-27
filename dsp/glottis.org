@@ -27,6 +27,8 @@ struct.
 #define M_PI 3.14159265358979323846
 #endif
 
+<<lcg_max>>
+
 <<static_funcdefs>>
 <<funcs>>
 #+END_SRC
@@ -73,6 +75,7 @@ void sk_glottis_init(sk_glottis *glot, SKFLT sr)
     glot->T = 1.0/sr; /* big T */
     glot->time_in_waveform = 0;
     setup_waveform(glot);
+    <<LCG_init>>
 }
 #+END_SRC
 
@@ -97,6 +100,7 @@ struct sk_glottis {
     SKFLT omega;
 
     SKFLT T;
+    <<LCG_state>>
 };
 #+END_SRC
 * Parameters
@@ -326,6 +330,62 @@ glot->delta = delta;
 glot->Te = Te;
 glot->omega = omega;
 #+END_SRC
+* Internal RNG
+To make this algorithm more numerically portable,
+a basic LCG is used to compute aspiration noise,
+similar to the one found in @!(ref "noise")!@.
+
+#+NAME: LCG_state
+#+BEGIN_SRC c
+unsigned long rng;
+#+END_SRC
+
+The initial state of the LCG can be set with with
+=sk_glottis_srand=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_glottis_srand(sk_glottis *glot, unsigned long s);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_glottis_srand(sk_glottis *glot, unsigned long s)
+{
+    glot->rng = 0;
+}
+#+END_SRC
+
+By default, it is set to be 0.
+
+#+NAME: LCG_init
+#+BEGIN_SRC c
+sk_glottis_srand(glot, 0);
+#+END_SRC
+
+The LCG can be computed with the static function =glot_lcg=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static unsigned long glot_lcg(sk_glottis *glot);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static unsigned long glot_lcg(sk_glottis *glot)
+{
+    glot->rng = (1103515245 * glot->rng + 12345) % LCG_MAX;
+    return glot->rng;
+}
+#+END_SRC
+
+The maximum value of the LCG is @!(smallfig
+"glottis_maxlcg" "2^31")!@, or 2147483648.
+
+#+NAME: lcg_max
+#+BEGIN_SRC c
+#define LCG_MAX 2147483648
+#+END_SRC
 * Computation
 A single sample of audio is computed with =sk_glottis_tick=.
 
@@ -404,7 +464,7 @@ and portable.
 #+NAME: compute_aspiration_noise
 #+BEGIN_SRC c
 /* TODO: build more portable RNG */
-noise = 2.0 * ((SKFLT) rand() / RAND_MAX) - 1;
+noise = 2.0 * ((SKFLT) glot_lcg(glot) / LCG_MAX) - 1;
 aspiration = (1 - sqrt(glot->tenseness)) * 0.3 * noise;
 aspiration *= 0.2;
 out += aspiration;

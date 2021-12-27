@@ -90,6 +90,7 @@ int sk_node_glottis(sk_core *core)
     gf_node *node;
     int rc;
     sk_param freq, tenseness;
+    struct glottis_n *g;
 
     rc = sk_param_get(core, &tenseness);
     SK_ERROR_CHECK(rc);
@@ -103,6 +104,10 @@ int sk_node_glottis(sk_core *core)
 
     rc = gf_node_glottis(node);
     SK_GF_ERROR_CHECK(rc);
+
+    g = gf_node_get_data(node);
+
+    sk_glottis_srand(&g->glottis, sk_core_rand(core));
 
     sk_param_set(core, node, &freq, 0);
     sk_param_set(core, node, &tenseness, 1);

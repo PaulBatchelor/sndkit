@@ -1,3 +1,5 @@
+srand 12345
+
 sine 0.04 1
 biscale zz 0 1
 hold zz
@@ -20,8 +22,7 @@ regget 0
 
 vowelmorph zz zz zz
 
-
 regget 0
 unhold
 
-verify fcf36556eae4116871a2783e34c3fa2b
+verify a2aff1a212d09ddc7a6943dc854cc282
