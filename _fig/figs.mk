@@ -43,6 +43,8 @@ expmap_s.png \
 expmap_s2x.png \
 expmap_x.png \
 expmap_x2x.png \
+glottis_maxlcg.png \
+glottis_maxlcg2x.png \
 glottis_r_kp_eqn.png \
 glottis_r_kp_eqn2x.png \
 glottis_ra.png \

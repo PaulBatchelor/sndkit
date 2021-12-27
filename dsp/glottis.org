@@ -380,7 +380,7 @@ static unsigned long glot_lcg(sk_glottis *glot)
 #+END_SRC
 
 The maximum value of the LCG is @!(smallfig
-"glottis_maxlcg" "2^31")!@, or 2147483648.
+"glottis_maxlcg" "2^{31}")!@, or 2147483648.
 
 #+NAME: lcg_max
 #+BEGIN_SRC c
@@ -463,7 +463,6 @@ and portable.
 
 #+NAME: compute_aspiration_noise
 #+BEGIN_SRC c
-/* TODO: build more portable RNG */
 noise = 2.0 * ((SKFLT) glot_lcg(glot) / LCG_MAX) - 1;
 aspiration = (1 - sqrt(glot->tenseness)) * 0.3 * noise;
 aspiration *= 0.2;
