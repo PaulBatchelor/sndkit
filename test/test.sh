@@ -1,9 +1,7 @@
-#!/bin/bash
-
 runtest () {
     ../sndkit t/$1.lil
 
-    if [[ ! "$?" -eq 0 ]]
+    if [ ! "$?" -eq 0 ]
     then
         printf "fail"
         return
