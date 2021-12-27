@@ -58,3 +58,4 @@ check osc
 check phasor
 check scale
 check smoother
+check verbity
