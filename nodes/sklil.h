@@ -9,6 +9,7 @@ if (ARGC < NARGS) { \
 #define SKLIL_ERROR_CHECK(lil, rc, msg) \
 if (rc) { \
     lil_set_error(lil, msg); \
+    lil_set_errcode(rc); \
     return NULL; \
 }
 
@@ -24,4 +25,5 @@ void sklil_nodes(lil_t lil);
 void sklil_loader(lil_t lil);
 void sklil_clean(lil_t lil);
 int sklil_main(int argc, char *argv[]);
+void lil_set_errcode(int err);
 #endif
