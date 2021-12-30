@@ -299,6 +299,11 @@ static lil_value_t l_unholdall(lil_t lil, size_t argc, lil_value_t *argv)
     patch = sk_core_patch(core);
     pool = gf_patch_pool(patch);
 
+    /* usually, when this is called, we also mean to
+     * reset the whole pool as well
+     */
+    gf_bufferpool_reset(pool);
+
     rc = gf_bufferpool_unholdu_all(pool);
 
     SKLIL_ERROR_CHECK(lil, rc != GF_OK, "Nothing to unhold.");
