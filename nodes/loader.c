@@ -293,14 +293,17 @@ static lil_value_t l_unholdall(lil_t lil, size_t argc, lil_value_t *argv)
     sk_core *core;
     gf_patch *patch;
     gf_bufferpool *pool;
+    int rc;
 
     core = lil_get_data(lil);
     patch = sk_core_patch(core);
     pool = gf_patch_pool(patch);
 
-    gf_bufferpool_unholdu_all(pool);
+    rc = gf_bufferpool_unholdu_all(pool);
 
-    return lil_alloc_integer(sk_core_stackpos(core));
+    SKLIL_ERROR_CHECK(lil, rc != GF_OK, "Nothing to unhold.");
+
+    return NULL;
 }
 
 static lil_value_t l_pop(lil_t lil, size_t argc, lil_value_t *argv)

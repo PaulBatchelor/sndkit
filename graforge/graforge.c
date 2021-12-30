@@ -667,12 +667,13 @@ void gf_bufferpool_reset(gf_bufferpool *pool)
 void gf_bufferpool_destroy(gf_patch *patch, gf_bufferpool *pool)
 {
     int i;
+
     for (i = 0; i < pool->size; i++) {
-	gf_buffer_free(patch, &pool->buffers[i]);
+        gf_buffer_free(patch, &pool->buffers[i]);
     }
 
     if (pool->size > 0) {
-	gf_memory_free(patch, (void **) &pool->buffers);
+        gf_memory_free(patch, (void **) &pool->buffers);
     }
 }
 
@@ -683,13 +684,12 @@ int gf_bufferpool_nactive(gf_bufferpool *pool)
 
 int gf_bufferpool_unhold(gf_bufferpool *pool, gf_buffer *buf)
 {
-    if (buf->id < 0)
-	return 0;
+    if (buf->id < 0) return 0;
     if (gf_buffer_unhold(buf)) {
-	pool->nactive--;
-	return 1;
+        pool->nactive--;
+        return 1;
     } else {
-	return 0;
+        return 0;
     }
 }
 
@@ -718,27 +718,22 @@ int gf_bufferpool_nextfree(gf_bufferpool *pool, gf_buffer ** buf)
 
 int gf_bufferpool_holdu(gf_bufferpool *pool, gf_buffer *buf)
 {
-    if (buf == NULL)
-	return GF_NULL_VALUE;
+    if (buf == NULL) return GF_NULL_VALUE;
     if (buf->read >= 0) {
-	gf_buffer_holdu(buf);
-	pool->usrnactive++;
-	pool->nactive++;
-	return GF_OK;
+        gf_buffer_holdu(buf);
+        pool->usrnactive++;
+        pool->nactive++;
+        return GF_OK;
     }
     return GF_INVALID_BUFFER;
 }
 
 int gf_bufferpool_unholdu(gf_bufferpool *pool, gf_buffer *buf)
 {
-    if (buf == NULL)
-	return GF_NULL_VALUE;
-    if (buf->id == -1)
-	return GF_OK;
-    if (buf->read != -2)
-	return GF_INVALID_BUFFER;
-    if (!gf_buffer_unhold(buf))
-	return GF_NOT_OK;
+    if (buf == NULL) return GF_NULL_VALUE;
+    if (buf->id == -1) return GF_OK;
+    if (buf->read != -2) return GF_INVALID_BUFFER;
+    if (!gf_buffer_unhold(buf)) return GF_NOT_OK;
     pool->nactive--;
     pool->usrnactive--;
     return GF_OK;
@@ -747,10 +742,9 @@ int gf_bufferpool_unholdu(gf_bufferpool *pool, gf_buffer *buf)
 int gf_bufferpool_unholdu_all(gf_bufferpool *pool)
 {
     int i;
-    if (pool->usrnactive == 0)
-	return GF_NOT_OK;
+    if (pool->usrnactive == 0) return GF_NOT_OK;
     for (i = 0; i < pool->size; i++) {
-	gf_bufferpool_unholdu(pool, &pool->buffers[i]);
+        gf_bufferpool_unholdu(pool, &pool->buffers[i]);
     }
     return GF_OK;
 }
