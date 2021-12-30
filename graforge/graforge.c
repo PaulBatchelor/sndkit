@@ -656,11 +656,11 @@ void gf_bufferpool_reset(gf_bufferpool *pool)
     pool->last_free = -1;
     pool->nactive = 0;
     for (i = 0; i < pool->size; i++) {
-	if (pool->buffers[i].read >= 0) {
-	    gf_buffer_reinit(&pool->buffers[i]);
-	} else {
-	    pool->nactive++;
-	}
+        if (pool->buffers[i].read >= 0) {
+            gf_buffer_reinit(&pool->buffers[i]);
+        } else {
+            pool->nactive++;
+        }
     }
 }
 
@@ -697,17 +697,17 @@ int gf_bufferpool_nextfree(gf_bufferpool *pool, gf_buffer ** buf)
 {
     int i;
     if (pool->nactive >= pool->size) {
-	return GF_POOL_FULL;
+        return GF_POOL_FULL;
     } else if (pool->last_free >= 0) {
-	*buf = &pool->buffers[pool->last_free];
-	pool->last_free = -1;
+        *buf = &pool->buffers[pool->last_free];
+        pool->last_free = -1;
     } else {
-	for (i = 0; i < pool->size; i++) {
-	    if (pool->buffers[i].read == 0) {
-		*buf = &pool->buffers[i];
-		break;
-	    }
-	}
+        for (i = 0; i < pool->size; i++) {
+            if (pool->buffers[i].read == 0) {
+                *buf = &pool->buffers[i];
+                break;
+            }
+        }
     }
 
     pool->nactive++;
