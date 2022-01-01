@@ -63,6 +63,7 @@ ALGOS=\
 	adsr \
 	tenv \
 	tgate \
+	dblin \
 
 # GNU Make is very convenient here...
 

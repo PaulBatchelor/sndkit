@@ -631,6 +631,19 @@ int sk_core_swap(sk_core *core)
     return 0;
 }
 #+END_SRC
+** Get Stack Position
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_stackpos(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_stackpos(sk_core *core)
+{
+    return core->stack.pos;
+}
+#+END_SRC
 * Parameters and Cables
 =sndkit_param= is an abstraction used to deal with
 graforge cables, and is designed to link up with the
@@ -933,17 +946,27 @@ int sk_core_generic_pop(sk_core *core, void **ptr)
     return rc;
 }
 #+END_SRC
-** Get Stack Position
+** Checking parameter types
+=sk_param_isconstant= will check if a parameter
+is a consant. =sk_param_iscable= will check if
+a parameter is a cable.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
-int sk_core_stackpos(sk_core *core);
+int sk_param_isconstant(sk_param *p);
+int sk_param_iscable(sk_param *p);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
-int sk_core_stackpos(sk_core *core)
+int sk_param_isconstant(sk_param *p)
 {
-    return core->stack.pos;
+    return p->type == 0;
+}
+
+int sk_param_iscable(sk_param *p)
+{
+    return p->type == 1;
 }
 #+END_SRC
 * Registers

@@ -64,6 +64,7 @@
 (ww-add-link "adsr" "dsp/adsr.org")
 (ww-add-link "tenv" "dsp/tenv.org")
 (ww-add-link "tgate" "dsp/tgate.org")
+(ww-add-link "dblin" "dsp/dblin.org")
 
 # sync and close
 

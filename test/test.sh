@@ -58,3 +58,4 @@ check phasor
 check scale
 check smoother
 check verbity
+check dblin
