@@ -13,7 +13,7 @@ void sklil_load_arith(lil_t lil);
 void sklil_load_scale(lil_t lil);
 void sklil_load_phasor(lil_t lil);
 void sklil_load_rephasor(lil_t lil);
-void sklil_load_tabnew(lil_t lil);
+void sklil_load_tab(lil_t lil);
 void sklil_load_gen(lil_t lil);
 void sklil_load_osc(lil_t lil);
 void sklil_load_reg(lil_t lil);
@@ -68,7 +68,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_scale(lil);
     sklil_load_phasor(lil);
     sklil_load_rephasor(lil);
-    sklil_load_tabnew(lil);
+    sklil_load_tab(lil);
     sklil_load_gen(lil);
     sklil_load_osc(lil);
     sklil_load_reg(lil);

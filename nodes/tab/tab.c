@@ -20,9 +20,8 @@ static lil_value_t tabnew(lil_t lil, size_t argc, lil_value_t *argv)
 
     rc = sk_core_table_new(core, sz);
 
-    if (rc) {
-        /* TODO: error handling */
-    }
+    SKLIL_ERROR_CHECK(lil, rc, "Could not create table.");
+
     return NULL;
 }
 
@@ -40,14 +39,12 @@ static lil_value_t tabdump(lil_t lil, size_t argc, lil_value_t *argv)
 
     rc = sk_core_tabdump(core, filename);
 
-    if (rc) {
-        /* TODO: error handling */
-    }
+    SKLIL_ERROR_CHECK(lil, rc, "Could not dump table.");
 
     return NULL;
 }
 
-void sklil_load_tabnew(lil_t lil)
+void sklil_load_tab(lil_t lil)
 {
     lil_register(lil, "tabnew", tabnew);
     lil_register(lil, "tabdump", tabdump);
