@@ -59,3 +59,4 @@ check scale
 check smoother
 check verbity
 check dblin
+check tabdup

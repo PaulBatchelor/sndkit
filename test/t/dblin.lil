@@ -1,0 +1,5 @@
+blsaw [mtof 60]
+butlp zz 800
+dblin [scale [biramp [phasor 0.5 0] 0.3] -20 -3]
+mul zz zz
+verify d1209b9a098e36a931b22faff994eb3e

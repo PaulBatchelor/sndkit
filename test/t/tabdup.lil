@@ -1,0 +1,4 @@
+gensine [tabnew 8192]
+tabdup zz "sineft"
+osc [grab sineft] 440 0.5 0
+verify c4d8696da1020056c29c2efdc7bf10c1
