@@ -18,7 +18,14 @@ static lil_value_t tabnew(lil_t lil, size_t argc, lil_value_t *argv)
 
     sz = lil_to_integer(argv[0]);
 
-    rc = sk_core_table_new(core, sz);
+    if (argc == 1) {
+        rc = sk_core_table_new(core, sz);
+    } else {
+        const char *key;
+
+        key = lil_to_string(argv[1]);
+        rc = sk_core_append_table(core, key, strlen(key), sz);
+    }
 
     SKLIL_ERROR_CHECK(lil, rc, "Could not create table.");
 
