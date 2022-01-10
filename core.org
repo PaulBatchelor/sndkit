@@ -225,6 +225,20 @@ sk_stack* sk_core_stack(sk_core *core)
     return &core->stack;
 }
 #+END_SRC
+** Dictionary Getter
+#+NAME: funcdefs
+#+BEGIN_SRC c
+sk_dict* sk_core_dict(sk_core *core);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+sk_dict* sk_core_dict(sk_core *core)
+{
+    return &core->dict;
+}
+#+END_SRC
+
 * Stack
 ** Core Data Types
 An item on a stack is contained in a thing known as a

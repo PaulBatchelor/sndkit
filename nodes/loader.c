@@ -327,6 +327,22 @@ static lil_value_t l_pop(lil_t lil, size_t argc, lil_value_t *argv)
     return lil_alloc_double(x);
 }
 
+static lil_value_t l_del(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    const char *key;
+    int rc;
+
+    core = lil_get_data(lil);
+    SKLIL_ARITY_CHECK(lil, "del", argc, 1);
+    key = lil_to_string(argv[0]);
+
+    rc = sk_dict_remove(sk_core_dict(core), key, strlen(key));
+    SKLIL_ERROR_CHECK(lil, rc, "no value to remove");
+
+    return NULL;
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -347,6 +363,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "stkpos", l_stackpos);
     lil_register(lil, "unholdall", l_unholdall);
     lil_register(lil, "pop", l_pop);
+    lil_register(lil, "del", l_del);
 }
 
 void sklil_clean(lil_t lil)
