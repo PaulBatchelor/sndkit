@@ -1,0 +1,44 @@
+# no zero node yet, so create 0 signal using add
+hold [add 0 0]
+regset zz 0
+hold [add 0 0]
+regset zz 1
+
+metro [rline 1 4 1]
+env zz [param 0.001] [param 0.01] [rline 0.01 0.1 1]
+flipper [phasor [rline 0.1 0.5 1] 0]
+expmap zz 1
+scale zz 67 72
+mtof zz
+blsaw zz
+butlp zz 800
+mul zz 0.8
+mul zz zz
+
+dup
+mix zz [regget 0] 0.5
+dup
+mix zz [regget 1] [expmap [mul [flipper [phasor 0.3 0]] 0.9] 3]
+
+regget 1
+vardelay zz [param 0.8] [rline 0.01 0.4 2] [param 0.5]
+dup
+mix zz [regget 0] 0.5
+add zz zz
+
+
+regget 0
+dup
+bigverb zz zz 0.97 10000
+drop
+dcblocker zz
+mul zz [dblin -10]
+add zz zz
+
+
+wavout zz "mix_test.wav"
+
+computes 20
+
+unhold [regget 0]
+unhold [regget 1]
