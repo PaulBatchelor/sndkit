@@ -1,7 +1,7 @@
 # no zero node yet, so create 0 signal using add
-hold [add 0 0]
+hold [zero]
 regset zz 0
-hold [add 0 0]
+hold [zero]
 regset zz 1
 
 metro [rline 1 4 1]
@@ -26,7 +26,6 @@ dup
 mix zz [regget 0] 0.5
 add zz zz
 
-
 regget 0
 dup
 bigverb zz zz 0.97 10000
@@ -36,7 +35,7 @@ mul zz [dblin -10]
 add zz zz
 
 
-wavout zz "mix_test.wav"
+wavout zz mix_test.wav
 
 computes 20
 

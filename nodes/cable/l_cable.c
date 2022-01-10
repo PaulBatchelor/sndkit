@@ -8,6 +8,7 @@
 
 int sk_node_cabnew(sk_core *core);
 int sk_node_mix(sk_core *core);
+int sk_node_zero(sk_core *core);
 
 static lil_value_t cabnew(lil_t lil, size_t argc, lil_value_t *argv)
 {
@@ -44,8 +45,20 @@ static lil_value_t mix(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t zero(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+
+    core = lil_get_data(lil);
+    rc = sk_node_zero(core);
+    SKLIL_ERROR_CHECK(lil, rc, "zero didn't work out.");
+    return NULL;
+}
+
 void sklil_load_cable(lil_t lil)
 {
     lil_register(lil, "cabnew", cabnew);
     lil_register(lil, "mix", mix);
+    lil_register(lil, "zero", zero);
 }
