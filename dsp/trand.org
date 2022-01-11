@@ -1,0 +1,10 @@
+#+TITLE: TRand
+* Overview
+=Trand= implements triggerable random number generator.
+Every time a trigger is received, it produces a new random
+number in a given range.
+* Tangled Files
+* Random Number Generator
+The RNG implemented here is an @!(ref "LCG")!@.
+* Parameters
+* Compute
