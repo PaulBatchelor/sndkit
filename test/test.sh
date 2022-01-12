@@ -61,3 +61,4 @@ check verbity
 check dblin
 check tabdup
 check trand
+check crossfade

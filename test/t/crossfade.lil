@@ -1,0 +1,7 @@
+srand 12345
+blsaw [rline 200 400 10]
+mul zz 0.3
+butlp zz 500
+sine [trand [metro [rline 8 25 3]] 200 800] 0.5
+crossfade zz zz [flipper [phasor [rline 0.5 3 1] 0]]
+verify 24b6ed8c04b0549f9ce16c6aeaf0db7d
