@@ -103,3 +103,6 @@ lowpass filter.
 @!(ref "dblin")!@ converts dB to linear.
 
 @!(ref "trand")!@ triggerable random number generator.
+
+@!(ref "crossfade")!@ implements a few different
+types of crossfading.
