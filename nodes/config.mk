@@ -58,3 +58,4 @@ include nodes/tgate/config.mk
 include nodes/dblin/config.mk
 include nodes/trand/config.mk
 include nodes/crossfade/config.mk
+include nodes/tsmp/config.mk

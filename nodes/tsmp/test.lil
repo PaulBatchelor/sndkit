@@ -1,0 +1,3 @@
+tsmp [loadwav "oneart.wav"] [metro 1.5] [param 1.0]
+wavout zz "test.wav"
+computes 10

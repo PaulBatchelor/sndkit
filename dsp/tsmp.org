@@ -1,0 +1,187 @@
+#+TITLE: TSmp
+* Description
+TSmp is triggerable in-memory sample generator with playback
+speed control.
+* Generated Files
+#+NAME: tsmp.h
+#+BEGIN_SRC c :tangle tsmp.h
+#ifndef SK_TSMP_H
+#define SK_TSMP_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+#ifdef SK_TSMP_PRIV
+<<structs>>
+#endif
+<<typedefs>>
+<<funcdefs>>
+
+#endif
+#+END_SRC
+
+#+NAME: tsmp.c
+#+BEGIN_SRC c :tangle tsmp.c
+#include <math.h>
+#define SK_TSMP_PRIV
+#include "tsmp.h"
+
+<<funcs>>
+#+END_SRC
+* Data
+Data is stored in a struct called =sk_tsmp=, and initialized
+with =sk_tsmp_init=.
+** Struct Declaration
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_tsmp sk_tsmp;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_tsmp {
+    <<tsmp>>
+};
+#+END_SRC
+** Init
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tsmp_init(sk_tsmp *tsmp, SKFLT *tab, unsigned long sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tsmp_init(sk_tsmp *tsmp, SKFLT *tab, unsigned long sz)
+{
+    <<tsmp_init>>
+}
+#+END_SRC
+** Stored playback position
+The current playback position is stored in units of samples
+as a double to preserve fractional sample amounts.
+
+#+NAME: tsmp
+#+BEGIN_SRC c
+double pos;
+#+END_SRC
+
+By setting position to be negative, it prevents the sample
+from firing off in the beginning.
+
+#+NAME: tsmp_init
+#+BEGIN_SRC c
+tsmp->pos = -1;
+#+END_SRC
+
+A trigger signal resets the playback position to be 0.
+
+#+NAME: reset
+#+BEGIN_SRC c
+tsmp->pos = 0;
+#+END_SRC
+* Parameters
+This thing takes in 3 parameters: a trigger signal, a
+playback speed amount, and an ftable (presumably
+containing sample data).
+** Playback
+Playback speed happens at audio rate, and determines the
+increment amount. A value of 1 is normal, 2 double speed,
+0.5 half speed. Negative values are ignored for now. If they
+did work, they would go in reverse.
+
+#+NAME: tsmp
+#+BEGIN_SRC c
+SKFLT play;
+#+END_SRC
+
+#+NAME: tsmp_init
+#+BEGIN_SRC c
+tsmp->play = 1.0;
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tsmp_rate(sk_tsmp *ts, SKFLT play);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tsmp_rate(sk_tsmp *ts, SKFLT play)
+{
+    ts->play = 1.0;
+}
+#+END_SRC
+** Table
+The ftable is assumed to be sample data loaded from some
+audio file like =loadwav=.
+
+#+NAME: tsmp
+#+BEGIN_SRC c
+SKFLT *tab;
+unsigned long tabsz;
+#+END_SRC
+
+#+NAME: tsmp_init
+#+BEGIN_SRC c
+tsmp->tab = tab;
+tsmp->tabsz = sz;
+#+END_SRC
+* Processing
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_tsmp_tick(sk_tsmp *tsmp, SKFLT trig);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_tsmp_tick(sk_tsmp *tsmp, SKFLT trig)
+{
+    SKFLT smp;
+
+    smp = 0;
+
+    if (trig != 0) {
+        <<reset>>
+    }
+
+    <<process>>
+
+    return smp;
+}
+#+END_SRC
+
+Sampling only happens if the playback position is in bounds.
+Otherwise, it is assumed to have been completely fired.
+
+#+NAME: process
+#+BEGIN_SRC c
+if (tsmp->pos >= 0 && tsmp->pos < (tsmp->tabsz - 1)) {
+    SKFLT play;
+    <<lerpvars>>
+    play = tsmp->play;
+    <<lerp>>
+    tsmp->pos += play;
+}
+#+END_SRC
+
+Most of this interpolation code has been lifted from other
+soundpipe modules.
+
+#+NAME: lerpvars
+#+BEGIN_SRC c
+unsigned int ipos;
+double fract;
+SKFLT v1, v2;
+SKFLT *tab;
+#+END_SRC
+
+#+NAME: lerp
+#+BEGIN_SRC c
+tab = tsmp->tab;
+ipos = floor(tsmp->pos);
+fract = tsmp->pos - ipos;
+v1 = tab[ipos];
+v2 = tab[ipos + 1];
+smp = (v1 + (v2 - v1) * fract);
+#+END_SRC

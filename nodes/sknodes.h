@@ -62,4 +62,5 @@ int sk_node_tick(sk_core *core);
 int sk_node_tgate(sk_core *core);
 int sk_node_dblin(sk_core *core);
 int sk_node_trand(sk_core *core);
+int sk_node_tsmp(sk_core *core);
 #endif

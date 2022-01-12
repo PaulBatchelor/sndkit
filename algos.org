@@ -106,3 +106,6 @@ lowpass filter.
 
 @!(ref "crossfade")!@ implements a few different
 types of crossfading.
+
+@!(ref "tsmp")!@ is a simple one-shot triggerable in-memory
+sampler.

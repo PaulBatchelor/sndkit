@@ -65,6 +65,7 @@ ALGOS=\
 	tgate \
 	dblin \
 	trand \
+	tsmp \
 
 # GNU Make is very convenient here...
 

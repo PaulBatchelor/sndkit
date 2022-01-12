@@ -67,6 +67,7 @@
 (ww-add-link "dblin" "dsp/dblin.org")
 (ww-add-link "trand" "dsp/trand.org")
 (ww-add-link "LCG" "doc/LCG.org")
+(ww-add-link "tsmp" "dsp/tsmp.org")
 
 # sync and close
 
