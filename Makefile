@@ -64,6 +64,7 @@ ALGOS=\
 	tenv \
 	tgate \
 	dblin \
+	trand \
 
 # GNU Make is very convenient here...
 

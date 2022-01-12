@@ -1,0 +1,4 @@
+trand [metro 8] 60 72
+mtof zz
+bltri zz
+verify 0d75391879e8c5508c4583c057efb1be

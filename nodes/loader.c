@@ -59,6 +59,7 @@ void sklil_load_tenv(lil_t lil);
 void sklil_load_tick(lil_t lil);
 void sklil_load_tgate(lil_t lil);
 void sklil_load_dblin(lil_t lil);
+void sklil_load_trand(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -114,6 +115,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_tick(lil);
     sklil_load_tgate(lil);
     sklil_load_dblin(lil);
+    sklil_load_trand(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)

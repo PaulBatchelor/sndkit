@@ -101,3 +101,5 @@ lowpass filter.
 @!(ref "tgate")!@ is a triggerable gate generator.
 
 @!(ref "dblin")!@ converts dB to linear.
+
+@!(ref "trand")!@ triggerable random number generator.

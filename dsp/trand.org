@@ -4,7 +4,150 @@
 Every time a trigger is received, it produces a new random
 number in a given range.
 * Tangled Files
-* Random Number Generator
-The RNG implemented here is an @!(ref "LCG")!@.
+=trand.c= and =trand.h=. =SK_TRAND_PRIV= will expose
+the struct contents for =sk_trand=.
+
+#+NAME: trand.h
+#+BEGIN_SRC c :tangle trand.h
+#ifndef SK_TRAND_H
+#define SK_TRAND_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+#ifdef SK_TRAND_PRIV
+<<structs>>
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#endif
+#+END_SRC
+
+#+NAME: trand.c
+#+BEGIN_SRC c :tangle trand.c
+#define SK_TRAND_PRIV
+#include "trand.h"
+
+<<funcs>>
+#+END_SRC
+* Initialization and Struct
+Initialize trand with =sk_trand_init=. It will need
+an initial seed value for the internal RNG.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_trand_init(sk_trand *tr, unsigned long seed);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_trand_init(sk_trand *tr, unsigned long seed)
+{
+    <<init>>
+}
+#+END_SRC
+
+The struct for trand is =sk_trand=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_trand sk_trand;
+#+END_SRC
+
+The =sk_trand= struct contains the RNG state, min/max
+ranges, and a random value that was generated last.
+
+For optimization, a =scale= variable is used to scale the
+RNG value within range. A =changed= variable is also used
+to signal if min or max have changed, and will trigger
+the =scale= value to update (this is a version of
+@!(ref "parameter caching")!@, but using one flag
+to monitor the state of two variables).
+
+#+NAME: structs
+#+BEGIN_SRC c sk_trand
+struct sk_trand {
+    unsigned long rng;
+    SKFLT min;
+    SKFLT max;
+    SKFLT val;
+    SKFLT scale;
+    int changed;
+};
+#+END_SRC
+
+TRand will be initialized to output values between 0 and 1,
+with it's internal seed set to the one provided by the init
+function.
+
+*Note*: =val= will be set to be 0. This means that trand
+will return 0 until the first trigger.
+
+#+NAME: init
+#+BEGIN_SRC c
+tr->rng = seed;
+tr->val = 0;
+tr->changed = 0;
+tr->min = 0;
+tr->max = 1;
+tr->scale = 1.0 / 2147483648L;
+#+END_SRC
 * Parameters
+TRand takes has two parameters: min and max. These set the
+range of the random numbers, and can be set with
+=sk_trand_min= and =sk_trand_max=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_trand_min(sk_trand *tr, SKFLT min);
+void sk_trand_max(sk_trand *tr, SKFLT max);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_trand_min(sk_trand *tr, SKFLT min)
+{
+    if (tr->min != min) {
+        tr->min = min;
+        tr->changed = 1;
+    }
+}
+
+void sk_trand_max(sk_trand *tr, SKFLT max)
+{
+    if (tr->max != max) {
+        tr->max = max;
+        tr->changed = 1;
+    }
+}
+#+END_SRC
 * Compute
+Computed with =sk_trand_compute=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_trand_tick(sk_trand *tr, SKFLT trig);
+#+END_SRC
+
+If a trigger happens, update the random number. If
+the parameters change, update the scaling.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_trand_tick(sk_trand *tr, SKFLT trig)
+{
+    if (trig != 0) {
+        if (tr->changed) {
+            tr->changed = 0;
+            tr->scale = 1.0 / 2147483648L;
+            tr->scale *= (tr->max - tr->min);
+        }
+        tr->val = tr->min + (tr->rng * tr->scale);
+        tr->rng = (1103515245 * tr->rng + 12345) % 2147483648;
+    }
+    return tr->val;
+}
+#+END_SRC

@@ -1,0 +1,5 @@
+trand [metro 8] 60 72
+mtof zz
+bltri zz
+wavout zz "test.wav"
+computes 10

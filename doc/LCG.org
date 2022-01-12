@@ -1,13 +1,13 @@
 #+TITLE: Linear Congruent Generator
 * Overview
 A =Linear Congruent Generator=, or =LCG=, is a
-very common algorithm used to produce =pseudorandom=
-numbers.
+very common algorithm used to produce a sequence of
+=pseudorandom= numbers.
 
 An LCG is contained in many of the algorithms here,
-including @!(ref "rline")!@, @!(ref "bigverb")!@,
-@!(ref "sparse")!@, and @!(ref "trand")!@. The
-@!(ref "core API")!@ also has a global RNG that
+including =rline= (@!(ref "rline")!@), =bigverb= (@!(ref "bigverb")!@),
+=sparse= (@!(ref "sparse")!@), and =trand= (@!(ref "trand")!@).
+The @!(ref "core API")!@ also has a global RNG that
 is an LCG.
 
 Wikipedia is a great resource on the subject:
@@ -35,3 +35,13 @@ multiplier =a= of =1103515245=, increment =c= of
 An LCG requires a 32-bit integer to store state. It can
 also be helpful to have a constant of =2^31=, which is
 =2147483648=.
+
+The C code can be reduced down to this expression;
+
+#+BEGIN_SRC c
+unsigned long rng;
+rng = seed;
+rng = (1103515245 * rng + 12345) % 2147483648;
+#+END_SRC
+
+Where =seed= is some initial seed, and =rng= is the state;

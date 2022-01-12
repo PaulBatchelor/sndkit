@@ -56,3 +56,4 @@ include nodes/tenv/config.mk
 include nodes/tick/config.mk
 include nodes/tgate/config.mk
 include nodes/dblin/config.mk
+include nodes/trand/config.mk
