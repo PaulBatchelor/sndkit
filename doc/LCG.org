@@ -7,21 +7,27 @@ very common algorithm used to produce a sequence of
 An LCG is contained in many of the algorithms here,
 including =rline= (@!(ref "rline")!@), =bigverb= (@!(ref "bigverb")!@),
 =sparse= (@!(ref "sparse")!@), and =trand= (@!(ref "trand")!@).
-The @!(ref "core API")!@ also has a global RNG that
-is an LCG.
+The @!(ref "core" "core API" "RNG")!@ also has a global
+RNG that is an LCG.
 
 Wikipedia is a great resource on the subject:
 [[https://en.wikipedia.org/wiki/Linear_congruential_generator]].
 
 LCG parameters used in the sndkit LCGs come from this page.
 * Definition
-#+BEGIN_SRC tex
-X_{n + 1} = (aX_n + c) \mod m
-#+END_SRC
+A generalized LCG can be defined using the following
+expression:
 
-Where =n= is the sample number, =c= is the =increment=, =X=
-is the state, =a= is the =multiplier=, and =m= is the
-modulus.
+@!(fig "LCG" ``
+X_{n + 1} = (aX_n + c) \bmod m
+``)!@
+
+Where @!(smallfig "LCG_n" "n")!@ is the sample number,
+@!(smallfig "LCG_c" "c")!@ is the =increment=,
+@!(smallfig "LCG_X" "X")!@ is the state,
+@!(smallfig "LCG_a" "a")!@ is the =multiplier=, and
+@!(smallfig "LCG_m" "m")!@ is the modulus.
+
 * Typical Implementation in sndkit
 Because sndkit favors self-contained algorithms, a similar
 LCG has been reimplemented many times. Fortunately, the

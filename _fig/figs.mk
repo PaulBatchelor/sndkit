@@ -1,4 +1,16 @@
 FIGS=\
+LCG.png \
+LCG2x.png \
+LCG_X.png \
+LCG_X2x.png \
+LCG_a.png \
+LCG_a2x.png \
+LCG_c.png \
+LCG_c2x.png \
+LCG_m.png \
+LCG_m2x.png \
+LCG_n.png \
+LCG_n2x.png \
 bezier_a.png \
 bezier_a2x.png \
 bezier_b.png \

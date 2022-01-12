@@ -1555,6 +1555,7 @@ check an error code and exit if it is non-zero.
 }
 #+END_SRC
 * Random Number Generator
+@!(marker "RNG")!@
 A simple random number generator (RNG)
 is included with the core API, based
 on the LCG found in Soundpipe.
