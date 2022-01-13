@@ -84,7 +84,7 @@ tsmp->pos = 0;
 This thing takes in 3 parameters: a trigger signal, a
 playback speed amount, and an ftable (presumably
 containing sample data).
-** Playback
+** Playback Rate
 Playback speed happens at audio rate, and determines the
 increment amount. A value of 1 is normal, 2 double speed,
 0.5 half speed. Negative values are ignored for now. If they
@@ -109,7 +109,7 @@ void sk_tsmp_rate(sk_tsmp *ts, SKFLT play);
 #+BEGIN_SRC c
 void sk_tsmp_rate(sk_tsmp *ts, SKFLT play)
 {
-    ts->play = 1.0;
+    ts->play = play;
 }
 #+END_SRC
 ** Table
