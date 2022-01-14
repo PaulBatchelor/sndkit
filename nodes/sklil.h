@@ -23,6 +23,7 @@ int sklil_param(sk_core *core, lil_value_t arg);
 
 void sklil_nodes(lil_t lil);
 void sklil_loader(lil_t lil);
+void sklil_loader_withextra(lil_t lil);
 void sklil_clean(lil_t lil);
 int sklil_main(int argc, char *argv[]);
 void lil_set_errcode(int err);
