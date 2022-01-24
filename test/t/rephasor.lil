@@ -8,4 +8,4 @@ scale [rephasor [phasor 1 0] 0.75] 220 440
 sine zz 0.2
 add zz zz
 
-verify 913a877e2fcff682430f375b40f9c1df
+verify 785ea4b386568ba90abffc593f487497

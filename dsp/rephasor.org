@@ -258,6 +258,7 @@ void sk_rephasor_scale(sk_rephasor *rp, SKFLT scale)
 }
 #+END_SRC
 * Compute
+** Main Compute Function
 A sample of audio is computed with =sk_rephasor_tick=, where
 =ext= is an external phasor signal.
 
@@ -310,6 +311,8 @@ SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT ext)
         rp->c = rp->pe[1] / rp->pc[1];
     }
 
+    <<bounds_checking>>
+
     out = pr;
 
     /* update state */
@@ -324,6 +327,21 @@ SKFLT sk_rephasor_tick(sk_rephasor *rp, SKFLT ext)
 
     return out;
 }
+#+END_SRC
+** Bounds Checking
+As it turns out, the correction mechanism is rather brittle
+in practice. For example, it was very easy to break the
+rephasor with a steady input signal at around 73 BPM
+and a scaling value of 0.25 (4x slower).
+
+
+To circumvent this, the rephasor will reject very
+high or very low values computed. Anything out of
+these bounds is probably wrong.
+
+#+NAME: bounds_checking
+#+BEGIN_SRC c
+if (rp->c > 2.0 || rp->c < 0.5) rp->c = 1.0;
 #+END_SRC
 * No-sync computation
 =sk_rephasor_tick_nosync= will compute a rephasor without
