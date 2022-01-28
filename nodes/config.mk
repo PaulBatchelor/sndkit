@@ -60,3 +60,4 @@ include nodes/trand/config.mk
 include nodes/crossfade/config.mk
 include nodes/tsmp/config.mk
 include nodes/plotter/config.mk
+include nodes/qgliss/config.mk

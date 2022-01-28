@@ -66,6 +66,7 @@ ALGOS=\
 	dblin \
 	trand \
 	tsmp \
+	qgliss \
 
 # GNU Make is very convenient here...
 

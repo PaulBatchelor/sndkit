@@ -62,3 +62,4 @@ check dblin
 check tabdup
 check trand
 check crossfade
+check qgliss

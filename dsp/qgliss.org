@@ -1,0 +1,337 @@
+#+TITLE: QGliss
+* Overview
+QGliss implements a table-lookup signal quantizer using a
+phasor-clocked sample-and-hold generator, and
+cubic interpolation. The glissando amount is controlled via
+a position parameter, which can range from lots of glissando
+to very minimal portamento.
+
+For signal inputs, it takes in a normalized low-frequency
+signal such as an LFO or random line generator, as well as
+a phasor signal which is used a clock source and
+interpolater. As a control parameter, there is a glissando
+position amount: a value between 0 and 1 that dictates when
+to start glissing to the next value. As it approaches one,
+the glissando will happen closer to the end of the values
+duration.
+* Tangled Files
+As per usual, there are two tangled files: =qgliss.c= and
+=qgliss.h=. Defining =SK_QGLISS_PRIV= will expose the
+contents of the qgliss struct.
+
+#+NAME: qgliss.h
+#+BEGIN_SRC c :tangle qgliss.h
+#ifndef SK_QGLISS_H
+#define SK_QGLISS_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_QGLISS_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: qgliss.c
+#+BEGIN_SRC c :tangle qgliss.c
+#define SK_QGLISS_PRIV
+#include "qgliss.h"
+<<funcs>>
+#+END_SRC
+* Gliss Position Parameter
+The gliss position can be set with =sk_qgliss_gliss=, and
+expects a value in the range 0 and 1.
+
+Gliss position sets where in the phasor period the glissando
+curve should begin. The higher this value gets, the closer
+it is to the end, the smaller the curve.
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_qgliss_gliss(sk_qgliss *qg, SKFLT gliss);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_qgliss_gliss(sk_qgliss *qg, SKFLT gliss)
+{
+    qg->gliss = gliss;
+}
+#+END_SRC
+* Struct Initialization
+The qgliss struct is called =sk_qgliss= and can be
+initialized with =sk_qgliss_init=. A lookup table will need
+to be provided, as well as the size of that table.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_qgliss sk_qgliss;
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_qgliss_init(sk_qgliss *qg, SKFLT *tab, int sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_qgliss_init(sk_qgliss *qg, SKFLT *tab, int sz)
+{
+    <<init>>
+}
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_qgliss {
+    <<sk_qgliss>>
+};
+#+END_SRC
+** Struct Parameters
+Parameters of the struct are as follows.
+*** Init (init)
+When the algorithm is first instantiated, some slightly
+different behavior occurs. An init flag is used to indicate
+initialization.
+
+#+NAME: sk_qgliss
+#+BEGIN_SRC c
+int init;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+qg->init = 1;
+#+END_SRC
+*** Glissando Position (gliss)
+The parameter for glissando position is stored in a
+variable called =gliss=.
+
+#+NAME: sk_qgliss
+#+BEGIN_SRC c
+SKFLT gliss;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+qg->gliss = 0.5;
+#+END_SRC
+*** Gliss Parameters (gl/igl)
+While =gliss= can be updated at any time, the actual value
+being used can only be set at the start of a new phasor
+period. This variable is stored in a variable called =gl=.
+
+The inverse of =gl= is stored in a variable called =igl=.
+
+#+NAME: sk_qgliss
+#+BEGIN_SRC c
+SKFLT gl, igl;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+qg->gl = qg->gliss;
+qg->igl = 1.0 / qg->gl;
+#+END_SRC
+*** Phasor Position (phs)
+The previous phasor position is stored in =phs=.
+
+#+NAME: sk_qgliss
+#+BEGIN_SRC c
+SKFLT phs;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+qg->phs = -1;
+#+END_SRC
+*** Previous and Next values (prv/nxt)
+The sample and hold generator caches the last two values:
+the previous =prv= and the next =nxt=. These store values
+found in the table.
+
+#+NAME: sk_qgliss
+#+BEGIN_SRC c
+SKFLT prv, nxt;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+qg->prv = -1;
+qg->nxt = -1;
+#+END_SRC
+*** Lookup Table
+The pointer to the lookup table and the size are stored in
+=tab= and =sz=.
+
+#+NAME: sk_qgliss
+#+BEGIN_SRC c
+SKFLT *tab;
+int sz;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+qg->tab = tab;
+qg->sz = sz;
+#+END_SRC
+* Computation
+** Tick Function
+Computation of a single sample is done with
+=sk_qgliss_tick=. It takes in an input signal =in= and a
+phasor signal =phs=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_qgliss_tick(sk_qgliss *qg, SKFLT in, SKFLT phs);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+<<table_lookup>>
+SKFLT sk_qgliss_tick(sk_qgliss *qg, SKFLT in, SKFLT phs)
+{
+    SKFLT out;
+    SKFLT p, n;
+    out = 0;
+
+    <<handle_init_behavior>>
+    <<handle_phase_reset>>
+
+    p = qg->prv;
+    n = qg->nxt;
+
+    <<apply_cubic_scaling>>
+
+    <<interpolate>>
+    return out;
+}
+#+END_SRC
+
+The very first time this is called, both =nxt= and =prv=
+are set to be the same. This means that for one phasor
+period period at the beginning, there will always be steady
+state signal, as the interpolation will interpolation
+between values.
+
+Gliss values must be in range 0 and 1, otherwise the
+parameters will not be updated.
+
+#+NAME: handle_init_behavior
+#+BEGIN_SRC c
+if (qg->init) {
+    qg->init = 0;
+    qg->prv = getval(qg->tab, qg->sz, in);
+    qg->nxt = qg->prv;
+    qg->phs = phs;
+    if (qg->gliss > 0 && qg->gliss < 1.0) {
+        qg->gl = qg->gliss;
+        qg->igl = 1.0 / (1 - qg->gliss);
+    }
+    return qg->prv;
+}
+#+END_SRC
+
+After the init flag is unset, normal behavior begins. The
+first thing that happens is a check to see if the phasor
+has reset. Since a phasor is expected to be a periodic
+rising ramp, a reset is detected if the current phasor
+sample is less than the previous sample. This approach
+allows for phasor signals that perform wraparound in
+addition to phasors that truncate to zero exactly on a
+reset.
+
+On a reset, glissando values are updated similar to how
+they were updated at init time. The new behavior that
+happens here is that the the current =nxt= value is set to
+be the previous value =prv=, and the new =nxt= value is
+acquired using the current input signal.
+
+#+NAME: handle_phase_reset
+#+BEGIN_SRC c
+if (phs < qg->phs) {
+    /* reset */
+    qg->prv = qg->nxt;
+    qg->nxt = getval(qg->tab, qg->sz, in);
+
+    if (qg->gliss > 0 && qg->gliss < 1.0) {
+        qg->gl = qg->gliss;
+        qg->igl = 1.0 / (1.0 - qg->gliss);
+    }
+}
+#+END_SRC
+
+After the phasor input has been checked if it has
+been reset, the signal is then rescaled to have
+cubic slope.
+
+=phs= will first be cached before continuing. This will
+be used to detect a reset in the next tick call.
+
+Cubic scaling works in this by dividing the period up
+into two segments, separated by the glissando position =gl=.
+Everything up to =gl= is 0, or a flat signal. After =gl= is
+the generated cubic curve, normalized to be between 0 and 1.
+
+Generating the normalized curve is done by biasing the
+signal so that position =gl= is 0, clamping negative values
+to be 0, scaling the remaining ramp to be in range 0 and 1,
+and then applying a cubic function to it.
+
+#+NAME: apply_cubic_scaling
+#+BEGIN_SRC c
+qg->phs = phs; /* cache phasor */
+
+if (phs < qg->gl) {
+    phs = 0;
+} else {
+    phs -= qg->gl; /* bias */
+    if (phs < 0) phs = 0; /* clamp negative values */
+    phs *= qg->igl; /* scale */
+    phs = phs * phs * phs; /* apply cubic function */
+}
+#+END_SRC
+
+With the cubic scaling applied, the interpolation value,
+stored in =phs=, can be used as if it were linear
+interpolation. This output is then returned.
+
+#+NAME: interpolate
+#+BEGIN_SRC c
+out = (1 - phs)*p + phs*n;
+#+END_SRC
+** Table lookup
+Getting a new value from the lookup is a matter of scaling
+and truncating the input to be an indice of the table. The
+approach taken here is a O(n) brute force solution that is
+both portable and reasonably easy to understand. Faster
+O(1) solutions were considered, but dismissed. Using
+floor() creates a weird edge case when the value is exactly
+1 which makes for more verbose code. Dedicated functionsn
+for truncation such as lrintf are not ANSI C. Using casting
+to convert a floating point value to an integer is
+undefined behavior.
+
+#+NAME: table_lookup
+#+BEGIN_SRC c
+static SKFLT getval(SKFLT *tab, int sz, SKFLT in)
+{
+    int i;
+    int pos;
+
+    in *= sz;
+
+    pos = 0;
+
+    for (i = 1; i < sz; i++) {
+        if (in < i) break;
+        pos++;
+    }
+
+    return tab[pos];
+}
+#+END_SRC

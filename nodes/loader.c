@@ -64,6 +64,7 @@ void sklil_load_crossfade(lil_t lil);
 void sklil_load_loadwav(lil_t lil);
 void sklil_load_tsmp(lil_t lil);
 void sklil_load_plotter(lil_t lil);
+void sklil_load_qgliss(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -124,6 +125,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_tsmp(lil);
     sklil_load_loadwav(lil);
     sklil_load_plotter(lil);
+    sklil_load_qgliss(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
