@@ -1,0 +1,69 @@
+#+TITLE: Tables First
+There's a bit of a design quirk with sndkit nodes
+that use tables (such as @!(ref "oscf")!@ or
+@!(ref "fmpair")!@): tables go first. That is to say,
+they are the first pushed onto the stack, and
+the last to be popped.
+
+Why?
+
+Consider =fmpair=. In LIL, creating an fmpair node
+could look like:
+
+#+BEGIN_SRC lil
+fmpair [gensine [tabnew 8192]] [mtof 60] 1 1 1 0
+#+END_SRC
+
+This is annoying because any sophisticated patch requires
+declaring the table before doing anything:
+
+#+BEGIN_SRC lil
+# ugh, gotta push the table first onto the stack!
+gensine [tabnew 8192]
+
+# ... some complicated sequencing ..
+
+mtof zz
+fmpair zz zz 1 1 1 0
+#+END_SRC
+
+In other stack based systems previously built, it's always
+been a convention to have the table argument be last,
+as it make things quite convenient with postfix
+notation:
+
+#+BEGIN_SRC lil
+60 mtof 1 1 1 0 8192 tabnew gensine fmpair
+#+END_SRC
+
+Note how the last few words could just be abstracted away.
+Very elegant.
+
+The problem is, sndkit uses LIL, which does not use postfix
+notation.
+
+It would indeed be very nice to have LIL code looking like this
+
+#+BEGIN_SRC lil
+# wouldn't this be nice?
+fmpair [mtof 60] 1 1 1 0 [gensine [tabnew 8192]]
+#+END_SRC
+
+However, this doesn't work. Things evaluated in brackets
+get pushed to the stack before constants like 1 and 0 do,
+so it gets pushed out of order. 
+
+This line would work using the =param= function on
+every variable:
+
+#+BEGIN_SRC lil
+# it works now
+fmpair [mtof 60] [param 1] [param 1] [param 1] [param 0] [gensine [tabnew 8192]]
+#+END_SRC
+
+That's a long line! And there's the rub. If the table were
+the last argument, every parameter preceding it would need
+to have =param=, which defeats any convenience of using LIL.
+
+So, the design choice was made to have tables go first. It's
+the lesser of two inconveniences.
