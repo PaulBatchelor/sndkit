@@ -355,6 +355,24 @@ static lil_value_t l_del(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+void lil_get_cmds(lil_t lil, lil_func_t **cmd, size_t *ncmd);
+const char *lil_cmd_name(lil_func_t cmd);
+
+static lil_value_t l_lscmds(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    size_t c, ncmd;
+    lil_func_t *cmd;
+    c = ncmd = 0;
+
+    lil_get_cmds(lil, &cmd, &ncmd);
+
+    for (c = 0; c < ncmd; c++) {
+        printf("%s\n", lil_cmd_name(cmd[c]));
+    }
+
+    return NULL;
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -376,6 +394,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "unholdall", l_unholdall);
     lil_register(lil, "pop", l_pop);
     lil_register(lil, "del", l_del);
+    lil_register(lil, "lscmds", l_lscmds);
 }
 
 void sklil_clean(lil_t lil)

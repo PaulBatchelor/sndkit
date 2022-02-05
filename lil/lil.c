@@ -3529,3 +3529,14 @@ static void register_stdcmds(lil_t lil)
     lil_register(lil, "watch", fnc_watch);
     lil->syscmds = lil->cmds;
 }
+
+void lil_get_cmds(lil_t lil, lil_func_t **cmd, size_t *ncmd)
+{
+    *cmd = lil->cmd;
+    *ncmd = lil->cmds;
+}
+
+const char *lil_cmd_name(lil_func_t cmd)
+{
+    return cmd->name;
+}
