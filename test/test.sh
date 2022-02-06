@@ -63,3 +63,4 @@ check tabdup
 check trand
 check crossfade
 check qgliss
+check tdiv
