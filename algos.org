@@ -112,3 +112,5 @@ sampler.
 
 @!(ref "qgliss")!@ is a phasor-clocked sample-and-hold
 quantizer with parametric glissando-like interpolation.
+
+@!(ref "tdiv")!@ is a clock divider.

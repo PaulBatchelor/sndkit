@@ -70,6 +70,7 @@
 (ww-add-link "tsmp" "dsp/tsmp.org")
 (ww-add-link "qgliss" "dsp/qgliss.org")
 (ww-add-link "tables_first" "doc/tables_first.org")
+(ww-add-link "tdiv" "dsp/tdiv.org")
 
 # sync and close
 
