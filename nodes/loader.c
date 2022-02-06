@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "lil/lil.h"
 #include "graforge.h"
@@ -230,10 +231,14 @@ static lil_value_t l_srand(lil_t lil, size_t argc, lil_value_t *argv)
 
     core = lil_get_data(lil);
 
-    SKLIL_ARITY_CHECK(lil, "srand", argc, 1);
+    if (argc > 0) {
+        val = lil_to_integer(argv[0]);
+    } else {
+        val = time(NULL);
+    }
 
-    val = lil_to_integer(argv[0]);
     sk_core_srand(core, val);
+
 
     return NULL;
 }
