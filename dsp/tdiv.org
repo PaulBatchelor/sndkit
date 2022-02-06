@@ -1,0 +1,147 @@
+#+TITLE: TDiv
+* Overview
+=tdiv= is a clock divider for tiggers. Given a trigger
+signal, it will return a trigger signal every N ticks.
+* Tangled Files
+Tangled files: =tdiv.h= and =tdiv.c=. =SK_TDIV_PRIV= will
+expose the struct.
+
+#+NAME: tdiv.h
+#+BEGIN_SRC c :tangle tdiv.h
+#ifndef SK_TDIV_H
+#define SK_TDIV_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_TDIV_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+
+#endif
+#+END_SRC
+
+#+NAME: tdiv.c
+#+BEGIN_SRC c :tangle tdiv.c
+#define SK_TDIV_PRIV
+#include "tdiv.h"
+<<funcs>>
+#+END_SRC
+* Struct Initialization
+The tdiv struct =sk_tdiv= is intialized with =sk_tdiv_init=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_tdiv sk_tdiv;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_tdiv {
+    int cnt;
+    int div;
+    int off;
+};
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tdiv_init(sk_tdiv *tdiv);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tdiv_init(sk_tdiv *tdiv)
+{
+    tdiv->cnt = 0;
+    sk_tdiv_offset(tdiv, 0);
+    sk_tdiv_divide(tdiv, 4);
+}
+#+END_SRC
+* Parameters
+There are two parameters that control =tdiv=: =divide=
+and =offset=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tdiv_offset(sk_tdiv *tdiv, int offset);
+void sk_tdiv_divide(sk_tdiv *tdiv, int divide);
+#+END_SRC
+
+
+The =divide= parameter sets the divide amount. If set to 1,
+the clock will return a tick every time. If set to 2, every
+other time, 3 is every 3 times. Etc, etc.
+
+Divide parameters should be at least 1, as a value of
+1 will just output a trigger every time.
+
+(Historical note: The old implementation in soundpipe
+used the modulo operation which would cause this to crash
+when set to zero. This new version doesn't use modulo so
+it is now a non-issue.)
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tdiv_divide(sk_tdiv *tdiv, int divide)
+{
+    if (divide > 0) tdiv->div = divide;
+}
+#+END_SRC
+
+The =offset= parameter shifts when a trigger happens.
+A clock divider with a division of 4 would measure time
+as (0, 1, 2, 3, 0, 1, 2, 3...). When the offset is 0, it
+would trigger on 0, when it's 1, it would trigger on 1,
+etc.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tdiv_offset(sk_tdiv *tdiv, int offset)
+{
+    tdiv->off = offset;
+}
+#+END_SRC
+* Computation
+Computation of a tdiv sample is done with =sk_tdiv_tick=.
+It expects a trigger signal as input.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_tdiv_tick(sk_tdiv *td, SKFLT trig);
+#+END_SRC
+
+The code here is reasonably self-explanatory. tdiv
+uses a counter to keep track of when to return a tick.
+The counter wraps back to zero when it goes beyond
+a limit, which is the divider.
+
+The old implementation of tdiv in soundpipe used a modulo
+operation to do the reset instead of the if statement here.
+It turns out, not only is modulo a very expensive operation,
+it also will crash if the divider is set to be 0. So, this
+is the better way to do it, at the expense of a bit
+more code to look at.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_tdiv_tick(sk_tdiv *td, SKFLT trig)
+{
+    SKFLT out;
+
+    out = 0.0;
+
+    if (trig != 0) {
+        if (td->cnt == td->off) out = 1.0;
+        td->cnt++;
+        if (td->cnt >= td->div) td->cnt = 0;
+    }
+
+    return out;
+}
+#+END_SRC

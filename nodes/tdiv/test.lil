@@ -1,0 +1,28 @@
+regset [hold [metro 8]] 0
+
+env [regget 0] 0.001 0.001 0.001
+sine 1000 0.5
+mul zz zz
+
+regget 0
+tdiv zz 4 0
+env zz 0.001 0.001 0.1
+sine 500 0.5
+mul zz zz
+
+add zz zz
+
+regget 0
+tdiv zz 8 4
+env zz 0.001 0.001 0.1
+sine 1500 0.5
+mul zz zz
+
+add zz zz
+
+mul zz [dblin -6]
+
+unhold [regget 0]
+wavout zz test.wav
+
+computes 10

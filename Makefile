@@ -67,6 +67,7 @@ ALGOS=\
 	trand \
 	tsmp \
 	qgliss \
+	tdiv \
 
 # GNU Make is very convenient here...
 
