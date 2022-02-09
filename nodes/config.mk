@@ -62,3 +62,4 @@ include nodes/tsmp/config.mk
 include nodes/plotter/config.mk
 include nodes/qgliss/config.mk
 include nodes/tdiv/config.mk
+include nodes/shelf/config.mk

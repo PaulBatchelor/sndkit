@@ -68,6 +68,7 @@ ALGOS=\
 	tsmp \
 	qgliss \
 	tdiv \
+	shelf \
 
 # GNU Make is very convenient here...
 
