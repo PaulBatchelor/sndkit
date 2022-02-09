@@ -1,0 +1,353 @@
+#+TITLE: Shelf
+* Overview
+=shelf= implements 2-pole low and high shelf filters, as
+found in the Audio Eq Cookbook.
+* S-plane Transfer Functions
+Below are the S-plane transfer functions for the high shelf and low
+shelf. A full explanation of transfer functions beyond the
+scope of this document. Think of these as a sort of
+blueprint for the shelf filters. Filters that
+are designed in the =S-plane= are kind of like analogue
+filters. In order for them to be implemented in code, they must
+first means "digitized", which means transferring the filter
+from the S-plane to the =z-plane=.
+The most common way this is done is using something called
+the =Bilinear Transform= (or =BLT=), which is essentially a
+mathematical subsitution done on the S-plane transfer
+function. In the Audio EQ cookbook,
+this process has already been done and the coefficients
+have been pre-derived.
+
+This is the highshelf transfer function in the S-Plane:
+
+@!(fig "shelf_splane_high" ``
+H(s) ={A (A s^2 + (\sqrt(A)/Q)s + 1)
+\over
+s^2 + (\sqrt(A)/Q)s + A}
+``)!@
+
+This is the lowshelf transfer function in the S-plane:
+
+@!(fig "shelf_splane_low" ``
+H(s) = A \Bigl({s^2 + {\sqrt{A} / Q}s + A \over
+As^2 + {\sqrt{A}/Q}s + 1}\Bigr)
+``)!@
+
+These are then put through the bilinear transform
+to derive coefficients that can be used in a digital
+context.
+* Tangled Files
+=shelf.c= and =shelf.h= are the files created. If
+=SK_SHELF_PRIV= is defined, the private struct
+is exposed.
+
+#+NAME: shelf.h
+#+BEGIN_SRC c :tangle shelf.h
+#ifndef SK_SHELF_H
+#define SK_SHELF_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+#ifdef SK_SHELF_PRIV
+<<structs>>
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: shelf.c
+#+BEGIN_SRC c :tangle shelf.c
+#include <math.h>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#define SK_SHELF_PRIV
+#include "shelf.h"
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+* Struct
+=sk_shelf= is the struct that can handle both
+the high shelf and the low shelf. It can be initialized
+with =sk_shelf_init=. The sampling rate must be specified.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_shelf sk_shelf;
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_shelf_init(sk_shelf *shf, int sr);
+#+END_SRC
+
+A shelf filter is a kind of =biquad=, which a generalized
+form for a 2-pole filter. A biquad has filter memory for
+previous inputs and outputs, as well as coefficients for
+these as well. The values of the coefficients determine
+whether or not the filter will behave as a high or low
+shelf filter.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_shelf {
+    int sr;
+    SKFLT a[2];
+    SKFLT b[2];
+    SKFLT x[2];
+    SKFLT y[2];
+    SKFLT gain;
+    SKFLT freq;
+    SKFLT Q;
+    int changed;
+    SKFLT T;
+};
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_shelf_init(sk_shelf *shf, int sr)
+{
+    int i;
+
+    shf->T = 1.0 / sr;
+
+    for (i = 0; i < 2; i++) {
+        shf->x[i] = 0;
+        shf->y[i] = 0;
+        shf->a[i] = 0;
+        shf->b[i] = 0;
+    }
+
+    sk_shelf_frequency(shf, 1000);
+    sk_shelf_gain(shf, 6);
+    sk_shelf_q(shf, 1.0);
+}
+#+END_SRC
+* Parameters
+Parameters include cutoff frequency, gain, and Q. Setting
+any of these will cause the =changed= flag to be set.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_shelf_frequency(sk_shelf *shf, SKFLT freq);
+void sk_shelf_gain(sk_shelf *shf, SKFLT gain);
+void sk_shelf_q(sk_shelf *shf, SKFLT q);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_shelf_frequency(sk_shelf *shf, SKFLT freq)
+{
+
+    if (freq != shf->freq) {
+        shf->freq = freq;
+        shf->changed = 1;
+    }
+}
+
+void sk_shelf_gain(sk_shelf *shf, SKFLT gain)
+{
+    if (gain != shf->gain) {
+        shf->gain = gain;
+        shf->changed = 1;
+    }
+}
+
+void sk_shelf_q(sk_shelf *shf, SKFLT q)
+{
+    if (q != shf-> Q) {
+        shf->Q = q;
+        shf->changed = 1;
+    }
+}
+#+END_SRC
+* Computing The Filter
+Both shelving filters are biquads, which means they can be
+computed the same way.
+
+Computation of the filter is derived from the difference
+equation, and is known
+as [[https://ccrma.stanford.edu/~jos/fp/Direct_Form_I.html][Direct Form 1]].
+
+@!(fig "shelf_direct_form_1" ``
+\eqalign{y[n] = (b_0/a_0)x[n]& + (b_1/a_0)x[n-1] + (b_2/a_0)x[n - 2] \cr
+\hfil & - (a_1/a_0)y[n - 1] - (a_2/a_0)y[n - 2]\cr
+}
+``)!@
+
+However, to save on divides, the coefficients have already
+been pre-divided by =a0=.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static SKFLT compute_filter(sk_shelf *shf, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static SKFLT compute_filter(sk_shelf *shf, SKFLT in)
+{
+    SKFLT out;
+    SKFLT *b, *a, *x, *y;
+
+    out = 0;
+
+    b = shf->b;
+    a = shf->a;
+    x = shf->x;
+    y = shf->y;
+
+    out =
+        b[0]*in + b[1]*x[0] + b[2]*x[1]
+        - a[0]*y[0] - a[1]*y[1];
+
+    y[1] = y[0];
+    y[0] = out;
+
+    x[1] = x[0];
+    x[0] = in;
+
+    return out;
+}
+#+END_SRC
+
+* High Shelf
+Filter with the high shelf filter with =sk_shelf_high_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in);
+#+END_SRC
+
+Before computing a sample, the frequency/gain values are
+checked to see if they have been changed, and if so, are
+updated.
+
+The coefficients are the following:
+
+@!(fig "shelf_high_coefs" ``
+\eqalign{
+b_0 &= A \Bigl((A + 1) + (A-1)\cos(\omega_0) + 2\sqrt(A)\alpha\Bigr)\cr
+b_1 &= -2 A ((A-1) + (A+1)\cos(\omega_0))\cr
+b_2 &= A ((A+1) + (A-1)\cos(\omega_0) - 2\sqrt(A)\alpha)\cr
+a_0 &= (A + 1) - (A-1)\cos(\omega_0) + 2\sqrt(A)\alpha\cr
+a_1 &= 2((A-1) - (A+1)\cos(\omega_0))\cr
+a_2 &= (A+1) - (A-1)\cos(\omega_0) - 2\sqrt(A)\alpha\cr
+}
+``)!@
+
+Where @!(smallfig "shelf_A" "A")!@ is defined in terms
+of the filter's gain @!(smallfig "shelf_g" "g")!@ in dB
+units:
+
+@!(fig "shelf_A_def" ``
+\eqalign{
+A &= \sqrt{10^{g/20}} \cr
+&= 10^{g/40}
+}
+``)!@
+
+The variable @!(smallfig "shelf_omega" ``\omega_0``)!@ is the
+frequency @!(smallfig "shelf_f" "f")!@ converted
+to radians. The variable @!(smallfig
+"shelf_T" "T")!@ is a constant typically used to scale
+things things relative the sampling rate
+@!(smallfig "shelf_sr" "F_s")!@.
+
+@!(fig "shelf_omega_def" ``
+\eqalign{
+\omega_0 &= 2 \pi f \cr
+\omega_0 T &= {{2 \pi f} \over F_s } \cr
+}
+``)!@
+
+The variable @!(smallfig "shelf_alpha" ``\alpha``)!@ is
+derived from the Q value.
+
+@!(fig "shelf_alpha_def" ``
+\alpha = {\sin(\omega_0) \over 2Q}
+``)!@
+
+Note: divide all parameters by =a0=.
+
+From there, it can compute a sample of the filter.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in)
+{
+    SKFLT out;
+
+    out = 0;
+
+    if (shf->changed) {
+        SKFLT ia0;
+        SKFLT alpha;
+        SKFLT A;
+        SKFLT omegaT;
+        SKFLT *a, *b;
+
+        A = pow(10.0, shf->gain / 40.0);
+        omegaT = 2.0 * M_PI * shf->freq * shf->T;
+        /* alpha = sin(omegaT) / (2 * shf->Q); */
+        alpha = sin(omegaT) * 0.5 *
+        sqrt((A + (1.0/A))*((1.0/shf->Q) - 1.0) + 2.0);
+
+        a = shf->a;
+        b = shf->b;
+
+        ia0 = (A+1) - (A-1)*cos(omegaT) + 2.0*sqrt(A)*alpha;
+
+        if (ia0 != 0) ia0 = 1.0 / ia0;
+        else ia0 = 0;
+
+        b[0] =
+            A *
+            ((A+1) +
+             (A-1)*cos(omegaT) +
+             2.0*sqrt(A)*alpha);
+
+        b[1] = -2*A*((A-1) + (A+1)*cos(omegaT));
+        b[1] *= ia0;
+        b[2] = A*((A+1) + (A-1)*cos(omegaT) - 2*sqrt(A)*alpha);
+        b[2] *= ia0;
+
+        a[0] = 2*((A-1) - (A+1)*cos(omegaT));
+        a[0] *= ia0;
+        a[1] = (A+1) - (A-1)*cos(omegaT) - 2*sqrt(A)*alpha;
+        a[1] *= ia0;
+
+        shf->changed = 0;
+    }
+
+
+    out = compute_filter(shf, in);
+    return out;
+}
+#+END_SRC
+* Low Shelf
+Filter with the low shelf filter with =sk_shelf_low_tick=.
+
+Similar to high shelf. Updates the coefficients if needed,
+then computes the filter sample.
+
+@!(fig "shelf_low_coefs" ``
+\eqalign{
+b_0 &= A ((A + 1) - (A-1)\cos(\omega_0) + 2\sqrt{A}\alpha)\cr
+b_1 &= 2A ((A - 1) - (A + 1)\cos(\omega_0))\cr
+b_2 &= A ((A + 1) - (A - 1)\cos(\omega_0) - 2\sqrt{A}\alpha)\cr
+a_0 &= (A + 1) + (A-1)\cos(\omega_0) + 2\sqrt{A}\alpha \cr
+a_1 &= -2((A - 1) + (A + 1)\cos(\omega_0))\cr
+a_2 &= (A + 1) + (A - 1)\cos(\omega_0) - 2\sqrt{A}\alpha\cr
+}
+``)!@
+
+See the high shelf section for more definitions for the
+variables used above.
