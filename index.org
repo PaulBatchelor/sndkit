@@ -1,27 +1,76 @@
 #+TITLE: sndkit
-sndkit is a sonic toolkit for everywhere.
+* Overview
+sndkit is a sonic toolkit for computer music composition.
 
-It is a collection of highly portable ANSI-C implementations
-of audio DSP algorithms commonly used in computer music, all
-wrapped up inside of a statically generated wiki.
+It aims to bring a collection of useful audio DSP algorithms
+together in one ecosystem, and document how they work.
 
-Each DSP algorithm is written in a literate programming
-style, a technique pioneered by Donald Knuth. Surrounding
-the implementation itself are words and equations used to
-help explain and contextualize what every single line of
-code is doing.
+Each algorithm in the @!(ref "algos"
+"sndkit collection")!@ is written using literate
+programming, a paradigm that aims to present computer
+structure using natural language. This means that each
+algorithm has both an implementation (in ANSI C) as
+well as a brief explanation for how the implementation
+works.
 
+Sndkit provides a @!(ref "core" "core C api")!@ that allows
+the algorithms to be connected together to created patches.
+Patches can be conveniently built up using the
+@!(ref "LIL_overview" "LIL scripting language")!@, included
+with the sndkit distribution.
+* Code and Installation
+The source code for this wiki can be found on
+[[https://git.sr.ht/~pbatch/sndkit][SourceHut]] and [[https://github.com/paulbatchelor/sndkit][github]].
+
+A standard POSIX C compilation environment is required
+(clang/gcc, Make, etc). There are no external third party
+libraries. Everything required is included inside the
+codebase, including a version of the tangler program
+required to convert literate programs to C code.
+
+To compile, run:
+
+#+BEGIN_SRC c
+make
+#+END_SRC
+
+This will produce an executable called =sndkit=, which is
+really a LIL interpreter fortified with sndkit functions.
+
+You can test it with:
+
+#+BEGIN_SRC c
+./sndit examples/synthbass.lil
+#+END_SRC
+
+Which should produce a WAV file in the current directory called
+=synthbass.wav=.
+
+sndkit can be installed with:
+
+#+BEGIN_SRC c
+sudo make install
+#+END_SRC
+* Realtime Support?
+It is possible to run sndkit in realtime. However...
+
+To keep things reasonably portable and manageable,
+realtime audio support is left as an exercise to the
+reader ;)
+
+The only thing sndkit supports is offline rendering WAV
+files.
+* Available DSP Algorithms
+The HTMLized version of the algorithms can be
+browsed @!(ref "algos" "here")!@.
+* Licensing
 The text in this wiki is licensed under the
 [[https://creativecommons.org/share-your-work/public-domain/cc0/][Creative Commons Zero]] license, otherwise
 known as "CC0".
 
-The tangled output is dual-licensed under MIT or
+All tangled output is dual-licensed under MIT or
 the [[https://unlicense.org/][Unlicense]].
 
-A annotated list of available algorithms can be found @!(ref
-"algos" "here")!@.
-
-The source code for this wiki can be found on
-[[https://git.sr.ht/~pbatch/sndkit][SourceHut]].
-
-Happy Hacking, Humans.
+Non-tangled code
+(such as those found in the =extras= folder) may
+have their own permissive license.
