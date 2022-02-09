@@ -114,3 +114,5 @@ sampler.
 quantizer with parametric glissando-like interpolation.
 
 @!(ref "tdiv")!@ is a clock divider.
+
+@!(ref "shelf")!@ implements 2-pole shelving filters.

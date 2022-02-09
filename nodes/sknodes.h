@@ -65,4 +65,6 @@ int sk_node_trand(sk_core *core);
 int sk_node_tsmp(sk_core *core);
 int sk_node_qgliss(sk_core *core);
 int sk_node_tdiv(sk_core *core);
+int sk_node_lowshelf(sk_core *core);
+int sk_node_highshelf(sk_core *core);
 #endif

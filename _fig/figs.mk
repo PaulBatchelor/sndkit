@@ -171,6 +171,8 @@ shelf_A_def.png \
 shelf_A_def2x.png \
 shelf_T.png \
 shelf_T2x.png \
+shelf_a0.png \
+shelf_a02x.png \
 shelf_alpha.png \
 shelf_alpha2x.png \
 shelf_alpha_def.png \
@@ -183,6 +185,8 @@ shelf_g.png \
 shelf_g2x.png \
 shelf_high_coefs.png \
 shelf_high_coefs2x.png \
+shelf_low_coefs.png \
+shelf_low_coefs2x.png \
 shelf_omega.png \
 shelf_omega2x.png \
 shelf_omega_def.png \

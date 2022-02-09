@@ -1,15 +1,21 @@
 #+TITLE: Shelf
 * Overview
-=shelf= implements 2-pole low and high shelf filters, as
-found in the Audio Eq Cookbook.
+=shelf= is an implementation of the two-pole shelf filters
+described in the Audio EQ Cookbook by Robert
+Bristow-Johnson.
+
+The implementations include both high and low shelf, and
+have the following parametric controls: transition
+frequency, boost amount (in dB units), and slope (a value
+between 0 and 1).
 * S-plane Transfer Functions
 Below are the S-plane transfer functions for the high shelf and low
 shelf. A full explanation of transfer functions beyond the
 scope of this document. Think of these as a sort of
-blueprint for the shelf filters. Filters that
+blueprint. Filters that
 are designed in the =S-plane= are kind of like analogue
 filters. In order for them to be implemented in code, they must
-first means "digitized", which means transferring the filter
+first be "digitized", which means transferring the filter
 from the S-plane to the =z-plane=.
 The most common way this is done is using something called
 the =Bilinear Transform= (or =BLT=), which is essentially a
@@ -34,8 +40,7 @@ As^2 + {\sqrt{A}/Q}s + 1}\Bigr)
 ``)!@
 
 These are then put through the bilinear transform
-to derive coefficients that can be used in a digital
-context.
+to derive digital filter coefficients.
 * Tangled Files
 =shelf.c= and =shelf.h= are the files created. If
 =SK_SHELF_PRIV= is defined, the private struct
@@ -184,8 +189,10 @@ as [[https://ccrma.stanford.edu/~jos/fp/Direct_Form_I.html][Direct Form 1]].
 }
 ``)!@
 
-However, to save on divides, the coefficients have already
-been pre-divided by =a0=.
+The implementation below looks a little different than the
+equation described above. To save on divides, the
+coefficients have already been pre-divided by @!(smallfig
+"shelf_a0" "a0")!@.
 
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
@@ -270,10 +277,11 @@ things things relative the sampling rate
 ``)!@
 
 The variable @!(smallfig "shelf_alpha" ``\alpha``)!@ is
-derived from the Q value.
+derived from the slope value.
 
 @!(fig "shelf_alpha_def" ``
-\alpha = {\sin(\omega_0) \over 2Q}
+\alpha = {\sin(\omega_0) \over 2}
+\sqrt{\Bigl(A + {1 \over A}\Bigr)\Bigl({1 \over S} - 1\Bigr) + 2}
 ``)!@
 
 Some additional operations are done in the name of
@@ -310,16 +318,16 @@ SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in)
         alpha = sin(omegaT) * 0.5 *
         sqrt((A + (1.0/A))*((1.0/shf->slope) - 1.0) + 2.0);
         co = cos(omegaT);
+        k = sqrt(A)*alpha*2.0;
 
         a = shf->a;
         b = shf->b;
 
-        ia0 = (A+1.0) - (A-1.0)*co + 2.0*sqrt(A)*alpha;
+        ia0 = (A+1.0) - (A-1.0)*co + k;
 
         if (ia0 != 0) ia0 = 1.0 / ia0;
         else ia0 = 0;
 
-        k = sqrt(A)*alpha*2.0;
 
         b[0] = A * ((A+1.0) + (A-1.0)*co + k);
         b[0] *= ia0;
@@ -344,19 +352,78 @@ SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in)
 * Low Shelf
 Filter with the low shelf filter with =sk_shelf_low_tick=.
 
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_shelf_low_tick(sk_shelf *shf, SKFLT in);
+#+END_SRC
+
 Similar to high shelf. Updates the coefficients if needed,
 then computes the filter sample.
 
+The coefficients are the following:
+
 @!(fig "shelf_low_coefs" ``
 \eqalign{
-b_0 &= A ((A + 1) - (A-1)\cos(\omega_0) + 2\sqrt{A}\alpha)\cr
-b_1 &= 2A ((A - 1) - (A + 1)\cos(\omega_0))\cr
-b_2 &= A ((A + 1) - (A - 1)\cos(\omega_0) - 2\sqrt{A}\alpha)\cr
+b_0 &= A \Bigl((A + 1) - (A-1)\cos(\omega_0) + 2\sqrt{A}\alpha\Bigr)\cr
+b_1 &= 2A \Bigl((A - 1) - (A + 1)\cos(\omega_0)\Bigr)\cr
+b_2 &= A \Bigl((A + 1) - (A - 1)\cos(\omega_0) - 2\sqrt{A}\alpha\Bigr)\cr
 a_0 &= (A + 1) + (A-1)\cos(\omega_0) + 2\sqrt{A}\alpha \cr
-a_1 &= -2((A - 1) + (A + 1)\cos(\omega_0))\cr
+a_1 &= -2\Bigl((A - 1) + (A + 1)\cos(\omega_0)\Bigr)\cr
 a_2 &= (A + 1) + (A - 1)\cos(\omega_0) - 2\sqrt{A}\alpha\cr
 }
 ``)!@
 
-See the high shelf section for more definitions for the
-variables used above.
+More detail can be found in the high shelf section.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_shelf_low_tick(sk_shelf *shf, SKFLT in)
+{
+    SKFLT out;
+
+    out = 0;
+
+    if (shf->changed) {
+        SKFLT ia0;
+        SKFLT alpha;
+        SKFLT A;
+        SKFLT k; /* sqrt(A)*alpha*2.0 */
+        SKFLT omegaT;
+        SKFLT *a, *b;
+        SKFLT co; /* cos(omegaT) */
+
+        A = pow(10.0, shf->gain / 40.0);
+        omegaT = 2.0 * M_PI * shf->freq * shf->T;
+        alpha = sin(omegaT) * 0.5 *
+        sqrt((A + (1.0/A))*((1.0/shf->slope) - 1.0) + 2.0);
+        co = cos(omegaT);
+        k = sqrt(A)*alpha*2.0;
+
+
+        a = shf->a;
+        b = shf->b;
+
+        ia0 = (A+1.0) + (A-1.0)*co + k;
+
+        if (ia0 != 0) ia0 = 1.0 / ia0;
+        else ia0 = 0;
+
+        b[0] = A * ((A+1.0) - (A-1.0)*co + k);
+        b[0] *= ia0;
+        b[1] = 2.0*A*((A-1.0) - (A+1.0)*co);
+        b[1] *= ia0;
+        b[2] = A*((A+1.0) - (A-1.0)*co - k);
+        b[2] *= ia0;
+
+        a[0] = -2.0*((A-1.0) + (A+1.0)*co);
+        a[0] *= ia0;
+        a[1] = (A+1.0) + (A-1.0)*co - k;
+        a[1] *= ia0;
+
+        shf->changed = 0;
+    }
+
+    out = compute_filter(shf, in);
+    return out;
+}
+#+END_SRC
