@@ -64,3 +64,4 @@ check trand
 check crossfade
 check qgliss
 check tdiv
+check highshelf

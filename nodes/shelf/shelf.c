@@ -10,7 +10,7 @@ struct shelf_n {
     gf_cable *in;
     gf_cable *freq;
     gf_cable *gain;
-    gf_cable *q;
+    gf_cable *slope;
     gf_cable *out;
     sk_shelf shelf;
 };
@@ -26,16 +26,16 @@ static void high_compute(gf_node *node)
     shelf = (struct shelf_n *)gf_node_get_data(node);
 
     for (n = 0; n < blksize; n++) {
-        GFFLT in, freq, gain, q, out;
+        GFFLT in, freq, gain, slope, out;
 
         in = gf_cable_get(shelf->in, n);
         freq = gf_cable_get(shelf->freq, n);
         gain = gf_cable_get(shelf->gain, n);
-        q = gf_cable_get(shelf->q, n);
+        slope = gf_cable_get(shelf->slope, n);
 
         sk_shelf_frequency(&shelf->shelf, freq);
         sk_shelf_gain(&shelf->shelf, gain);
-        sk_shelf_q(&shelf->shelf, q);
+        sk_shelf_slope(&shelf->shelf, slope);
 
         out = sk_shelf_high_tick(&shelf->shelf, in);
         gf_cable_set(shelf->out, n, out);
@@ -62,12 +62,12 @@ int sk_node_highshelf(sk_core *core)
     sk_param in;
     sk_param freq;
     sk_param gain;
-    sk_param q;
+    sk_param slope;
     void *ud;
     struct shelf_n *shelf;
     int sr;
 
-    rc = sk_param_get(core, &q);
+    rc = sk_param_get(core, &slope);
     SK_ERROR_CHECK(rc);
     rc = sk_param_get(core, &gain);
     SK_ERROR_CHECK(rc);
@@ -96,7 +96,7 @@ int sk_node_highshelf(sk_core *core)
     gf_node_get_cable(node, 0, &shelf->in);
     gf_node_get_cable(node, 1, &shelf->freq);
     gf_node_get_cable(node, 2, &shelf->gain);
-    gf_node_get_cable(node, 3, &shelf->q);
+    gf_node_get_cable(node, 3, &shelf->slope);
     gf_node_get_cable(node, 4, &shelf->out);
 
     gf_node_set_data(node, shelf);
@@ -106,7 +106,7 @@ int sk_node_highshelf(sk_core *core)
     sk_param_set(core, node, &in, 0);
     sk_param_set(core, node, &freq, 1);
     sk_param_set(core, node, &gain, 2);
-    sk_param_set(core, node, &q, 3);
+    sk_param_set(core, node, &slope, 3);
     sk_param_out(core, node, 4);
     return 0;
 }

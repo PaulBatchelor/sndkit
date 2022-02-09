@@ -99,12 +99,12 @@ shelf filter.
 struct sk_shelf {
     int sr;
     SKFLT a[2];
-    SKFLT b[2];
+    SKFLT b[3];
     SKFLT x[2];
     SKFLT y[2];
     SKFLT gain;
     SKFLT freq;
-    SKFLT Q;
+    SKFLT slope;
     int changed;
     SKFLT T;
 };
@@ -125,20 +125,22 @@ void sk_shelf_init(sk_shelf *shf, int sr)
         shf->b[i] = 0;
     }
 
+    shf->b[2] = 0;
+
     sk_shelf_frequency(shf, 1000);
     sk_shelf_gain(shf, 6);
-    sk_shelf_q(shf, 1.0);
+    sk_shelf_slope(shf, 1.0);
 }
 #+END_SRC
 * Parameters
-Parameters include cutoff frequency, gain, and Q. Setting
+Parameters include cutoff frequency, gain, and slope. Setting
 any of these will cause the =changed= flag to be set.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void sk_shelf_frequency(sk_shelf *shf, SKFLT freq);
 void sk_shelf_gain(sk_shelf *shf, SKFLT gain);
-void sk_shelf_q(sk_shelf *shf, SKFLT q);
+void sk_shelf_slope(sk_shelf *shf, SKFLT slope);
 #+END_SRC
 
 #+NAME: funcs
@@ -160,10 +162,10 @@ void sk_shelf_gain(sk_shelf *shf, SKFLT gain)
     }
 }
 
-void sk_shelf_q(sk_shelf *shf, SKFLT q)
+void sk_shelf_slope(sk_shelf *shf, SKFLT slope)
 {
-    if (q != shf-> Q) {
-        shf->Q = q;
+    if (slope != shf->slope && slope > 0) {
+        shf->slope = slope;
         shf->changed = 1;
     }
 }
@@ -217,7 +219,6 @@ static SKFLT compute_filter(sk_shelf *shf, SKFLT in)
     return out;
 }
 #+END_SRC
-
 * High Shelf
 Filter with the high shelf filter with =sk_shelf_high_tick=.
 
@@ -296,9 +297,8 @@ SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in)
 
         A = pow(10.0, shf->gain / 40.0);
         omegaT = 2.0 * M_PI * shf->freq * shf->T;
-        /* alpha = sin(omegaT) / (2 * shf->Q); */
         alpha = sin(omegaT) * 0.5 *
-        sqrt((A + (1.0/A))*((1.0/shf->Q) - 1.0) + 2.0);
+        sqrt((A + (1.0/A))*((1.0/shf->slope) - 1.0) + 2.0);
 
         a = shf->a;
         b = shf->b;
@@ -308,12 +308,8 @@ SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in)
         if (ia0 != 0) ia0 = 1.0 / ia0;
         else ia0 = 0;
 
-        b[0] =
-            A *
-            ((A+1) +
-             (A-1)*cos(omegaT) +
-             2.0*sqrt(A)*alpha);
-
+        b[0] = A * ((A+1) + (A-1)*cos(omegaT) + 2.0*sqrt(A)*alpha);
+        b[0] *= ia0;
         b[1] = -2*A*((A-1) + (A+1)*cos(omegaT));
         b[1] *= ia0;
         b[2] = A*((A+1) + (A-1)*cos(omegaT) - 2*sqrt(A)*alpha);

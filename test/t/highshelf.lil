@@ -1,0 +1,12 @@
+srand 12345
+
+noise
+mul zz 0.1
+
+func lfo {min max} {
+    biscale [sine 0.3 1] $min $max
+}
+
+highshelf zz [param 3000] [lfo 0 8] [param 0.5]
+
+verify a927e79a426beff3711c4cf58b073356
