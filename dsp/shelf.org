@@ -24,19 +24,20 @@ function. In the Audio EQ cookbook,
 this process has already been done and the coefficients
 have been pre-derived.
 
-This is the highshelf transfer function in the S-Plane:
-
-@!(fig "shelf_splane_high" ``
-H(s) ={A (A s^2 + (\sqrt(A)/Q)s + 1)
-\over
-s^2 + (\sqrt(A)/Q)s + A}
-``)!@
-
 This is the lowshelf transfer function in the S-plane:
 
 @!(fig "shelf_splane_low" ``
-H(s) = A \Bigl({s^2 + {\sqrt{A} / Q}s + A \over
-As^2 + {\sqrt{A}/Q}s + 1}\Bigr)
+H(s) = A \Bigl({s^2 + ({\sqrt{A} / Q})s + A \over
+As^2 + ({\sqrt{A}/Q})s + 1}\Bigr)
+``)!@
+
+The highshelf S-plane transfer function is the inverse
+of the lowshelf transfer function:
+
+@!(fig "shelf_splane_high" ``
+H(s) =A \Bigl({A s^2 + (\sqrt{A}/Q)s + 1
+\over
+s^2 + (\sqrt{A}/Q)s + A}\Bigr)
 ``)!@
 
 These are then put through the bilinear transform
