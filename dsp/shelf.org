@@ -276,9 +276,17 @@ derived from the Q value.
 \alpha = {\sin(\omega_0) \over 2Q}
 ``)!@
 
-Note: divide all parameters by =a0=.
+Some additional operations are done in the name of
+optimization. To save a on a few division operations
+in the difference equation, the coefficients are
+divided by =a0= ahead of time. The trig function =cos=
+is quite costly, so the constant =co= is used to
+store =cos(omegaT)=. =sqrt= is also reasonably
+expensive, so the expression =sqrt(A)*alpha*2.0= is
+saved to an arbitrarily named variable =k=.
 
-From there, it can compute a sample of the filter.
+After coefficients are updated (if they needed to be),
+the filter can then be computed.
 
 #+NAME: funcs
 #+BEGIN_SRC c
@@ -292,32 +300,37 @@ SKFLT sk_shelf_high_tick(sk_shelf *shf, SKFLT in)
         SKFLT ia0;
         SKFLT alpha;
         SKFLT A;
+        SKFLT k; /* sqrt(A)*alpha*2.0 */
         SKFLT omegaT;
         SKFLT *a, *b;
+        SKFLT co; /* cos(omegaT) */
 
         A = pow(10.0, shf->gain / 40.0);
         omegaT = 2.0 * M_PI * shf->freq * shf->T;
         alpha = sin(omegaT) * 0.5 *
         sqrt((A + (1.0/A))*((1.0/shf->slope) - 1.0) + 2.0);
+        co = cos(omegaT);
 
         a = shf->a;
         b = shf->b;
 
-        ia0 = (A+1) - (A-1)*cos(omegaT) + 2.0*sqrt(A)*alpha;
+        ia0 = (A+1.0) - (A-1.0)*co + 2.0*sqrt(A)*alpha;
 
         if (ia0 != 0) ia0 = 1.0 / ia0;
         else ia0 = 0;
 
-        b[0] = A * ((A+1) + (A-1)*cos(omegaT) + 2.0*sqrt(A)*alpha);
+        k = sqrt(A)*alpha*2.0;
+
+        b[0] = A * ((A+1.0) + (A-1.0)*co + k);
         b[0] *= ia0;
-        b[1] = -2*A*((A-1) + (A+1)*cos(omegaT));
+        b[1] = -2.0*A*((A-1.0) + (A+1.0)*co);
         b[1] *= ia0;
-        b[2] = A*((A+1) + (A-1)*cos(omegaT) - 2*sqrt(A)*alpha);
+        b[2] = A*((A+1.0) + (A-1.0)*co - k);
         b[2] *= ia0;
 
-        a[0] = 2*((A-1) - (A+1)*cos(omegaT));
+        a[0] = 2.0*((A-1.0) - (A+1.0)*co);
         a[0] *= ia0;
-        a[1] = (A+1) - (A-1)*cos(omegaT) - 2*sqrt(A)*alpha;
+        a[1] = (A+1.0) - (A-1.0)*co - k;
         a[1] *= ia0;
 
         shf->changed = 0;

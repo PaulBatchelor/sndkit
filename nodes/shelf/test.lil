@@ -1,7 +1,7 @@
 srand 12345
 
 noise
-mul zz 0.1
+mul zz 0.25
 
 func lfo {min max} {
     biscale [sine 0.3 1] $min $max
