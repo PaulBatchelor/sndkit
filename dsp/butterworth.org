@@ -20,7 +20,7 @@ Julius Smith has a page that derives
 a [[https://ccrma.stanford.edu/~jos/filters/Example_Second_Order_Butterworth_Lowpass.html][Second-order butterworth lowpass filter]].
 
 
-#+NAME: butlp.h
+#+NAME: butterworth.h
 #+BEGIN_SRC c :tangle butterworth.h
 #ifndef SK_BUTTERWORTH_H
 #define SK_BUTLERWORTH_H
