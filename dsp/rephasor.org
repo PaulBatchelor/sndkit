@@ -250,7 +250,6 @@ parameters.
 #+BEGIN_SRC c
 void sk_rephasor_scale(sk_rephasor *rp, SKFLT scale)
 {
-    /*rp->scale = scale; */
     if (scale != rp->s) {
         rp->s = scale;
         rp->si = 1.0 / scale;
