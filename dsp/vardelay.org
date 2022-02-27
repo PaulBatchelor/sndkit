@@ -57,6 +57,7 @@ void sk_vardelay_init(sk_vardelay *vd, int sr,
 void sk_vardelay_init(sk_vardelay *vd, int sr,
                       SKFLT *buf, unsigned long sz)
 {
+    vd->sr = sr;
     <<init>>
 }
 #+END_SRC
@@ -85,11 +86,6 @@ It is used to convert delay time seconds to samples.
 #+NAME: sk_vardelay
 #+BEGIN_SRC c
 int sr;
-#+END_SRC
-
-#+NAME: init
-#+BEGIN_SRC c
-vd->sr = sr;
 #+END_SRC
 ** Buffer, Buffer Size
 The delay buffer is the chunk of memory where samples will
@@ -159,22 +155,31 @@ vd->writepos = 0;
 ** Delay Time
 Set with =sk_vardelay_delay=, In units of seconds.
 
+The delay can also be set in units of samples, via
+=sk_vardelay_delays=.
+
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void sk_vardelay_delay(sk_vardelay *vd, SKFLT delay);
+void sk_vardelay_delays(sk_vardelay *vd, SKFLT delay);
 #+END_SRC
 
 #+NAME: funcs
 #+BEGIN_SRC c
 void sk_vardelay_delay(sk_vardelay *vd, SKFLT delay)
 {
-    vd->delay = delay;
+    vd->dels = delay * vd->sr;
+}
+
+void sk_vardelay_delays(sk_vardelay *vd, SKFLT delay)
+{
+    vd->dels = delay;
 }
 #+END_SRC
 
 #+NAME: sk_vardelay
 #+BEGIN_SRC c
-SKFLT delay;
+SKFLT dels;
 #+END_SRC
 
 The initial delay time is set to be half the delay time, in
@@ -271,7 +276,7 @@ in samples.
 
 #+NAME: calculate_read_position
 #+BEGIN_SRC c
-dels = vd->delay * vd->sr;
+dels = vd->dels;
 i = floor(dels);
 f = i - dels;
 i = vd->writepos - i;
