@@ -1,6 +1,6 @@
 #+TITLE: Vardelay
 * Overview
-Vardelay is an implementation of a variable-length delay
+=Vardelay= is an implementation of a variable-length delay
 line, using third order [[https://ccrma.stanford.edu/~jos/pasp/Lagrange_Interpolation.html][Langrange Interpolation]].
 This delay time of this delay line can be adjusted over
 time. Because it uses interpolation, any adjustments can
@@ -10,6 +10,10 @@ like flanging and chorusing.
 
 In addition to delay time, a feedback parameter will also be
 supplied, as it is so often used with delay lines.
+
+A variation of vardelay is also constructed called
+=clkdel=. which builds on top of vardelay to build a
+tempo-synced delay line.
 * Tangled Files
 =vardelay.c= and =vardelay.h= are the tangled files.
 
@@ -64,7 +68,21 @@ void sk_vardelay_init(sk_vardelay *vd, int sr,
 
 Anything buffer size less than 4 samples is not enough
 to do third-order interpolation, so it returns an error.
-* Struct
+* Struct Code Blocks Declaration
+Some worgle-related structure to follow.
+
+Below outlines the =structs= code block, which contains
+the named code blocks for both vardelay and clkdel,
+named =vardelay_struct= and =clkdel_struct=. Because
+clkdel depends on vardelay, the order which they
+are defined matters.
+
+#+NAME: structs
+#+BEGIN_SRC c
+<<vardelay_struct>>
+<<clkdel_struct>>
+#+END_SRC
+* Main Struct
 Called =sk_vardelay=.
 
 #+NAME: typedefs
@@ -72,7 +90,7 @@ Called =sk_vardelay=.
 typedef struct sk_vardelay sk_vardelay;
 #+END_SRC
 
-#+NAME: structs
+#+NAME: vardelay_struct
 #+BEGIN_SRC c
 struct sk_vardelay {
     <<sk_vardelay>>
@@ -378,4 +396,101 @@ value in the delay line.
 #+NAME: update_feedback
 #+BEGIN_SRC c
 vd->prev = out;
+#+END_SRC
+* Tempo-Synced Delay Line (clkdel)
+@!(marker "clkdel")!@
+With some additional components, a variable delay line
+such as =vardelay= can be used as a tempo-synced delay
+line. This is achieved by controlling the delay time
+using some kind of external clock signal. Since it is a
+delay controlled by an external clock, it shall be called
+=clkdel=.
+
+For a external clock signal, a @!(ref "phasor")!@ signal
+is expected. When used with a @!(ref "rephasor")!@, it can
+make for a very flexible system for rhythmic control. This
+pairing is ultimately why a phasor signal was chosen
+instead of a simpler impulse-based clock signal
+such as @!(ref "metro")!@.
+
+The struct for clkdel is called =sk_clkdel=. This wraps
+an instance of =sk_vardelay=, along with a few other
+variables. Mainly, a timer, and a variable that
+keeps track of the phasor value, used for checking
+resets.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_clkdel sk_clkdel;
+#+END_SRC
+
+#+NAME: clkdel_struct
+#+BEGIN_SRC c
+struct sk_clkdel {
+    sk_vardelay vd;
+    SKFLT phs;
+    unsigned long timer;
+    SKFLT isr;
+};
+#+END_SRC
+
+clkdel is initialized with =sk_clkdel_init=, which passes
+in the same arguments as vardelay. A max delay time is
+still required, so a large enough value must be picked
+ahead of time.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_clkdel_init(sk_clkdel *cd, int sr,
+                    SKFLT *buf,
+                    unsigned long sz);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_clkdel_init(sk_clkdel *cd, int sr,
+                    SKFLT *buf,
+                    unsigned long sz)
+{
+    sk_vardelay_init(&cd->vd, sr, buf, sz);
+    cd->phs = -1;
+    cd->timer = 0;
+    cd->isr = 1.0 / (SKFLT) sr;
+    sk_vardelay_delays(&cd->vd, sz - 1);
+}
+#+END_SRC
+
+A sample of audio is computed with =sk_clkdel_tick=,
+which takes in an input signal =in= and a phasor timing
+control signal =phs=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_clkdel_tick(sk_clkdel *cd, SKFLT in, SKFLT phs);
+#+END_SRC
+
+Before the instance of vardelay is computed, the phasor
+is checked to see if it has been reset. If it has, the
+period is measured.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_clkdel_tick(sk_clkdel *cd, SKFLT in, SKFLT phs)
+{
+    if (phs < 0) {
+        cd->phs = 0;
+        cd->timer = 0;
+        return sk_vardelay_tick(&cd->vd, in);
+    }
+
+    if (phs < cd->phs) {
+        sk_vardelay_delay(&cd->vd, cd->timer * cd->isr);
+        cd->timer = 0;
+    }
+
+    cd->phs = phs;
+    cd->timer++;
+
+    return sk_vardelay_tick(&cd->vd, in);
+}
 #+END_SRC

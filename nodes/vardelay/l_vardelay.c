@@ -7,6 +7,7 @@
 #include "sklil.h"
 
 int sk_node_vardelay(sk_core *core);
+int sk_node_clkdel(sk_core *core);
 
 static lil_value_t vardelay(lil_t lil, size_t argc, lil_value_t *argv)
 {
@@ -30,7 +31,32 @@ static lil_value_t vardelay(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t clkdel(lil_t lil,
+                          size_t argc,
+                          lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+    int i;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "clkdel", argc, 4);
+
+    for (i = 0; i < 4; i++) {
+        rc = sklil_param(core, argv[i]);
+        SKLIL_PARAM_CHECK(lil, rc, "clkdel");
+    }
+
+    rc = sk_node_clkdel(core);
+
+    SKLIL_ERROR_CHECK(lil, rc, "glotwave didn't work out.");
+
+    return NULL;
+}
+
 void sklil_load_vardelay(lil_t lil)
 {
     lil_register(lil, "vardelay", vardelay);
+    lil_register(lil, "clkdel", clkdel);
 }

@@ -25,6 +25,7 @@ int sk_node_metro(sk_core *core);
 int sk_node_expon(sk_core *core);
 int sk_node_rline(sk_core *core);
 int sk_node_vardelay(sk_core *core);
+int sk_node_clkdel(sk_core *core);
 int sk_node_expmap(sk_core *core);
 int sk_node_biramp(sk_core *core);
 int sk_node_flipper(sk_core *core);

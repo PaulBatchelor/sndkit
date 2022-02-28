@@ -1,0 +1,35 @@
+phasor [expr 115 / 60] 0
+hold zz
+regset zz 0
+
+phsclk [regget 0] 2
+
+dup
+
+swap
+
+genvals [tabnew 1] "0 3 7 10 14 10 7 2"
+swap
+tseq zz zz 0
+
+add zz 60
+smoother zz 0.001
+mtof zz
+sine zz 0.5
+
+swap
+env zz 0.001 0.01 0.1
+mul zz zz
+
+dup
+clkdel zz [param 0.5] \
+    [rephasor [regget 0] [expr 4/3]] \
+    [param 1.0]
+mul zz 0.5
+add zz zz
+
+wavout zz clkdel_test.wav
+regget 0
+unhold zz
+
+computes 10
