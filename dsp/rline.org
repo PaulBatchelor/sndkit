@@ -412,3 +412,10 @@ if (rl->phasepos >= SK_RLINE_PHSLEN) {
     rl->scale = (rl->end - rl->start) / SK_RLINE_PHSLEN;
 }
 #+END_SRC
+* TODO Jitseg
+=jitseg= is a variation of =rline=, that uses another
+instances of =rline= to modulate the frequency. Typically,
+a signal generator like this is added to anotherwise
+steady signal to add small deviations and detail to the
+sound. This kind of low-level low-frequency is often known
+as =jitter=.
