@@ -68,11 +68,16 @@ The core struct is called =sk_rline=.
 typedef struct sk_rline sk_rline;
 #+END_SRC
 
+*NOTE*: the =jitseg_struct= block is explicitly
+delcared after the =sk_rline= struct because of
+dependencies. See: @!(ref "rline" "jitseg" "jitseg")!@.
+
 #+NAME: structs
 #+BEGIN_SRC c
 struct sk_rline {
     <<sk_rline>>
 };
+<<jitseg_struct>>
 #+END_SRC
 * Constants and Variables
 The value from the LCG is often scaled to be normalized
@@ -412,10 +417,40 @@ if (rl->phasepos >= SK_RLINE_PHSLEN) {
     rl->scale = (rl->end - rl->start) / SK_RLINE_PHSLEN;
 }
 #+END_SRC
-* TODO Jitseg
-=jitseg= is a variation of =rline=, that uses another
+* Variation: Jitseg
+@!(marker "jitseg")!@
+=jitseg= is a variation of =rline= that uses another
 instances of =rline= to modulate the frequency. Typically,
 a signal generator like this is added to anotherwise
 steady signal to add small deviations and detail to the
 sound. This kind of low-level low-frequency is often known
 as =jitter=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_jitseg sk_jitseg;
+#+END_SRC
+
+#+NAME: jitseg_struct
+#+BEGIN_SRC c
+struct sk_jitseg {
+    sk_rline main;
+    sk_rline rate;
+};
+#+END_SRC
+
+=sk_jitseg_init= initializes both rlines with separate
+seeds. =s1= is main. =s2= is rate.
+
+More writing needed.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_jitseg_init(sk_jitseg *js, int sr, int s1, int s2);
+void sk_jitseg_val_min(sk_jitseg *js, SKFLT min);
+void sk_jitseg_val_max(sk_jitseg *js, SKFLT max);
+void sk_jitseg_rate_min(sk_jitseg *js, SKFLT min);
+void sk_jitseg_rate_max(sk_jitseg *js, SKFLT min);
+void sk_jitseg_rate_rate(sk_jitseg *js, SKFLT rate);
+SKFLT sk_jitseg_tick(sk_jitseg *js);
+#+END_SRC
