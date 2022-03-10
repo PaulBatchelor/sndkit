@@ -426,6 +426,17 @@ steady signal to add small deviations and detail to the
 sound. This kind of low-level low-frequency is often known
 as =jitter=.
 
+It is equivalent to the following LIL pseudo-code
+
+#+BEGIN_SRC lil
+rline vmin vmax [rline rmin rmax rrate]
+#+END_SRC
+
+Where =vmin= and =vmax= are the min/max values,
+=rmin= and =rmax= values determine the range of
+rate, and =rrate= determines the rate of change
+controling the main rline rate.
+** typedef and struct (sk_jitseg)
 #+NAME: typedefs
 #+BEGIN_SRC c
 typedef struct sk_jitseg sk_jitseg;
@@ -438,19 +449,84 @@ struct sk_jitseg {
     sk_rline rate;
 };
 #+END_SRC
-
+** Initialization
 =sk_jitseg_init= initializes both rlines with separate
 seeds. =s1= is main. =s2= is rate.
-
-More writing needed.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
 void sk_jitseg_init(sk_jitseg *js, int sr, int s1, int s2);
-void sk_jitseg_val_min(sk_jitseg *js, SKFLT min);
-void sk_jitseg_val_max(sk_jitseg *js, SKFLT max);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_jitseg_init(sk_jitseg *js, int sr, int s1, int s2)
+{
+    sk_rline_init(&js->main, sr, s1);
+    sk_rline_init(&js->rate, sr, s2);
+}
+#+END_SRC
+** Parameters
+Two rlines combined yields two separate min/max pairs.
+One pair for the output value range, and one pair
+for the range of rate of which these values change. The
+rate at which value rate changes can be set as well.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_jitseg_min(sk_jitseg *js, SKFLT min);
+void sk_jitseg_max(sk_jitseg *js, SKFLT max);
 void sk_jitseg_rate_min(sk_jitseg *js, SKFLT min);
 void sk_jitseg_rate_max(sk_jitseg *js, SKFLT min);
 void sk_jitseg_rate_rate(sk_jitseg *js, SKFLT rate);
 SKFLT sk_jitseg_tick(sk_jitseg *js);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_jitseg_min(sk_jitseg *js, SKFLT min)
+{
+    sk_rline_min(&js->main, min);
+}
+
+void sk_jitseg_max(sk_jitseg *js, SKFLT max)
+{
+    sk_rline_max(&js->main, max);
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_jitseg_rate_min(sk_jitseg *js, SKFLT min)
+{
+    sk_rline_min(&js->rate, min);
+}
+
+void sk_jitseg_rate_max(sk_jitseg *js, SKFLT max)
+{
+    sk_rline_max(&js->rate, max);
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_jitseg_rate_rate(sk_jitseg *js, SKFLT rate)
+{
+    sk_rline_rate(&js->rate, rate);
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_jitseg_tick(sk_jitseg *js)
+{
+    SKFLT out;
+
+    out = 0;
+
+    sk_rline_rate(&js->main, sk_rline_tick(&js->rate));
+
+    out = sk_rline_tick(&js->main);
+    return out;
+}
 #+END_SRC
