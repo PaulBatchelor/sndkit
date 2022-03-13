@@ -1,0 +1,9 @@
+#+TITLE: LPF
+* Overview
+=LPF= implements a 2-pole resonant low-pass filter.
+* Tangled Files
+* Struct and Initialization
+* Parameters
+** Cutoff Frequency
+** Resonance (Q factor)
+* Computation
