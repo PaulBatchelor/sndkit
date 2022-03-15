@@ -72,6 +72,7 @@
 (ww-add-link "tables_first" "doc/tables_first.org")
 (ww-add-link "tdiv" "dsp/tdiv.org")
 (ww-add-link "shelf" "dsp/shelf.org")
+(ww-add-link "signal_routing" "doc/signal_routing.org")
 
 # sync and close
 

@@ -64,6 +64,13 @@ needs a param, and the 0.5 does not require one (though it
 doesn't hurt to add). It's a weird quirk that has to do
 with evaluation order and how things work under the hood,
 but one gets used to it.
+
+To print a list of all the available functions in LIL,
+use the =lscmds= function:
+
+#+BEGIN_SRC sh
+echo lscmds | sndkit
+#+END_SRC
 * The 'zz' operator
 Brackets and s-expressions can be fun, but they can get
 very unwieldy very quickly in LIL, especially since
