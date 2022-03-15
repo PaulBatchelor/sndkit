@@ -481,7 +481,7 @@ void sk_jitseg_rate_max(sk_jitseg *js, SKFLT min);
 void sk_jitseg_rate_rate(sk_jitseg *js, SKFLT rate);
 SKFLT sk_jitseg_tick(sk_jitseg *js);
 #+END_SRC
-
+*** Min/Max Values
 #+NAME: funcs
 #+BEGIN_SRC c
 void sk_jitseg_min(sk_jitseg *js, SKFLT min)
@@ -494,7 +494,7 @@ void sk_jitseg_max(sk_jitseg *js, SKFLT max)
     sk_rline_max(&js->main, max);
 }
 #+END_SRC
-
+*** Min/Max Rates
 #+NAME: funcs
 #+BEGIN_SRC c
 void sk_jitseg_rate_min(sk_jitseg *js, SKFLT min)
@@ -507,7 +507,7 @@ void sk_jitseg_rate_max(sk_jitseg *js, SKFLT max)
     sk_rline_max(&js->rate, max);
 }
 #+END_SRC
-
+*** Rate of Rate Modulator
 #+NAME: funcs
 #+BEGIN_SRC c
 void sk_jitseg_rate_rate(sk_jitseg *js, SKFLT rate)
