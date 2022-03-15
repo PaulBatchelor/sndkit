@@ -224,7 +224,7 @@ unhold [regget 0]
 
 computes 10
 #+END_SRC
-* TODO Creating sends/throws
+* Creating sends/throws
 Sends or "throws" allow signals to be summed together
 and sent into an effect processor. This works by
 intializing and holding a cable, and then using =cabmix=
@@ -261,7 +261,7 @@ modalres zz 500 100
 # copy sound object 1 and send to reverb
 dup
 mix zz [regget 0] [dblin -10]
-mul zz [dblin [biscale [sine 0.3 1] -24 0]] 
+mul zz [dblin [biscale [sine 0.3 1] -24 0]]
 
 # sound object 2
 metro 1
@@ -270,7 +270,7 @@ modalres zz 2000 300
 
 # copy sound object 2 and send to reverb
 dup
-mix zz [regget 0] [dblin -3] 
+mix zz [regget 0] [dblin -3]
 mul zz [dblin -10]
 
 # add sound objects 1 and 2 to make dry signal
