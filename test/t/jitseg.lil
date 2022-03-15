@@ -1,0 +1,22 @@
+##
+random line between 200-500hz
+
+set the rate to be very vast (0.1hz: slow,
+20hz: fast, perceptually almost spectrum).
+
+This dynamic range should cause an interesting
+performance.
+
+rate of change is 2hz, so every 0.5s there's
+should be a noticeable change.
+
+This example is quite exagerated, but jitseg
+can be used in very small and subtle ways to
+add detail.
+##
+jitseg 200 500 0.1 20 2
+blsaw zz
+butlp zz 1000
+mul zz [dblin -3]
+
+verify f7dbe19c083117ceb3eac692471ecf42
