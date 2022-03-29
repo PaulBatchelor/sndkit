@@ -67,3 +67,4 @@ check tdiv
 check highshelf
 check lowshelf
 check jitseg
+check brown
