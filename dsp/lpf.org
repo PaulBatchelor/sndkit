@@ -1,0 +1,275 @@
+#+TITLE: LPF
+* Overview
+=LPF= implements a fairly common 2-pole resonant
+low-pass IIR filter.
+* Tangled Files
+=lpf.c= and =lpf.h=.
+
+#+NAME: lpf.h
+#+BEGIN_SRC c :tangle lpf.h
+#ifndef SK_LPF_H
+#define SK_LPF_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+<<funcdefs>>
+
+#ifdef SK_LPF_PRIV
+<<structs>>
+#endif
+
+#endif
+#+END_SRC
+
+#+NAME: lpf.c
+#+BEGIN_SRC c :tangle lpf.c
+#include <math.h>
+#define SK_LPF_PRIV
+#include "lpf.h"
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+<<funcs>>
+#+END_SRC
+* Struct and Initialization
+The struct for LPF is called =sk_lpf=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_lpf sk_lpf;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC
+struct sk_lpf {
+    <<sk_lpf>>
+};
+#+END_SRC
+
+LPF is initialized with =sk_lpf_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_lpf_init(sk_lpf *lpf, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_lpf_init(sk_lpf *lpf, int sr)
+{
+  <<init>>
+}
+#+END_SRC
+
+Being a 2-pole filter requires 2 samples of memory,
+and 3 filter coefficients: 2 beta coefficients (the
+recursive part of the filter) and one alpha coefficient
+(applied to the input).
+
+#+NAME: sk_lpf
+#+BEGIN_SRC c
+SKFLT y[2];
+SKFLT a0, b1, b2;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+lpf->y[0] = 0.0;
+lpf->y[1] = 0.0;
+lpf->a0 = 0.0;
+lpf->b1 = 0.0;
+lpf->b2 = 0.0;
+#+END_SRC
+
+A =update= flag is used to implement @!(ref
+"parameter_caching" "parameter caching")!@. If either
+cutoff or frequency is set, it will cause the filter
+coefficients to update themselves.
+
+#+NAME: sk_lpf
+#+BEGIN_SRC c
+int update;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+lpf->update = 1;
+#+END_SRC
+
+The constant =tpidsr= is a classic variable shorthand for
+"two pi divided by the sampling rate", and is used to shave
+off some arithmetic operations when computing filter
+coefficients.
+
+#+NAME: sk_lpf
+#+BEGIN_SRC c
+SKFLT tpidsr;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+lpf->tpidsr = 2.0 * M_PI / (SKFLT)sr;
+#+END_SRC
+
+* Parameters
+** Cutoff Frequency
+The cutoff frequency is set with =sk_lpf_cutoff=, in
+units of Hz.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_lpf_cutoff(sk_lpf *lpf, SKFLT cutoff);
+#+END_SRC
+
+The update flag is set to indicate that the next
+call to =sk_lpf_tick= needs to update coefficients
+before computing.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_lpf_cutoff(sk_lpf *lpf, SKFLT cutoff)
+{
+    lpf->cutoff = cutoff;
+    lpf->update = 1;
+}
+#+END_SRC
+
+Cutoff the variable is defined and set at init
+time below:
+
+#+NAME: sk_lpf
+#+BEGIN_SRC c
+SKFLT cutoff;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_lpf_cutoff(lpf, 1000); /* arbitrary default */
+#+END_SRC
+** Q Factor
+The Q factor is set with =sk_lpf_q=.
+
+The Q factor controls how much resonance there is. Should
+be a positive non-zero value. A value of 1.0 is passive,
+greater than 1.0 will cause resonance. Less than 1? Not
+sure.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_lpf_q(sk_lpf *lpf, SKFLT q);
+#+END_SRC
+
+Similar to =sk_lpf_cutoff=, =sk_lpf_q= will set the
+=update= flag, which will update filter coefficients
+next time the tick function =sk_lpf_tick= is computed.
+
+Note that Q cannot be exactly 0 since it is used
+in a division operation, so it is set to be a reasonably
+small value.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_lpf_q(sk_lpf *lpf, SKFLT q)
+{
+    if (q < 0.001) q = 0.001;
+    lpf->q = q;
+    lpf->update = 1;
+}
+#+END_SRC
+
+The Q variable is set and initialized below:
+
+#+NAME: sk_lpf
+#+BEGIN_SRC c
+SKFLT q;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_lpf_q(lpf, 1.0); /* arbitrary default */
+#+END_SRC
+* Computation
+A single sample of audio is computed with
+=sk_lpf_tick=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_lpf_tick(sk_lpf *lpf, SKFLT in);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_lpf_tick(sk_lpf *lpf, SKFLT in)
+{
+    SKFLT out;
+    SKFLT y0;
+    out = 0.0;
+    <<check_and_update_coefficients>>
+    <<compute_difference_equation>>
+    return out;
+}
+#+END_SRC
+
+Before a filter is computed, the =update= flag is
+checked to see if it is set. If so, the filter
+coefficients must be updated.
+
+To compute new coefficients, frequency must be converted
+from cycles-per-second to radians-per-sample. Multiplying
+by @!(smallfig "lpf_2pi" "2\\pi")!@ gives radians, then
+dividing by the sampling rate (or multiplying by the
+inverse, big T @!(smallfig "lpf_bigt" "T")!@, converts
+from seconds to radians. In our function, this gets
+smooshed together in a constant called =tpidsr=.
+
+The intermediate variables =C= and =D= are computed next,
+followed by the alpha and beta filter coefficients. These
+look like the remains from some bilinear transform from
+an S-plane filter, but I'm not sure.
+
+The update flag is then reset back to zero.
+
+#+NAME: check_and_update_coefficients
+#+BEGIN_SRC c
+if (lpf->update) {
+    SKFLT C, D;
+    SKFLT freq;
+    SKFLT qres;
+
+    qres = (1.0 / lpf->q);
+    if (qres < 0.001) qres = 0.001;
+
+    /* convert to radians/sample */
+    freq = lpf->cutoff * lpf->tpidsr;
+
+    /* intermediates */
+    D = tan(freq * qres * 0.5);
+    C = (1.0 - D) / (1.0 + D);
+
+    lpf->b1 = (1.0 + C) * cos(freq);
+    lpf->b2 = -C;
+    lpf->a0 = (1.0 + C - lpf->b1) * 0.25;
+
+    lpf->update = 0;
+}
+#+END_SRC
+
+With all the up-to-date coefficients, computing filter
+is a matter of computing the difference equation and
+updating the filter memory.
+
+The output itself seems to be effectively boosting
+the filter memory. I am not sure why it is doing that.
+
+#+NAME: compute_difference_equation
+#+BEGIN_SRC c
+    y0 = lpf->a0*in + lpf->b1*lpf->y[0] + lpf->b2*lpf->y[1];
+    out = y0 + 2.0*lpf->y[0] + lpf->y[1];
+    lpf->y[1] = lpf->y[0];
+    lpf->y[0] = y0;
+#+END_SRC
