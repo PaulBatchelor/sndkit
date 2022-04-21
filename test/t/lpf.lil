@@ -1,0 +1,12 @@
+metro [rline 3 20 2]
+lpf zz [rline 800 1000 0.5] [param 20]
+dcblocker zz
+mul zz 0.8
+buthp zz 300
+dup
+dup
+bigverb zz zz 0.5 8000
+drop
+mul zz [dblin -12]
+add zz zz
+verify 517e0f6be71b58fbde2cc888118657c3
