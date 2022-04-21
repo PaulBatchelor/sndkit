@@ -116,3 +116,6 @@ quantizer with parametric glissando-like interpolation.
 @!(ref "tdiv")!@ is a clock divider.
 
 @!(ref "shelf")!@ implements 2-pole shelving filters.
+
+@!(ref "lpf")!@ implements a 2-pole resonant low-pass
+filter.
