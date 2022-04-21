@@ -97,6 +97,10 @@ glottis_rg_derivation.png \
 glottis_rg_derivation2x.png \
 glottis_timing_coefficients.png \
 glottis_timing_coefficients2x.png \
+lpf_2pi.png \
+lpf_2pi2x.png \
+lpf_bigt.png \
+lpf_bigt2x.png \
 mtof_eqn.png \
 mtof_eqn2x.png \
 osc_lerp.png \
