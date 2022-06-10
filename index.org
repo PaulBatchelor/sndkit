@@ -40,7 +40,7 @@ really a LIL interpreter fortified with sndkit functions.
 You can test it with:
 
 #+BEGIN_SRC c
-./sndit examples/synthbass.lil
+./sndkit examples/synthbass.lil
 #+END_SRC
 
 Which should produce a WAV file in the current directory called
