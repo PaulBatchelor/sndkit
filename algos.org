@@ -119,3 +119,7 @@ quantizer with parametric glissando-like interpolation.
 
 @!(ref "lpf")!@ implements a 2-pole resonant low-pass
 filter.
+
+@!(ref "envar")!@ is a gate-controlled envelope generator
+whose shape is determined using attack and release
+parameters.

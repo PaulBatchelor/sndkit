@@ -1,0 +1,11 @@
+blsaw 500 
+mul zz [dblin -6]
+butlp zz 800
+metro 0.5
+tgate zz 0.5
+envar zz 0.01 0.5
+mul zz zz
+
+wavout zz test.wav
+
+computes 10

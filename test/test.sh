@@ -69,3 +69,4 @@ check lowshelf
 check jitseg
 check brown
 check lpf
+check envar
