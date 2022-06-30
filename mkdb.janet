@@ -74,6 +74,7 @@
 (ww-add-link "shelf" "dsp/shelf.org")
 (ww-add-link "signal_routing" "doc/signal_routing.org")
 (ww-add-link "lpf" "dsp/lpf.org")
+(ww-add-link "envar" "dsp/envar.org")
 
 # sync and close
 

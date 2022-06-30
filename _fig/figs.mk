@@ -73,6 +73,12 @@ dblin_pow.png \
 dblin_pow2x.png \
 dblin_pow_conversion.png \
 dblin_pow_conversion2x.png \
+envar_1ma1.png \
+envar_1ma12x.png \
+envar_einv.png \
+envar_einv2x.png \
+envar_t.png \
+envar_t2x.png \
 envar_t60_derivation.png \
 envar_t60_derivation2x.png \
 envar_t60val.png \

@@ -126,7 +126,7 @@ this use case is very similar.
 In order to be converted to a pole, the T60 value
 must be defined in terms of tau units. One Tau unit is
 the amount of time it takes for a normalized exponential
-to decay to $(smallfig "envar_einv", "1 \\over e")$. In
+to decay to @!(smallfig "envar_einv" "1 \\over e")!@. In
 a mathematical context, the Tau time constant "fits"
 better with the tau to pole equation, defined as:
 
@@ -140,7 +140,8 @@ perceptually (and therefore, musically).
 
 To convert to tau units from T60, divide by the natural
 log of 1000. This is found using the normalized exponential
-equation in terms of tau, finding $t$ when it reaches
+equation in terms of tau,
+finding @!(smallfig "envar_t" "t")!@ when it reaches
 @!(smallfig "envar_t60val" "10^{-20/60}")!@,
 or 0.001.
 
@@ -347,7 +348,8 @@ definition of the difference equation uses subtraction,
 this one uses addition. The detail here is that the
 cached value stores the *pole* of the filter, which
 is negated to get the alpha filter coefficient. The
-beta parameter is defined as $1 - |\alpha_1|$, so it
+beta parameter is defined as
+@!(smallfig "envar_1ma1" "1 - |\\alpha_1|")!@, so it
 makes sense to store the cached value as a positive
 value, rather than a negative one.
 
