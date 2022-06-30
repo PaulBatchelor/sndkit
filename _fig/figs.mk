@@ -73,6 +73,12 @@ dblin_pow.png \
 dblin_pow2x.png \
 dblin_pow_conversion.png \
 dblin_pow_conversion2x.png \
+envar_t60_derivation.png \
+envar_t60_derivation2x.png \
+envar_t60val.png \
+envar_t60val2x.png \
+envar_tau2pole.png \
+envar_tau2pole2x.png \
 expmap_eqn.png \
 expmap_eqn2x.png \
 expmap_s.png \

@@ -70,6 +70,7 @@ ALGOS=\
 	tdiv \
 	shelf \
 	lpf \
+	envar \
 
 # GNU Make is very convenient here...
 

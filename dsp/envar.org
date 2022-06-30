@@ -1,0 +1,375 @@
+#+TITLE: EnvAR
+* Overview
+EnvAR implements an envelope generator, whose shape is
+determined by attack and release parameters, and timing
+controlled via a gate signal, such as @!(ref "tgate")!@.
+
+Similar to other envelope generators such as @!(ref "env")!@,
+this envelope is constructed using a 1-pole lowpass filter.
+A filtered gate signal can elegantly produce a nice-sounding
+exponential envelope, featuring a concave attack and convex
+release.
+* Tangled Files
+=envar.c= and =envar.h=. these follow the typical sndkit
+conventions.
+
+#+NAME: envar.c
+#+BEGIN_SRC c :tangle envar.c
+#include <math.h>
+#include <stddef.h>
+
+#define SK_ENVAR_PRIV
+#include "envar.h"
+
+<<enums>>
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+
+#+NAME: envar.h
+#+BEGIN_SRC c :tangle envar.h
+#ifndef SK_ENVAR_H
+#define SK_ENVAR_H
+
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_ENVAR_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+* Initialization
+envar is initalized with =sk_envar_init=. The sampling
+rate =sr= must be provided here.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_envar_init(sk_envar *env, int sr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_envar_init(sk_envar *env, int sr)
+{
+    env->sr = sr;
+    <<init>>
+}
+#+END_SRC
+* Struct Definition
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_envar sk_envar;
+#+END_SRC
+
+#+NAME: structs
+#+BEGIN_SRC c
+<<envar_timing_param>>
+struct sk_envar {
+    int sr;
+    <<envar>>
+};
+#+END_SRC
+* One Pole Low-Pass Filter
+At the core of this envelope generator, is a one-pole
+IIR lowpass filter. Such
+a filter is recursive, and requires one sample of
+filter memory =y=, which stores output of the previous
+computation.
+
+#+NAME: envar
+#+BEGIN_SRC c
+SKFLT y;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+env->y = 0;
+#+END_SRC
+
+The filter uses two filter coefficients, known
+as =a1= and =b0=. =b0= can be defined in terms of =a1= as
+=1 - a1=, so there is effectively only one coefficient that
+is needed to be considered.
+
+#+NAME: envar
+#+BEGIN_SRC c
+SKFLT a1;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+env->a1 = 0;
+#+END_SRC
+
+The negated coefficient provides the location of
+the filter's =pole=. This pole value determines the
+slope of the envelope, or how fast it moves in the attack
+or release states.
+
+* T60 to Pole Conversion
+Poles don't make a lot of sense to
+work with directly. Instead so-called =T60= timing
+parameters are used. These are units, defined in units of
+seconds, that define the time it takes for a normalized
+signal to decay by 60 dB (or, in other words, go from
+values 1 to 0.001).
+Typically, this is used in the context of
+acoustics used to measure the size of a reverb tail, but
+this use case is very similar.
+
+In order to be converted to a pole, the T60 value
+must be defined in terms of tau units. One Tau unit is
+the amount of time it takes for a normalized exponential
+to decay to $(smallfig "envar_einv", "1 \\over e")$. In
+a mathematical context, the Tau time constant "fits"
+better with the tau to pole equation, defined as:
+
+@!(fig "envar_tau2pole" `
+t2p(\tau) = e^{-1/\tau F_s}
+`)!@
+
+While one could use Tau as a parameter directly,
+T60 is used instead of tau because it makes more sense
+perceptually (and therefore, musically).
+
+To convert to tau units from T60, divide by the natural
+log of 1000. This is found using the normalized exponential
+equation in terms of tau, finding $t$ when it reaches
+@!(smallfig "envar_t60val" "10^{-20/60}")!@,
+or 0.001.
+
+@!(fig "envar_t60_derivation" `
+\eqalign{
+a(t_{60}) &= e^{-t_{60}/\tau} \cr
+0.001 &= e^{-t_{60}/\tau} \cr
+(0.001)^{-1} &= (e^{-t_{60}/\tau})^{-1} \cr
+1000 &= e^{t/\tau} \cr
+\log(1000) &= t / \tau \cr
+\log(1000)\tau &= t \cr
+\tau &= t / \log(1000) \cr
+}
+`)!@
+* Threshold Generator and State
+After computing the pole, the next concern is determining
+which timing parameter to use. There are two timing
+parameters: attack and release. Which one to use at any given
+time is determined using a =threshold generator=, fed by
+the gate signal.
+
+The threshold generator works by comparing the previous
+input with the current input. If in that time the input
+crosses a specified threshold, the parameter changes. The
+direction the threshold is crosses determines the state.
+The attack parameter is used when the crossing happens
+from below, and release happens when it occurs from above.
+
+The threshold value is set to be 0.5, the expected midpoint
+between the gate range 0 and 1.
+
+To make the threshold generator work, the struct will
+need a variable storing the previous gate, as well
+as variable managing the state of the envelope.
+
+#+NAME: envar
+#+BEGIN_SRC c
+SKFLT pgate;
+int state;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+env->pgate = 0;
+env->state = ATTACK;
+#+END_SRC
+
+#+NAME: enums
+#+BEGIN_SRC c
+enum {ATTACK, RELEASE};
+#+END_SRC
+* Setting Attack and Release Parameters
+The parameters for attack and release can be set using
+=sk_envar_attack= and =sk_envar_release=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_envar_attack(sk_envar *env, SKFLT atk);
+void sk_envar_release(sk_envar *env, SKFLT rel);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_envar_attack(sk_envar *env, SKFLT atk)
+{
+    env->atk.cur = atk;
+}
+
+void sk_envar_release(sk_envar *env, SKFLT rel)
+{
+    env->rel.cur = rel;
+}
+#+END_SRC
+* Parameter Caching
+Computing poles is an potentially expensive task, requiring
+calls to math functions. It'd be better to avoid computing
+values needlessly. In order to do this, @!(ref
+"parameter_caching" "parameter caching")!@,
+sometimes known as =memoization= in computer science, is
+employed.
+
+Attack and release have essentially identical computation
+steps. To save on redudancies, a struct will defined to
+store parameter states, containing the previous/current
+T60 parameter value, as well as a cache value used to
+store a computed filter pole coefficient.
+
+#+NAME: envar_timing_param
+#+BEGIN_SRC c
+struct envar_timing_param {
+    SKFLT cur;
+    SKFLT prev;
+    SKFLT cached;
+};
+#+END_SRC
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void init_param(struct envar_timing_param *p, SKFLT t);
+#+END_SRC
+
+The previous and current values are negated, in order
+to deliberately force updating the cached variable.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void init_param(struct envar_timing_param *p, SKFLT t)
+{
+    p->cur = t;
+    p->prev = -t;
+    p->cached = 0;
+}
+#+END_SRC
+
+#+NAME: envar
+#+BEGIN_SRC c
+struct envar_timing_param atk;
+struct envar_timing_param rel;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+init_param(&env->atk, 0.01);
+init_param(&env->rel, 0.01);
+#+END_SRC
+
+Caching logic is fairly straight forward: at each computation,
+check to see if the previous/current values are different.
+If they are, update the cached and previous values.
+* Computation
+With all the components described in the previous sections,
+it is now possible to outline what happens during the
+computation of a single sample of the EnvAR signal, via
+the function =sk_envar_tick=. It takes as input a variable
+=gate=, the gate signal used for timing.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_envar_tick(sk_envar *env, SKFLT gate);
+#+END_SRC
+
+The
+process can be divided up into four parts: state updates,
+parameter updates, difference equation computation, and
+filter memory updates.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_envar_tick(sk_envar *env, SKFLT gate)
+{
+    SKFLT out;
+    struct envar_timing_param *p;
+    out = 0;
+    p = NULL;
+    <<update_state>>
+    <<update_parameters>>
+    <<difference_equation>>
+    <<update_filter_memory>>
+    return out;
+}
+#+END_SRC
+
+Before anything else can happen, the overall
+state must be updated if necessary. The incoming gate signal
+is analyzed using the threshold generator, which
+looks for any change from the previous sample. This
+will determine if the overall state is attack or release.
+
+#+NAME: update_state
+#+BEGIN_SRC c
+if (gate > 0.5 && env->pgate <= 0.5) {
+    env->state = ATTACK;
+} else if (gate < 0.5 && env->pgate >= 0.5) {
+    env->state = RELEASE;
+}
+env->pgate = gate;
+#+END_SRC
+
+The timing parameter for the current state is updated,
+if needed. This uses the parameter caching logic described
+previously.
+
+#+NAME: update_parameters
+#+BEGIN_SRC c
+if (env->state == ATTACK) p = &env->atk;
+else p = &env->rel;
+
+if (p->cur != p->prev) {
+    SKFLT tau;
+    p->prev = p->cur;
+    tau = p->cur / log(1000.0);
+    tau *= env->sr;
+
+    if (tau > 0) p->cached = exp(-1.0/tau);
+}
+#+END_SRC
+
+The filter itself is computed using the difference
+equation for a one-pole lowpass filter, which utilizes the
+computed filter coefficients from the timing parameter.
+
+A careful reader would notice that while the cannonical
+definition of the difference equation uses subtraction,
+this one uses addition. The detail here is that the
+cached value stores the *pole* of the filter, which
+is negated to get the alpha filter coefficient. The
+beta parameter is defined as $1 - |\alpha_1|$, so it
+makes sense to store the cached value as a positive
+value, rather than a negative one.
+
+#+NAME: difference_equation
+#+BEGIN_SRC c
+{
+    SKFLT a1;
+    SKFLT b0;
+    SKFLT y;
+
+    a1 = p->cached;
+    b0 = 1 - a1;
+    y = env->y;
+
+    out = b0*gate + a1*y;
+}
+#+END_SRC
+
+Once the filter is computed, the filter memory is updated
+for the next sample.
+
+#+NAME: update_filter_memory
+#+BEGIN_SRC c
+env->y = out;
+#+END_SRC
