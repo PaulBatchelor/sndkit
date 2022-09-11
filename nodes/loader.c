@@ -386,6 +386,22 @@ static lil_value_t l_lscmds(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t l_setsr(lil_t lil,
+                           size_t argc,
+                           lil_value_t *argv)
+{
+    sk_core *core;
+    int sr;
+
+    core = lil_get_data(lil);
+    SKLIL_ARITY_CHECK(lil, "setsr", argc, 1);
+    sr = lil_to_integer(argv[0]);
+
+    sk_core_srate_set(core, sr);
+
+    return NULL;
+}
+
 void sklil_loader(lil_t lil)
 {
     sk_core *core;
@@ -408,6 +424,7 @@ void sklil_loader(lil_t lil)
     lil_register(lil, "pop", l_pop);
     lil_register(lil, "del", l_del);
     lil_register(lil, "lscmds", l_lscmds);
+    lil_register(lil, "setsr", l_setsr);
 }
 
 void sklil_clean(lil_t lil)
