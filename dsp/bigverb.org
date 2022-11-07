@@ -1046,3 +1046,24 @@ SKFLT y;
 #+BEGIN_SRC c
 d->y = 0.0;
 #+END_SRC
+* Sean Costello Revisits The Algorithm
+@!(marker "sean_costello_revisited")!@
+Back in May 2022, I had the opportunity to
+[[https://twitter.com/valhalladsp/status/1528051535384436737?s=20&t=clq-vOYvmB7qSKSzSXV4WA][tweet Sean Costello]] and ask him about this algorithm (which he developed back
+in 1999).
+
+He had the following thoughts:
+
+Since all the delays are modulated, the "prime numbers"
+lenghts aren't necessary.
+
+You could take the average of the delay lengths, and use it
+to calculate feedback gain via RT60.
+
+A few short series allpass delays in front of the whole
+network wouldn't hurt.
+
+Try permuating the feedback matrix. IN this case, try
+feeding the output of each delay to the input of the
+*next* delay, in more of a figure 8, ie
+input2 = output1 + scaledDelaySum.

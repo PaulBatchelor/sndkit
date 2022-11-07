@@ -38,9 +38,9 @@
  * overflows and is also useful when running through an automated fuzzer like AFL */
 /*#define LIL_ENABLE_RECLIMIT 10000*/
 
-/* Visual C++ does not have atoll (Pelles C does and thinks it is fully MSVC compatible) */
+/* Visual C++ does not have atol (Pelles C does and thinks it is fully MSVC compatible) */
 #if defined(_MSC_VER) && !defined(__POCC__)
-#define atoll _atoi64
+#define atol _atoi64
 /* disable warning about unsafe standard C calls */
 #pragma warning(disable:4996)
 /* disable float/int conversion warnings */
@@ -2258,7 +2258,7 @@ double lil_to_double(lil_value_t val)
 
 lilint_t lil_to_integer(lil_value_t val)
 {
-    return (lilint_t)atoll(lil_to_string(val));
+    return (lilint_t)atol(lil_to_string(val));
 }
 
 int lil_to_boolean(lil_value_t val)
@@ -3211,8 +3211,8 @@ static LILCALLBACK lil_value_t fnc_substr(lil_t lil, size_t argc, lil_value_t* a
     str = lil_to_string(argv[0]);
     if (!str[0]) return NULL;
     slen = strlen(str);
-    start = (size_t)atoll(lil_to_string(argv[1]));
-    end = argc > 2 ? (size_t)atoll(lil_to_string(argv[2])) : slen;
+    start = (size_t)atol(lil_to_string(argv[1]));
+    end = argc > 2 ? (size_t)atol(lil_to_string(argv[2])) : slen;
     if (end > slen) end = slen;
     if (start >= end) return NULL;
     r = lil_alloc_string("");
@@ -3229,7 +3229,7 @@ static LILCALLBACK lil_value_t fnc_strpos(lil_t lil, size_t argc, lil_value_t* a
     if (argc < 2) return lil_alloc_integer(-1);
     hay = lil_to_string(argv[0]);
     if (argc > 2) {
-        min = (size_t)atoll(lil_to_string(argv[2]));
+        min = (size_t)atol(lil_to_string(argv[2]));
         if (min >= strlen(hay)) return lil_alloc_integer(-1);
     }
     str = strstr(hay + min, lil_to_string(argv[1]));
