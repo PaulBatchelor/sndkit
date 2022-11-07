@@ -123,3 +123,5 @@ filter.
 @!(ref "envar")!@ is a gate-controlled envelope generator
 whose shape is determined using attack and release
 parameters.
+
+@!(ref "euclid")!@ is a euclidean rhythm generator.

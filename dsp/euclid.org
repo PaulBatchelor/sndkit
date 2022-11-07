@@ -1,0 +1,700 @@
+#+TITLE: Euclidean Rhythms
+* Overview
+=Euclidean Rhythms= are a very popular technique for
+procedurally generating rhythmic phrases. Using only
+a few numbers, one is able to procedurally construct
+very interesting and well balanced rhythmic patterns.
+
+This document aims to provide an overview of what
+Euclidean Rhythms are, go over some of the existing
+implementations, and then produce a novel implemenation
+of a Euclidean Rhythm generator.
+
+The name "Euclidean Rhythm" is a bit of a misnomer. The
+algorithm is more closely based off of work by Bjorklund.
+And while there are connections to be made between Euclid's
+algorithm for Greatest Common Divisor and Bjorklund's
+algorithm for created evenly distributed binary
+sequences (this will be discussed later), it's most likely
+that the "Euclidean" name was
+chosen because it sounds cool, and not because of it's
+relevancy to the algorithm itself.
+
+Euclidean Rhythms have sometimes been used in the context
+of ethnomusicology as an algorithmic model to describe
+rhythmic patterns found in various cultures. The author
+urges caution with this tempting line of thinking;
+reducing the music of entire cultures down to binary
+terms (literally)
+will lead to very unmusical (and perhaps culturally
+insensitive) generalizations. In
+the quest to mathematically model music,
+it is all too easy to boil things down until there
+is nothing of substance left.
+* Definition and Notation Conventions
+A Euclidean Rhythm sequence is often defined in terms
+of the number of pulses (p) and the total number of steps
+as =E(p, n)=. For example, =E(3,8)= describes a Euclidean
+sequence that evenly distributes 3 pulses across 8 steps,
+which would look like =10010010= in binary notation.
+* Tangled Files
+=euclid.h= and =euclid.c=
+
+#+NAME: euclid.h
+#+BEGIN_SRC c :tangle euclid.h
+#ifndef SK_EUCLID_H
+#define SK_EUCLID_H
+#ifndef SKFLT
+#define SKFLT float
+#endif
+
+<<typedefs>>
+
+#ifdef SK_EUCLID_PRIV
+<<structs>>
+#endif
+
+<<funcdefs>>
+#endif
+#+END_SRC
+
+#+NAME: euclid.c
+#+BEGIN_SRC c :tangle euclid.c
+#include <stdint.h>
+#define SK_EUCLID_PRIV
+#include "euclid.h"
+
+<<static_funcdefs>>
+<<funcs>>
+#+END_SRC
+* Previous Work and Implementations
+** Toussaint
+The concept of a "Euclidean Rhythm" was first conceived by
+Toussaint in a 2005 paper titled "The Euclidean Algorithm
+Generates Traditional Musical Rhythms".
+In this paper, the Euclidean
+Rhythm is derived from an algorithm developed by Bjorkland
+that evenly distributes a set of 0-bits amongst a set of
+1-bits in a binary set. Bjorkland's algorithm is compared
+against Euclid's algorithm for Greatest Common Divisor,
+and some similarities are pointed out. This is how the
+Euclidean Rhythm got their namesake. Toussaint goes on to
+connect Euclidean Rhythms various to rhytmic motifs
+found in the music of various traditions and cultures.
+** TidalCycles
+Since Toussaint, the Euclidean Rhythm Generator has been
+studied quite extensively. A full overview of this research
+is beyond the scope of this document, but honorable mention
+goes to Yaxu and the community of the live coding
+language TidalCycles. Not only have they explored extending
+Euclidean rhythms using operations like =distrib=, but
+have also provided
+[[https://github.com/tidalcycles/Tidal/blob/c529f7063f111dceaba4eb7db15da74b025d82f3/test/Sound/Tidal/UITest.hs#L276-L308][corrections]]
+ to Touissants original work.
+** "The Simplest Euclidean Rhythm Generator"
+A popular implementation of a Euclidean Rhythm generator
+comes from an article from computermusicdesign.com.
+[[https://web.archive.org/web/20190322182835/https://computermusicdesign.com/simplest-euclidean-rhythm-algorithm-explained][source]]
+.
+
+This implementation, called "The Simplest Euclidean
+Rhythm Generator", is an adaptation of a Max patch found
+on the
+[[https://web.archive.org/web/20190322182835/https://cycling74.com/forums/using-euclideanbjorklund-algorithm-for-rhythm-generation-purely-in-max/][cycling74 Max/MSP forum]], originally posted by user 11olsen.
+
+The algorithm in the article was described in pseudocode.
+Directly translated to C, it would look something
+like this:
+
+#+BEGIN_SRC c
+void euclid_simple(int p, int n)
+{
+    int bucket;
+    int i;
+
+    bucket = 0;
+    for (i = 0; i < n; i++) {
+        int pulse;
+        pulse = 0;
+        bucket += p;
+
+        if (bucket >= n) {
+            bucket -= n;
+            pulse = 1;
+        } else {
+            pulse = 0;
+        }
+
+        printf("%d", pulse);
+    }
+
+    printf("\n");
+}
+#+END_SRC
+
+This algorithm makes use of an accumulator =bucket=,
+increasing by the number of pulses. This value gets
+wrapped around to be within the bounds of the total number
+of steps. As it turns out, this accumulator/wraparound
+approach produces the even distribution of beats that defines
+a euclidean rhythm pattern.
+
+The problem with this algorithm is that the sequence
+always starts on a "0" instead of a "1", which isn't
+ideal for musical purposes. This can remedied by
+introducing a new variable called "rotate" which adds
+an offset and shifts the starting position of the sequence:
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+uint32_t sk_euclid_simple(int p, int n, int r);
+#+END_SRC
+
+This version of the algorithm adds a rotation variable
+=r=. Instead of printing to standard output, this algorithm
+stores the sequence as bits inside of an integer. Some
+of the logic has been changed a bit too. The if/else
+statement has been removed and replaced with equivalent
+logic. Instead of using subtraction, a modulo operation
+has been used to more clearly show the wraparound
+(it's worth noting that the subtraction operation is
+typically faster than a modulo operation though).
+
+#+NAME: funcs
+#+BEGIN_SRC
+uint32_t sk_euclid_simple(int p, int n, int r)
+{
+    int bucket;
+    int i;
+    uint32_t out;
+
+    out = 0;
+
+    if (n > 32) return 0;
+
+    bucket = 0;
+
+    for (i = 0; i < n; i++) {
+        int pulse;
+        int bitpos;
+
+        bitpos = (i + r) % n;
+        bucket += p;
+        pulse = bucket >= n;
+        bucket %= n;
+
+        out |= (pulse << bitpos);
+    }
+
+    return out;
+}
+#+END_SRC
+** Stateless One-Liners
+The "Simplest Euclidean Generator" algorithm can be
+condensed further into a single one-liner expression in C.
+What's very neat about these is that they are stateless.
+Any bit for any position can be produced on demand, and
+this can be quite handy in certain situations.
+
+In addition to the number of pulses (p), the total size
+of the sequence (n), and the rotation (r), the index
+position (i) of the particular step to be computed is
+required.
+
+One implementation comes from nonmateria from Merveilles.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int euclid_simple_stateless(int p, int n, int r, int i);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int euclid_simple_stateless(int p, int n, int r, int i)
+{
+    return (((p * (i + r)) % n) + p) >= n;
+}
+#+END_SRC
+
+Another implementation comes from xinniw on LURK, which I've
+been told is based off of a PD patch by acriel.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int euclid_simple_stateless2(int p, int n, int r, int i);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int euclid_simple_stateless2(int p, int n, int r, int i)
+{
+    return (p * (i + r)) % n < p;
+}
+#+END_SRC
+
+The two expressions are nearly equivalent. The practical
+difference between them is that they require different
+rotation values to get the same result.
+
+The tricky thing with these is that the rotation variable
+needs to be changed for every euclidean pattern in order
+for it to line up to the ideal musical representation.
+As of writing, the only way these rotation values have
+been found is through trial-and-error. It is possible
+that there is perhaps a more automated or algorithmic
+approach to finding this, but at the time of writing
+no efforts have been made to look into this.
+* Recursive Solution
+While it may not as straightforward, the recursive
+approach as outlined by Bjorklund still seems to be
+the best approach for producing Euclidean Rhythm patterns.
+** Algorithm
+The Bjorklund approach to generating a binary sequence
+is usually described in terms of distributing one pattern
+inside of another pattern.
+
+For example, here are the steps for producing the
+sequence E(5,13):
+
+#+BEGIN_SRC txt
+1111100000000
+1 1 1 1 1 0 0 0 0 0 0 0 0
+10 10 10 10 10 000
+100 100 100 10 10
+10010 10010 100
+1001010010100
+#+END_SRC
+
+In these steps, the righthand pattern keeps getting
+"distributed" into the lefthand pattern. The process
+terminates when there's only one or none of the righthand
+pattern remaining.
+
+Using some notation, these steps can expressed to more clearly
+show how this process breaks down the overall sequence into
+a pair of smaller bit patterns, which can be called
+A (lefthand pattern) and B (righthand pattern).
+
+#+BEGIN_SRC txt
+1111100000000
+5(1), 8(0)
+5(10), 3(0)
+3(100), 2(10)
+2(10010), 1(100)
+1001010010100
+#+END_SRC
+
+In the first iteration, the pattern is divided up into
+5 1s and 8 0s. The second iteration takes this sit and
+divides the pattern up into 5 10s and 3 0s. This process
+repeats until there's only 1 instance of the B bitpattern.
+
+Every iteration increases the size of the bitpatterns.
+Bitpattern A becomes a concatenation of previous A and
+B bitpatterns, and B becomes what is leftover.
+
+Looking at the number of A and B bitpatterns, one can
+begin to see some resemblances to the Euclid's GCD
+algorithm. These states match the states in the GCD
+algorithm: [8, 5], [5, 3], [3, 2], [2, 1].
+
+Using the introduced notation above, the euclidean
+sequence E(5, 13) can be unambiguously represented as
+[2(10010), 1(100)], or [[2, 0b10010], [1, 0b100]]. An
+algorithm to generate a euclidean sequence using
+this convention is shown using the pseudocode below:
+
+#+BEGIN_SRC txt
+euclid(p, n):
+    a = 1
+    n_a = p
+
+    b = 0
+    n_b = n - p
+
+    while n_b > 1:
+        c = a + b
+        d = a
+
+        if n_a > n_b:
+            t = n_a
+            n_a = n_b
+            n_b = t - n_b
+        else:
+            t = n_b
+            n_a = n_a
+            n_b = t - n_a
+            d = b
+
+        a = c
+        b = d
+
+   return [n_a, a], [n_b, b]
+#+END_SRC
+
+It's interesting to note the resemblance to Euclids
+subtraction based GCD algorithm. This pseudocode is based
+off the one found on
+[[https://en.wikipedia.org/wiki/Euclidean_algorithm#Implementations][wikipedia]]:
+
+#+BEGIN_SRC txt
+gcd(a, b):
+    while a != b:
+        if a > b:
+            a = a - b
+        else:
+            b = b - a
+    return a
+#+END_SRC
+
+(The author notes that
+he did not see this GCD algorithm until *after* he wrote
+the pseudocode for this program.)
+** Implementation
+With the algorithm fully described in the previous
+section, an implementation can now be done in C.
+*** Appending Bitpatterns
+In the pseudo-code, the operation in charge of appending
+two patterns together was casually represented using
+addition. =A+B= yields a concatentation of the
+two patterns, yielding pattern =AB=. Unfortunately, this
+append operation is not so elegant to do in C.
+
+Before creating the append operation itself, a data type
+will be defined for a bitpattern, called
+=sk_euclid_bitpat=:
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_euclid_bitpat sk_euclid_bitpat;
+#+END_SRC
+
+This contains a 16-bit integer storing the pattern
+as binary bits called =pat=, and the size of the pattern
+in bits called =nbits=. There is also another value
+called =npats=, which is a value that stores the
+number of times this pattern appears in the sequence.
+This is used later in algorithm when it splits the larger
+bitpattern into two smaller bitpatterns.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_euclid_bitpat {
+    uint16_t pat;
+    uint8_t nbits;
+    uint8_t npats;
+};
+#+END_SRC
+
+The append operation appends in-place, turning
+the data in bitpattern A into AB. bitpattern B is
+left unchanged.
+
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void append(sk_euclid_bitpat *a, sk_euclid_bitpat *b);
+#+END_SRC
+
+Patterns are stored in ascending bit order. That is to say,
+the first item in the pattern is stored in the first
+bit of the number, second item in second bit, third
+item in third bit, etc. An append operation takes the
+B bitpattern, left shifts it, then ORs it into the A
+pattern.
+
+The size, kept track of in =nbits=, is also updated.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void append(sk_euclid_bitpat *a, sk_euclid_bitpat *b)
+{
+    a->pat |= b->pat << a->nbits;
+    a->nbits += b->nbits;
+}
+#+END_SRC
+*** Euclidean Pattern Generation
+With the append operation implemented, the rest of
+the Euclidean Sequence generator can be implemented.
+
+When given Euclidean sequence =E(p, n)=,
+=sk_euclid_pattern= will return generated binary sequence
+stored inside of an unsigned long integer.
+
+It is optimistically assumed that an unsigned long will
+be at least 32 bits long in size on the machine this
+is compiled on.
+Any value of =n= larger than this will return 0.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+unsigned long sk_euclid_pattern(int p, int n);
+#+END_SRC
+
+This is a two step process. The first step performs
+the division of the two patterns until the number of
+B patterns is less than or equal to 1, as seen in
+the pseudocode previously. The second step involves
+taking the bitpattern representation and "rendering" it
+to bits inside of a long integer.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+unsigned long sk_euclid_pattern(int p, int n)
+{
+    sk_euclid_bitpat a, b;
+    unsigned long out;
+    int i, k;
+    int bitpos;
+
+    if (n < 1 || n > 32) return 0;
+
+    a.pat = 1;
+    a.nbits = 1;
+    a.npats = p;
+
+    b.pat = 0;
+    b.nbits = 1;
+    b.npats = n - p;
+
+    while (b.npats > 1) {
+        uint16_t prev_pat;
+        uint8_t prev_nbits;
+
+        if (a.npats > b.npats) {
+            uint8_t tmp;
+
+            tmp = a.npats;
+            a.npats = b.npats;
+            b.npats = tmp - b.npats;
+
+            prev_pat = a.pat;
+            prev_nbits = a.nbits;
+        } else {
+            b.npats = b.npats - a.npats;
+            prev_pat = b.pat;
+            prev_nbits = b.nbits;
+        }
+
+        append(&a, &b);
+
+        b.pat = prev_pat;
+        b.nbits = prev_nbits;
+    }
+
+    out = 0;
+
+    /* write bitpatterns to bits */
+
+    bitpos = 0;
+    for (k = 0; k < a.npats; k++) {
+        for (i = 0; i < a.nbits; i++) {
+            int bit;
+            bit = (a.pat & (1 << i)) > 0;
+            out |= (1 << bitpos) * bit;
+            bitpos++;
+        }
+    }
+
+    for (k = 0; k < b.npats; k++) {
+        for (i = 0; i < b.nbits; i++) {
+            int bit;
+            bit = (b.pat & (1 << i)) > 0;
+            out |= (1 << bitpos) * bit;
+            bitpos++;
+        }
+    }
+
+    return out;
+}
+#+END_SRC
+* An Opinionated Euclidean Rhythm Generator
+With the algorithm for producing a Euclidean sequence
+established, it is now onto implementing a Euclidean
+generator that can be used to control musical sound.
+
+There is more than one approach for designing such
+a sequencer. This one will aim to be simple
+and musically intuitive.
+** Design Opinions
+While most DSP algorithms on sndkit are pretty cut-and-dry
+in terms of "interface" design (stuff goes in, stuff
+goes out, here are the parameters), this one has some
+wiggle room and subjectivity.
+
+So, here are some opinions I have about euclidean
+rhythm generators:
+
+Euclidean Rhythm Generators should always be linear.
+They shouldn't go backwards or skip. They should only
+step forward and then loop back to the beginning at the
+end. From an implementation standpoint, this means
+position tracking will happen internally, rather than
+being exposed as external parameter. This makes the
+interface easier to use, at the cost of sacrifcing a bit of
+granular control.
+
+Changing the total step size mid-phrase is unmusical, as
+it abitrarily changes the meter (and the pattern) before
+the end of the bar which doesn't make sense.
+From an implementation perspective, it's also ambiguous
+how to handle that. Ideally, changes should only happen
+at the start of the sequence...
+
+...but this behavior will be allowed anyways. Only
+allowing changes to happen at the start of a sequence
+could potentially make the sequencer sound broken and
+laggy. Instantaneous changes provide a better user
+experience.
+
+Changing the number of pulses mid-phrase is fine: all
+this is doing is changing the pattern without changing
+meter. It encouraged that changes happen roughly once
+per phrase on average, and towards the beginning of the
+phrase as well.
+
+While it is theoretically possible to to have a Euclidean
+rhythm pattern of any size, things stop being musically
+interesting for sizes greater than 32. 32 is a
+convenient limit to use because it allows all sequences
+to fit inside of a 32-bit integer.
+** Implementation
+This rhythm generator, called =euclid=, can be thought of as
+a kind of clock filter. A clock signal goes in, such
+as one produced by @!(ref "metro")!@, and some kind of
+trigger signal comes out which makes a Euclidean rhythm
+pattern =E(n, p)=.
+*** sk_euclid C Struct
+The data for =euclid= is contained in a struct called
+=sk_euclid=.
+
+#+NAME: typedefs
+#+BEGIN_SRC c
+typedef struct sk_euclid sk_euclid;
+#+END_SRC
+
+=pos= is the sequence position.
+
+=pulses= is =p=, or the number of pulses in the pattern.
+
+=len= is =n=, or the total size of the pattern.
+
+=bits= is a long integer value storing the generated
+pattern.
+
+The =changed= variable is a flag set any time the
+=pulses= or =len= variables are changed.
+
+#+NAME: structs
+#+BEGIN_SRC c
+struct sk_euclid {
+    int pos;
+    int pulses;
+    int len;
+    unsigned long bits;
+    int changed;
+};
+#+END_SRC
+*** Initialization
+An instance of =sk_euclid= is initialized
+with =sk_euclid_init=.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_euclid_init(sk_euclid *e);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_euclid_init(sk_euclid *e)
+{
+    sk_euclid_pulses(e, 1);
+    sk_euclid_length(e, 4);
+    e->changed = 0;
+    e->bits = 0;
+    e->pos = 0;
+}
+#+END_SRC
+*** Parameters
+=sk_euclid_pulses= sets the total number of
+pulses.
+
+=sk_euclid_length= sets the length of the pattern.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_euclid_pulses(sk_euclid *e, int p);
+void sk_euclid_length(sk_euclid *e, int n);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_euclid_pulses(sk_euclid *e, int p)
+{
+    if (p != e->pulses && p > 0 && p <= 32) {
+        e->pulses = p;
+        e->changed = 1;
+    }
+}
+
+void sk_euclid_length(sk_euclid *e, int n)
+{
+    if (n != e->len && n > 1 && n <= 32) {
+        e->len = n;
+        e->changed = 1;
+    }
+}
+#+END_SRC
+*** Tick Function
+A single sample of audio is produced
+with =sk_euclid_tick=. This takes in as input
+a trigger signal =trig=. The trigger signal will be
+returned based on the state of the Euclidean
+sequence.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+SKFLT sk_euclid_tick(sk_euclid *e, SKFLT trig);
+#+END_SRC
+
+In many ways, this generator very much resembles a
+classic rhythmic step sequencer. The difference being
+that the step sequence itself is procedurally generated,
+and the length can be variable.
+
+As mentioned before, changing the total length in the
+middle of a phrase is musically undefined behavior with
+more than one approach to handle it. The approach chosen
+here is to have the sequencer position wrap around if
+it is out of bounds.
+
+#+NAME: funcs
+#+BEGIN_SRC c
+SKFLT sk_euclid_tick(sk_euclid *e, SKFLT trig)
+{
+    SKFLT out;
+
+    out = 0;
+
+    if (trig) {
+
+        /* update pattern if needed */
+
+        if (e->changed) {
+            e->bits = sk_euclid_pattern(e->pulses, e->len);
+
+            /* wraparound if position is greater than length */
+            e->pos %= e->len;
+            e->changed = 0;
+        }
+
+        /* compute output */
+
+        out = (e->bits & (1 << e->pos)) > 0;
+
+        /* updated sequence position */
+        e->pos = (e->pos + 1) % e->len;
+    }
+
+    return out;
+}
+#+END_SRC

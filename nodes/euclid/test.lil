@@ -1,0 +1,16 @@
+metro 8
+hold zz
+regset zz 0
+
+regget 0
+dup
+tdiv zz 8 0
+trand zz 2 8
+param 8
+euclid zz zz zz
+env zz 0.001 0.01 0.01
+sine 1000 0.5
+mul zz zz
+wavout zz "euclid.wav"
+computes 10
+unhold [regget 0]

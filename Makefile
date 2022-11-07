@@ -71,6 +71,7 @@ ALGOS=\
 	shelf \
 	lpf \
 	envar \
+	euclid \
 
 # GNU Make is very convenient here...
 

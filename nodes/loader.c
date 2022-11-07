@@ -70,6 +70,7 @@ void sklil_load_tdiv(lil_t lil);
 void sklil_load_shelf(lil_t lil);
 void sklil_load_lpf(lil_t lil);
 void sklil_load_envar(lil_t lil);
+void sklil_load_euclid(lil_t lil);
 
 void sklil_nodes(lil_t lil)
 {
@@ -135,6 +136,7 @@ void sklil_nodes(lil_t lil)
     sklil_load_shelf(lil);
     sklil_load_lpf(lil);
     sklil_load_envar(lil);
+    sklil_load_euclid(lil);
 }
 
 static lil_value_t computes(lil_t lil, size_t argc, lil_value_t *argv)
