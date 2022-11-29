@@ -1,0 +1,4 @@
+noise
+mul zz 0.5
+butbp zz 1000 100
+verify b3002be1ff9d80cfbae2ea508134669e

@@ -33,26 +33,28 @@ typedef struct sk_butterworth sk_butterworth;
 
 void sk_butterworth_init(sk_butterworth *bw, int sr);
 void sk_butterworth_freq(sk_butterworth *bw, SKFLT freq);
+void sk_butterworth_bandwidth(sk_butterworth *but, SKFLT bw);
 
 SKFLT sk_butlp_tick(sk_butterworth *bw, SKFLT in);
 SKFLT sk_buthp_tick(sk_butterworth *bw, SKFLT in);
+SKFLT sk_butbp_tick(sk_butterworth *bw, SKFLT in);
 
 #ifdef SK_BUTTERWORTH_PRIV
 struct sk_butterworth {
     SKFLT freq, lfreq;
+    SKFLT bw, lbw; /* for bandpass filter only */
     SKFLT a[7];
-    SKFLT pidsr;
+    SKFLT pidsr, tpidsr;
 };
 #endif
 
 #endif
 #+END_SRC
 
-Below is mostly a verbatim copy of the soundpipe code that
-has been slightly reworked to not use =malloc=.
+This code is based off the soundpipe implementation,
+slightly reworked to make it so that =malloc= is not used.
 
-Explanations will follow, someday.
-
+* Tangled Code
 #+NAME: butterworth.c
 #+BEGIN_SRC c :tangle butterworth.c
 #include <math.h>
@@ -67,7 +69,28 @@ Explanations will follow, someday.
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+<<common>>
+<<filters>>
+#+END_SRC
+* Common
+The butterworth filters share some common code, defined
+below.
 
+# TODO: understand this difference equation better
+The =filter= function performs the difference equation
+to compute one sample of audio. =in= is the input
+signal, and =a= refers to the entire filter state:
+indices 0-4 hold filter coefficients, and 5-6 hold
+previously computed values. This has been reworked from
+the cannonical difference equation to be more optimized.
+
+
+=sk_butterworth_init= initializes the filter data for
+all butterworth filters.
+
+=sk_butterworth_freq= sets the frequency.
+#+NAME: common
+#+BEGIN_SRC c
 static SKFLT filter(SKFLT in, SKFLT *a)
 {
     SKFLT t, y;
@@ -83,7 +106,9 @@ void sk_butterworth_init(sk_butterworth *bw, int sr)
 {
     int i;
     sk_butterworth_freq(bw, 1000.0);
+    sk_butterworth_bandwidth(bw, 1000.0);
     bw->lfreq = -1;
+    bw->lbw = -1;
     bw->pidsr = M_PI / (SKFLT)sr;
     for (i = 0; i < 7; i++) bw->a[i] = 0.0;
 }
@@ -93,6 +118,15 @@ void sk_butterworth_freq(sk_butterworth *bw, SKFLT freq)
     bw->freq = freq;
 }
 
+void sk_butterworth_bandwidth(sk_butterworth *but, SKFLT bw)
+{
+    but->bw = bw;
+}
+#+END_SRC
+* Filters
+** Lowpass
+#+NAME: filters
+#+BEGIN_SRC c
 SKFLT sk_butlp_tick(sk_butterworth *bw, SKFLT in)
 {
     if (bw->freq != bw->lfreq) {
@@ -112,7 +146,10 @@ SKFLT sk_butlp_tick(sk_butterworth *bw, SKFLT in)
 
     return filter(in, bw->a);
 }
-
+#+END_SRC
+** Highpass
+#+NAME: filters
+#+BEGIN_SRC c
 SKFLT sk_buthp_tick(sk_butterworth *bw, SKFLT in)
 {
     if (bw->freq != bw->lfreq) {
@@ -128,6 +165,30 @@ SKFLT sk_buthp_tick(sk_butterworth *bw, SKFLT in)
         a[2] = a[0];
         a[3] = 2.0 * (c*c - 1.0) * a[0];
         a[4] = (1.0 - c*ROOT2 + c*c) * a[0];
+    }
+
+    return filter(in, bw->a);
+}
+#+END_SRC
+** Bandpass
+#+NAME: filters
+#+BEGIN_SRC c
+SKFLT sk_butbp_tick(sk_butterworth *bw, SKFLT in)
+{
+    if (bw->bw != bw->lbw || bw->freq != bw->lfreq) {
+        SKFLT *a, c, d;
+        a = bw->a;
+        bw->lfreq = bw->freq;
+        bw->lbw = bw->bw;
+
+        /* Perform BLT and store components */
+        c = 1.0 / tan((SKFLT)(bw->pidsr * bw->bw));
+        d = 2.0 * cos((SKFLT)(2.0*bw->pidsr * bw->freq));
+        a[0] = 1.0 / (1.0 + c);
+        a[1] = 0.0;
+        a[2] = -a[0];
+        a[3] = - c * d * a[0];
+        a[4] = (c - 1.0) * a[0];
     }
 
     return filter(in, bw->a);

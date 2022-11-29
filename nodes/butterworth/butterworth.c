@@ -9,6 +9,7 @@
 struct butterworth_n {
     gf_cable *in;
     gf_cable *freq;
+    gf_cable *bw;
     gf_cable *out;
     sk_butterworth butterworth;
 };
@@ -43,6 +44,29 @@ static void butlp(gf_node *node)
 static void buthp(gf_node *node)
 {
     compute(node, sk_buthp_tick);
+}
+
+static void butbp(gf_node *node)
+{
+    int blksize;
+    int n;
+    struct butterworth_n *butterworth;
+
+    blksize = gf_node_blksize(node);
+
+    butterworth = (struct butterworth_n *)gf_node_get_data(node);
+
+    for (n = 0; n < blksize; n++) {
+        GFFLT in, freq, bw, out;
+        in = gf_cable_get(butterworth->in, n);
+        freq = gf_cable_get(butterworth->freq, n);
+        sk_butterworth_freq(&butterworth->butterworth, freq);
+        bw = gf_cable_get(butterworth->bw, n);
+        sk_butterworth_bandwidth(&butterworth->butterworth, bw);
+
+        out = sk_butbp_tick(&butterworth->butterworth, in);
+        gf_cable_set(butterworth->out, n, out);
+    }
 }
 
 static void destroy(gf_node *node)
@@ -112,4 +136,56 @@ int sk_node_butlp(sk_core *core)
 int sk_node_buthp(sk_core *core)
 {
     return butterworth_node(core, buthp);
+}
+
+int sk_node_butbp(sk_core *core)
+{
+    gf_patch *patch;
+    gf_node *node;
+    int rc;
+    sk_param in, freq, bw;
+    void *ud;
+    struct butterworth_n *butterworth;
+    int sr;
+
+    rc = sk_param_get(core, &bw);
+    SK_ERROR_CHECK(rc);
+
+    rc = sk_param_get(core, &freq);
+    SK_ERROR_CHECK(rc);
+
+    rc = sk_param_get(core, &in);
+    SK_ERROR_CHECK(rc);
+
+    patch = sk_core_patch(core);
+
+    rc = gf_memory_alloc(patch, sizeof(struct butterworth_n), &ud);
+    SK_GF_ERROR_CHECK(rc);
+    butterworth = (struct butterworth_n *)ud;
+
+    sr = gf_patch_srate_get(patch);
+    sk_butterworth_init(&butterworth->butterworth, sr);
+
+    rc = gf_patch_new_node(patch, &node);
+    SK_GF_ERROR_CHECK(rc);
+
+    rc = gf_node_cables_alloc(node, 4);
+    SK_GF_ERROR_CHECK(rc);
+
+    gf_node_set_block(node, 3);
+
+    gf_node_get_cable(node, 0, &butterworth->in);
+    gf_node_get_cable(node, 1, &butterworth->freq);
+    gf_node_get_cable(node, 2, &butterworth->bw);
+    gf_node_get_cable(node, 3, &butterworth->out);
+
+    gf_node_set_data(node, butterworth);
+    gf_node_set_compute(node, butbp);
+    gf_node_set_destroy(node, destroy);
+
+    sk_param_set(core, node, &in, 0);
+    sk_param_set(core, node, &freq, 1);
+    sk_param_set(core, node, &bw, 2);
+    sk_param_out(core, node, 3);
+    return 0;
 }

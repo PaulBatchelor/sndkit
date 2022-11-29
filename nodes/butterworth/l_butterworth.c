@@ -8,6 +8,7 @@
 
 int sk_node_butlp(sk_core *core);
 int sk_node_buthp(sk_core *core);
+int sk_node_butbp(sk_core *core);
 
 static lil_value_t butlp(lil_t lil, size_t argc, lil_value_t *argv)
 {
@@ -45,8 +46,29 @@ static lil_value_t buthp(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t butbp(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+    int i;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "butbp", argc, 3);
+
+    for (i = 0; i < 3; i++) {
+        rc = sklil_param(core, argv[i]);
+        SKLIL_PARAM_CHECK(lil, rc, "butbp");
+    }
+
+    rc = sk_node_butbp(core);
+    SKLIL_ERROR_CHECK(lil, rc, "butbp didn't work out.");
+    return NULL;
+}
+
 void sklil_load_butterworth(lil_t lil)
 {
     lil_register(lil, "butlp", butlp);
     lil_register(lil, "buthp", buthp);
+    lil_register(lil, "butbp", butbp);
 }

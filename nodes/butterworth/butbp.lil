@@ -1,0 +1,5 @@
+noise
+mul zz 0.5
+butbp zz 1000 100
+wavout zz test.wav
+computes 10
