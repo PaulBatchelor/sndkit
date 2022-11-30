@@ -49,8 +49,49 @@ static lil_value_t mul(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t sub(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "sub", argc, 2);
+
+    rc = sklil_param(core, argv[0]);
+    SKLIL_PARAM_CHECK(lil, rc, "sub");
+    rc = sklil_param(core, argv[1]);
+    SKLIL_PARAM_CHECK(lil, rc, "sub");
+
+    rc = sk_node_sub(core);
+    SKLIL_ERROR_CHECK(lil, rc, "sub did not work.");
+    return NULL;
+}
+
+/* div is a stdlib function, hence divi*/
+static lil_value_t divi(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "div", argc, 2);
+
+    rc = sklil_param(core, argv[0]);
+    SKLIL_PARAM_CHECK(lil, rc, "div");
+    rc = sklil_param(core, argv[1]);
+    SKLIL_PARAM_CHECK(lil, rc, "div");
+
+    rc = sk_node_div(core);
+    SKLIL_ERROR_CHECK(lil, rc, "div did not work.");
+    return NULL;
+}
+
 void sklil_load_arith(lil_t lil)
 {
     lil_register(lil, "add", add);
     lil_register(lil, "mul", mul);
+    lil_register(lil, "sub", sub);
+    lil_register(lil, "div", divi);
 }
