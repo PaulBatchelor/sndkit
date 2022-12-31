@@ -1,4 +1,3 @@
-# no zero node yet, so create 0 signal using add
 hold [zero]
 regset zz 0
 hold [zero]
