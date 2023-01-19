@@ -74,11 +74,11 @@ void sk_gtick_init(sk_gtick *gt)
 #+END_SRC
 * Compute
 A single sample of =gtick= is computed with
-=sk_gtick_compute=. It expects as an input a gate signal.
+=sk_gtick_tick=. It expects as an input a gate signal.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
-SKFLT sk_gtick_compute(sk_gtick *gt, SKFLT in);
+SKFLT sk_gtick_tick(sk_gtick *gt, SKFLT in);
 #+END_SRC
 
 A tick signal is only produced what a gate transitions
@@ -91,7 +91,7 @@ can be ready to produce another tick again.
 
 #+NAME: funcs
 #+BEGIN_SRC c
-SKFLT sk_gtick_compute(sk_gtick *gt, SKFLT gate)
+SKFLT sk_gtick_tick(sk_gtick *gt, SKFLT gate)
 {
     SKFLT out;
     out = 0;

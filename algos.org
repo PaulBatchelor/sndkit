@@ -125,3 +125,5 @@ whose shape is determined using attack and release
 parameters.
 
 @!(ref "euclid")!@ is a euclidean rhythm generator.
+
+@!(ref "gtick")!@ converts a gate signal into a tick signal.

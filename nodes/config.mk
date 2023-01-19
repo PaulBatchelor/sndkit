@@ -66,3 +66,4 @@ include nodes/shelf/config.mk
 include nodes/lpf/config.mk
 include nodes/envar/config.mk
 include nodes/euclid/config.mk
+include nodes/gtick/config.mk

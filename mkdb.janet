@@ -76,6 +76,7 @@
 (ww-add-link "lpf" "dsp/lpf.org")
 (ww-add-link "envar" "dsp/envar.org")
 (ww-add-link "euclid" "dsp/euclid.org")
+(ww-add-link "gtick" "dsp/gtick.org")
 
 # sync and close
 

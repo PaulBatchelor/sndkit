@@ -1,0 +1,8 @@
+metro 1
+tgate zz 0.5
+gtick zz
+tenv zz 0.1 0.01 0.1
+sine 1000 0.5
+mul zz zz
+
+verify 3b6b8070c77d23367d1e523d7a8d163b

@@ -1,0 +1,9 @@
+metro 1
+tgate zz 0.5
+gtick zz
+tenv zz 0.1 0.01 0.1
+sine 1000 0.5
+mul zz zz
+
+wavout zz test.wav
+computes 5
