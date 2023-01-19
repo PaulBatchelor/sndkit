@@ -72,6 +72,7 @@ ALGOS=\
 	lpf \
 	envar \
 	euclid \
+	gtick \
 
 # GNU Make is very convenient here...
 
