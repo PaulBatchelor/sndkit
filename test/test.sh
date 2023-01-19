@@ -72,3 +72,4 @@ check lpf
 check envar
 check butbp
 check gtick
+check euclid
