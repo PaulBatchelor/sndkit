@@ -64,7 +64,7 @@ fmpair tbl freq amp car mod index
 See: @!(ref "osc" "osc")!@.
 
 #+BEGIN_SRC lil
-osc tbl freq amp
+osc tbl freq amp iphs
 #+END_SRC
 * phasor
 See: @!(ref "phasor" "phasor")!@.
