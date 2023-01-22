@@ -65,6 +65,7 @@ int sk_node_jitseg(sk_core *core)
     void *ud;
     struct jitseg_n *jitseg;
     int sr;
+    int s1, s2;
 
     rc = sk_param_get(core, &rate);
     SK_ERROR_CHECK(rc);
@@ -85,10 +86,10 @@ int sk_node_jitseg(sk_core *core)
 
     sr = gf_patch_srate_get(patch);
 
-    sk_jitseg_init(&jitseg->jitseg,
-                   sr,
-                   sk_core_rand(core),
-                   sk_core_rand(core));
+    s1 = (int)sk_core_rand(core);
+    s2 = (int)sk_core_rand(core);
+
+    sk_jitseg_init(&jitseg->jitseg, sr, s1, s2);
 
     rc = gf_patch_new_node(patch, &node);
     SK_GF_ERROR_CHECK(rc);
