@@ -8,8 +8,10 @@
 
 int sk_node_gensine(sk_core *core);
 int sk_node_gensaw(sk_core *core);
-int sk_tab_sinesum(sk_core *core, const char *argstr);
 int sk_tab_vals(sk_core *core, const char *argstr);
+int sk_tab_sinesum(sk_core *core,
+                   const char *argstr,
+                   int normalize);
 
 static lil_value_t gensine(lil_t lil, size_t argc, lil_value_t *argv)
 {
@@ -48,6 +50,7 @@ static lil_value_t gensinesum(lil_t lil, size_t argc, lil_value_t *argv)
     sk_core *core;
     int rc;
     const char *str;
+    int normalize;
 
     core = lil_get_data(lil);
 
@@ -55,7 +58,13 @@ static lil_value_t gensinesum(lil_t lil, size_t argc, lil_value_t *argv)
 
     str = lil_to_string(argv[1]);
 
-    rc = sk_tab_sinesum(core, str);
+    normalize = 0;
+
+    if (argc > 2) {
+        normalize = lil_to_integer(argv[2]);
+    }
+
+    rc = sk_tab_sinesum(core, str, normalize);
 
     SKLIL_ERROR_CHECK(lil, rc, "gensinesum didn't work out.");
 

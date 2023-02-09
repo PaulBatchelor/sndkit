@@ -28,7 +28,9 @@ int sk_node_gensaw(sk_core *core)
     return 0;
 }
 
-int sk_tab_sinesum(sk_core *core, const char *argstr)
+int sk_tab_sinesum(sk_core *core,
+                   const char *argstr,
+                   int normalize)
 {
     sk_table *tab;
     int rc;
@@ -39,7 +41,8 @@ int sk_tab_sinesum(sk_core *core, const char *argstr)
 
     sk_gen_sinesum(sk_table_data(tab),
                    sk_table_size(tab),
-                   argstr);
+                   argstr,
+                   normalize);
     rc = sk_core_table_push(core, tab);
     SK_ERROR_CHECK(rc);
     return 0;
