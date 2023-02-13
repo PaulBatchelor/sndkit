@@ -144,7 +144,7 @@ int gf_node_cables_alloc(gf_node *node, int ncables)
 
     node->ncables = ncables;
     for (n = 0; n < ncables; n++) {
-	gf_cable_init(node, &node->cables[n]);
+        gf_cable_init(node, &node->cables[n]);
     }
 
     return GF_OK;
@@ -168,7 +168,7 @@ int gf_node_cables_free(gf_node *node)
 int gf_node_get_cable(gf_node *node, int id, gf_cable ** cable)
 {
     if (id >= node->ncables) {
-	return GF_INVALID_CABLE;
+        return GF_INVALID_CABLE;
     }
 
     *cable = &node->cables[id];
@@ -282,18 +282,18 @@ void gf_cable_set_value(gf_cable *c, GFFLT val)
 GFFLT gf_cable_get(gf_cable *cable, int pos)
 {
     if (cable->type == CABLE_IVAL) {
-	return *cable->val;
+        return *cable->val;
     } else {
-	return cable->val[pos];
+        return cable->val[pos];
     }
 }
 
 void gf_cable_set(gf_cable *cable, int pos, GFFLT val)
 {
     if (cable->type == CABLE_IVAL) {
-	*cable->val = val;
+        *cable->val = val;
     } else {
-	cable->val[pos] = val;
+        cable->val[pos] = val;
     }
 }
 
@@ -304,8 +304,7 @@ int gf_cable_connect(gf_cable *c1, gf_cable *c2)
     id1 = gf_node_get_id(c1->node);
     id2 = gf_node_get_id(c2->node);
 
-    if (id1 > id2)
-	return GF_CONNECTION_MISMATCH;
+    if (id1 > id2) return GF_CONNECTION_MISMATCH;
 
     gf_cable_connect_nocheck(c1, c2);
 
@@ -324,8 +323,7 @@ int gf_cable_pop(gf_cable *cab)
     gf_node *node;
     gf_buffer *tmp;
 
-    if (!gf_cable_is_block(cab))
-	return GF_NOT_OK;
+    if (!gf_cable_is_block(cab)) return GF_NOT_OK;
 
     node = cab->node;
     stack = gf_patch_stack(node->patch);
