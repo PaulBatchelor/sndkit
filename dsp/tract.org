@@ -256,31 +256,6 @@ void sk_tract_use_diameters(sk_tract *tr, int mode)
     tr->use_diameters = mode;
 }
 #+END_SRC
-** Use Velum Flag
-TODO: words.
-
-#+NAME: sk_tract
-#+BEGIN_SRC c
-int use_velum;
-#+END_SRC
-
-#+NAME: init
-#+BEGIN_SRC c
-sk_tract_use_velum(tr, 0);
-#+END_SRC
-
-#+NAME: funcdefs
-#+BEGIN_SRC c
-void sk_tract_use_velum(sk_tract *tr, int mode);
-#+END_SRC
-
-#+NAME: funcs
-#+BEGIN_SRC c
-void sk_tract_use_velum(sk_tract *tr, int mode)
-{
-    tr->use_velum = mode;
-}
-#+END_SRC
 * Diameter Manipulation
 The vocal tract is controlled by mainpulating the
 underlying diameter sizes. These can be directly accessed
@@ -496,6 +471,42 @@ tr->reflection_right = 0;
 memset(tr->noseL, 0, 28 * sizeof(SKFLT));
 memset(tr->noseR, 0, 28 * sizeof(SKFLT));
 memset(tr->noseA, 0, 28 * sizeof(SKFLT));
+#+END_SRC
+** Use Velum Flag
+#+NAME: sk_tract
+#+BEGIN_SRC c
+int use_velum;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_tract_use_velum(tr, 0);
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tract_use_velum(sk_tract *tr, int mode);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tract_use_velum(sk_tract *tr, int mode)
+{
+    tr->use_velum = mode;
+}
+#+END_SRC
+** Setting the Velum
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tract_velum(sk_tract *tract, SKFLT velum);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tract_velum(sk_tract *tract, SKFLT velum)
+{
+    tract->velum = velum;
+}
 #+END_SRC
 ** Shaping The Nose
 #+NAME: init

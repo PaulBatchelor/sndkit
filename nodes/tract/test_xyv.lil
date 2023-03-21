@@ -1,0 +1,4 @@
+glottis [mtof [rline 45 55 3]] 0.8
+tractxyv zz [rline 0.0 0.3 1] [rline 0 1 10] [param 1.0]
+wavout zz "test.wav"
+computes 10

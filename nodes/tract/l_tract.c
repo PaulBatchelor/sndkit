@@ -7,6 +7,7 @@
 #include "sklil.h"
 
 int sk_node_tractxy(sk_core *core);
+int sk_node_tractxyv(sk_core *core);
 int sk_node_tract(sk_core *core);
 
 static lil_value_t tractxy(lil_t lil,
@@ -30,7 +31,29 @@ static lil_value_t tractxy(lil_t lil,
     return NULL;
 }
 
+static lil_value_t tractxyv(lil_t lil,
+                           size_t argc,
+                           lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+    int i;
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "tract", argc, 4);
+
+    for (i = 0; i < 4; i++) {
+        rc = sklil_param(core, argv[i]);
+        SKLIL_PARAM_CHECK(lil, rc, "tract");
+    }
+
+    rc = sk_node_tractxyv(core);
+    SKLIL_ERROR_CHECK(lil, rc, "tractxyv didn't work out.");
+    return NULL;
+}
+
 void sklil_load_tract(lil_t lil)
 {
     lil_register(lil, "tractxy", tractxy);
+    lil_register(lil, "tractxyv", tractxyv);
 }

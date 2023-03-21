@@ -11,6 +11,7 @@ struct tract_n {
     gf_cable *in;
     gf_cable *tongue_x;
     gf_cable *tongue_y;
+    gf_cable *velum;
     gf_cable *out;
     sk_tract *tract;
 };
@@ -28,13 +29,15 @@ static void computexy(gf_node *node)
     tract = (struct tract_n *)gf_node_get_data(node);
 
     for (n = 0; n < blksize; n++) {
-        GFFLT in, tongue_x, tongue_y, out;
+        GFFLT in, tongue_x, tongue_y, velum, out;
 
         in = gf_cable_get(tract->in, n);
         tongue_x = gf_cable_get(tract->tongue_x, n);
         tongue_y = gf_cable_get(tract->tongue_y, n);
+        velum = gf_cable_get(tract->velum, n);
 
         sk_tract_tongue_shape(tract->tract, tongue_x, tongue_y);
+        sk_tract_velum(tract->tract, velum);
 
         out = sk_tract_tick(tract->tract, in);
         gf_cable_set(tract->out, n, out);
@@ -71,7 +74,7 @@ static void destroy(gf_node *node)
     gf_memory_free(patch, &ud);
 }
 
-int sk_node_tractxy(sk_core *core)
+static int tractxy_node(sk_core *core, int use_velum)
 {
     gf_patch *patch;
     gf_node *node;
@@ -79,8 +82,14 @@ int sk_node_tractxy(sk_core *core)
     sk_param in;
     sk_param tx;
     sk_param ty;
+    sk_param velum;
     void *ud;
     struct tract_n *tract;
+
+    if (use_velum) {
+        rc = sk_param_get(core, &velum);
+        SK_ERROR_CHECK(rc);
+    }
 
     rc = sk_param_get(core, &ty);
     SK_ERROR_CHECK(rc);
@@ -88,6 +97,7 @@ int sk_node_tractxy(sk_core *core)
     SK_ERROR_CHECK(rc);
     rc = sk_param_get(core, &in);
     SK_ERROR_CHECK(rc);
+
 
     patch = sk_core_patch(core);
 
@@ -100,15 +110,16 @@ int sk_node_tractxy(sk_core *core)
     rc = gf_patch_new_node(patch, &node);
     SK_GF_ERROR_CHECK(rc);
 
-    rc = gf_node_cables_alloc(node, 4);
+    rc = gf_node_cables_alloc(node, 5);
     SK_GF_ERROR_CHECK(rc);
 
-    gf_node_set_block(node, 3);
+    gf_node_set_block(node, 4);
 
     gf_node_get_cable(node, 0, &tract->in);
     gf_node_get_cable(node, 1, &tract->tongue_x);
     gf_node_get_cable(node, 2, &tract->tongue_y);
-    gf_node_get_cable(node, 3, &tract->out);
+    gf_node_get_cable(node, 3, &tract->velum);
+    gf_node_get_cable(node, 4, &tract->out);
 
     gf_node_set_data(node, tract);
     gf_node_set_compute(node, computexy);
@@ -117,8 +128,26 @@ int sk_node_tractxy(sk_core *core)
     sk_param_set(core, node, &in, 0);
     sk_param_set(core, node, &tx, 1);
     sk_param_set(core, node, &ty, 2);
-    sk_param_out(core, node, 3);
+
+    if (use_velum) {
+        sk_tract_use_velum(tract->tract, 1);
+        sk_param_set(core, node, &velum, 3);
+    } else {
+        gf_cable_set_constant(tract->velum, 0);
+    }
+
+    sk_param_out(core, node, 4);
     return 0;
+}
+
+int sk_node_tractxy(sk_core *core)
+{
+    return tractxy_node(core, 0);
+}
+
+int sk_node_tractxyv(sk_core *core)
+{
+    return tractxy_node(core, 1);
 }
 
 sk_tract * sk_node_tract_data(gf_node *node)

@@ -73,3 +73,4 @@ check envar
 check butbp
 check gtick
 check euclid
+check tractxyv
