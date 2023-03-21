@@ -2,7 +2,7 @@
 * Overview
 =Tract= implements a rudimentary physical model of vocal
 tract for use in articulatory synthesis. It is based
-on the classic kelly-lochbaum model developed at Bell Labs
+on the classic Kelly-Lochbaum model developed at Bell Labs
 in the early 60s. In recent years, such a model has gotten
 new breath (so to speak) in programs like
 [[https://dood.al/pinktrombone/][Pink Trombone]], from which
@@ -256,10 +256,37 @@ void sk_tract_use_diameters(sk_tract *tr, int mode)
     tr->use_diameters = mode;
 }
 #+END_SRC
+** Use Velum Flag
+TODO: words.
+
+#+NAME: sk_tract
+#+BEGIN_SRC c
+int use_velum;
+#+END_SRC
+
+#+NAME: init
+#+BEGIN_SRC c
+sk_tract_use_velum(tr, 0);
+#+END_SRC
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_tract_use_velum(sk_tract *tr, int mode);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_tract_use_velum(sk_tract *tr, int mode)
+{
+    tr->use_velum = mode;
+}
+#+END_SRC
 * Diameter Manipulation
 The vocal tract is controlled by mainpulating the
 underlying diameter sizes. These can be directly accessed
 via =sk_tract_diameters=.
+
+# TODO: make sections for these
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -437,6 +464,118 @@ SKFLT* sk_tract_areas(sk_tract *tr)
     return tr->A;
 }
 #+END_SRC
+* Velum Control (WIP)
+In articulatory synthesis, a =velum= parameter is used to
+simulate the direction of airflow that runs through the
+nasal passageways. Increasing the velum parameter will end
+up making the resulting output sound more nasally.
+** Variables
+Nose size is hardcoded to be a size of 28.
+
+#+NAME: sk_tract
+#+BEGIN_SRC c
+    SKFLT nose_diameter[28];
+    SKFLT noseL[28];
+    SKFLT noseR[28];
+    SKFLT noseA[28];
+    SKFLT nose_reflection[28];
+    SKFLT nose_junc_outL[28];
+    SKFLT nose_junc_outR[28];
+    SKFLT velum;
+    SKFLT reflection_left;
+    SKFLT reflection_right;
+    SKFLT reflection_nose;
+    int nose_start;
+#+END_SRC
+#+NAME: init
+#+BEGIN_SRC c
+tr->velum = 0;
+tr->nose_start = 17;
+tr->reflection_left = 0;
+tr->reflection_right = 0;
+memset(tr->noseL, 0, 28 * sizeof(SKFLT));
+memset(tr->noseR, 0, 28 * sizeof(SKFLT));
+memset(tr->noseA, 0, 28 * sizeof(SKFLT));
+#+END_SRC
+** Shaping The Nose
+#+NAME: init
+#+BEGIN_SRC c
+{
+    int i;
+    for (i = 0; i < 28; i++) {
+        SKFLT d;
+        d = 2 * ((SKFLT)i / 28);
+        if(d < 1) {
+            d = 0.4 + 1.6 * d;
+        } else {
+            d = 0.5 + 1.5*(2-d);
+        }
+        d = d < 1.9 ? d : 1.9;
+        tr->nose_diameter[i] = d;
+    }
+    calculate_nose_reflections(tr);
+}
+#+END_SRC
+** Calculate Nose Reflections
+#+NAME: static_funcdefs
+#+BEGIN_SRC c
+static void calculate_nose_reflections(sk_tract *tr);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+static void calculate_nose_reflections(sk_tract *tr)
+{
+    int i;
+
+    for(i = 0; i < 28; i++) {
+        tr->noseA[i] = tr->nose_diameter[i] * tr->nose_diameter[i];
+    }
+
+    for(i = 1; i < 28; i++) {
+        tr->nose_reflection[i] = (tr->noseA[i - 1] - tr->noseA[i]) /
+            (tr->noseA[i-1] + tr->noseA[i]);
+    }
+}
+#+END_SRC
+** Velum Computation
+#+NAME: velum_computation
+#+BEGIN_SRC c
+if (tr->use_velum) {
+    i = tr->nose_start;
+    r = tr->reflection_left;
+    tr->junction_outL[i - 1] = r*tr->R[i-1] +
+        (1+r)*(tr->noseL[0]+tr->L[i]);
+
+    r = tr->reflection_right;
+    tr->junction_outR[i] = r*tr->L[i] +
+        (1+r)*(tr->R[i-1]+tr->noseL[0]);
+
+    r = tr->reflection_nose;
+    tr->nose_junc_outR[0] =
+        r * tr->noseL[0]+(1+r)*(tr->L[i]+tr->R[i-1]);
+    tr->nose_junc_outL[28 - 1] =
+        tr->noseR[28 - 1] * tr->lip_reflection;
+
+    for(i = 1; i < 28; i++) {
+        w = tr->nose_reflection[i] * (tr->noseR[i-1] + tr->noseL[i]);
+        tr->nose_junc_outR[i] = tr->noseR[i - 1] - w;
+        tr->nose_junc_outL[i - 1] = tr->noseL[i] + w;
+    }
+
+    for(i = 0; i < 28; i++) {
+        tr->noseR[i] = tr->nose_junc_outR[i];
+        tr->noseL[i] = tr->nose_junc_outL[i];
+    }
+}
+#+END_SRC
+
+#+NAME: add_velum_component
+#+BEGIN_SRC c
+if (tr->use_velum) {
+    out += tr->noseR[28 - 1];
+}
+#+END_SRC
 * Computing Audio
 ** Tick Function
 A single sample of audio is computed with =sk_tract_tick=.
@@ -494,8 +633,24 @@ static void calculate_reflections(sk_tract *tr)
     diam = tr->diameter;
 
     <<shapeit>>
+    /* TODO: nose stuff */
+{
+    tr->nose_diameter[0] = tr->velum;
+    tr->noseA[0] = tr->nose_diameter[0] * tr->nose_diameter[0];
+}
+
     <<calculate_areas>>
     <<calculate_reflection_coefficients>>
+
+    /* TODO: nose stuff */
+
+    {
+        SKFLT sum;
+        sum = tr->A[tr->nose_start] + tr->A[tr->nose_start + 1] + tr->noseA[0];
+        tr->reflection_left = (SKFLT)(2 * tr->A[tr->nose_start] - sum) / sum;
+        tr->reflection_right = (SKFLT)(2 * tr->A[tr->nose_start + 1] - sum) / sum;
+        tr->reflection_nose = (SKFLT)(2 * tr->noseA[0] - sum) / sum;
+    }
 }
 #+END_SRC
 
@@ -581,6 +736,7 @@ static SKFLT tract_compute(sk_tract *tr, SKFLT in)
     <<compute_scattering_junctions>>
     <<update_delay_lines>>
     <<get_output>>
+    <<add_velum_component>>
 
     return out;
 }
@@ -618,6 +774,7 @@ for(i = 1; i < tr->n; i++) {
     tr->junction_outR[i] = tr->R[i - 1] - w;
     tr->junction_outL[i - 1] = tr->L[i] + w;
 }
+<<velum_computation>>
 #+END_SRC
 
 The left and right delay lines are updated as
