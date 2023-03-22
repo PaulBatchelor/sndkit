@@ -1,6 +1,6 @@
 #+TITLE: Tract
 * Overview
-=Tract= implements a rudimentary physical model of vocal
+=Tract= implements a rudimentary physical model of a vocal
 tract for use in articulatory synthesis. It is based
 on the classic Kelly-Lochbaum model developed at Bell Labs
 in the early 60s. In recent years, such a model has gotten
@@ -22,7 +22,8 @@ of research. In the early days, measurements were
 originally obtained from real vocal tracts!
 
 The tract is a filter that expects some kind of external
-input.
+input source (in speech synthesis, this relationship
+is known as a "source-filter" model).
 The closer that input resembles the kind of sound
 our glottis makes, the more vocal-like the output sounds
 will turn out. In programs like Pink Trombone, an
@@ -35,9 +36,10 @@ consisting of 44
 [[https://ccrma.stanford.edu/~jos/pasp/Kelly_Lochbaum_Scattering_Junctions.html][Kelly-Lochbaum scattering junctions]].
 In
 this model, the nasal component (known as =velum= control)
-has been removed. Also removed is the transient generator,
+can be optionally enabled. Transient generator in PT,
 used whenever there were blocking interferences in the vocal
-tract. These can still be found in [[/proj/voc][Voc]].
+tract, has been removed. An implementation
+that more closely resembles PT can be found in [[/proj/voc][Voc]].
 * Tangled files
 =Tract= tangles into two main files: =tract.c= and
 =tract.h=. Defining =SK_TRACT_PRIV= will expose the struct.
@@ -261,7 +263,8 @@ The vocal tract is controlled by mainpulating the
 underlying diameter sizes. These can be directly accessed
 via =sk_tract_diameters=.
 
-# TODO: make sections for these
+** Get Diameters
+Returns the array holding the diameter values.
 
 #+NAME: funcdefs
 #+BEGIN_SRC c
@@ -275,7 +278,7 @@ SKFLT* sk_tract_diameters(sk_tract *tr)
     return tr->diameter;
 }
 #+END_SRC
-
+** Tract Size
 The number of diameters can be retrieved with
 =sk_tract_size=. Usually, this is 44.
 
@@ -291,7 +294,7 @@ int sk_tract_size(sk_tract *tr)
     return tr->n;
 }
 #+END_SRC
-
+** Shaper Function
 More often than not, one wants to apply sample-accurate
 smoothing to the diameters rather than work them directly.
 This is done using a callback interface, known as a
@@ -328,7 +331,7 @@ void sk_tract_shaper(sk_tract *tract,
     tract->ud = ud;
 }
 #+END_SRC
-
+** Tongue Control
 Neil Thapen's Pink Trombone employs a curious
 "tongue control" functionality, which allows one use 2
 dimensions of control to shape the entire tract. This is
@@ -439,13 +442,28 @@ SKFLT* sk_tract_areas(sk_tract *tr)
     return tr->A;
 }
 #+END_SRC
-* Velum Control (WIP)
+* Velum Control
 In articulatory synthesis, a =velum= parameter is used to
-simulate the direction of airflow that runs through the
-nasal passageways. Increasing the velum parameter will end
+simulate the airflow that runs through the
+nasal passageways that occurs from blocking
+the soft palette. Increasing the velum parameter will end
 up making the resulting output sound more nasally.
 ** Variables
 Nose size is hardcoded to be a size of 28.
+
+Similar to the main Vocal tract, the Nasal airway also
+is made of a waveguide (a bidirectional delay represented
+in =noseL= and =noseR=) and scattering junctions
+(=nose_junc_outL= and =nose_junc_outR=). The
+nasal passaged way is shaped with =nose_diameter=, which
+are then converted to areas in =noseA=.
+
+The =velum= variable stores the velum amount, typically
+a value between 0 and 1.
+
+The nasal waveguide component is hooked up at one of
+the cylindrical segments of the tract waveguide component,
+indicated by =nose_start=. This is hard-coded to be 17.
 
 #+NAME: sk_tract
 #+BEGIN_SRC c
@@ -509,6 +527,13 @@ void sk_tract_velum(sk_tract *tract, SKFLT velum)
 }
 #+END_SRC
 ** Shaping The Nose
+The shape of the nasal airway is only done once at init-time.
+The function used produces a clipped triangle wave shape.
+
+This was adapted from the original Pink Trombone source.
+It's unclear how this particular shape was derived, but
+it looks empiricially discovered.
+
 #+NAME: init
 #+BEGIN_SRC c
 {
@@ -528,6 +553,11 @@ void sk_tract_velum(sk_tract *tract, SKFLT velum)
 }
 #+END_SRC
 ** Calculate Nose Reflections
+Similar to =calculate_reflections=, the
+=calculate_nose_reflections= function converts nose
+diameters to areas, and then computes the reflection
+coefficients.
+
 #+NAME: static_funcdefs
 #+BEGIN_SRC c
 static void calculate_nose_reflections(sk_tract *tr);
@@ -549,12 +579,45 @@ static void calculate_nose_reflections(sk_tract *tr)
     }
 }
 #+END_SRC
-** Velum Computation
+** Velum Computation (Nasal Waveguide Computation)
+*** Calculate Nasal Reflection Coefficients
+Called from inside =calculate_reflections=, this uses the
+velum parameter to calculate the reflection coefficients
+used by the nasal waveguide. Velum in this context sets
+up the initial diameter segment, which has the effect
+of controlling the opening of nasal airway. As the
+velum value gets larger, the amount of nasal sound in
+the output increases.
+
+#+NAME: calculate_nasal_reflection_coefficients
+#+BEGIN_SRC c
+if (tr->use_velum) {
+    SKFLT sum;
+    tr->nose_diameter[0] = tr->velum;
+    tr->noseA[0] = tr->nose_diameter[0] * tr->nose_diameter[0];
+    sum = tr->A[tr->nose_start] + tr->A[tr->nose_start + 1] + tr->noseA[0];
+    tr->reflection_left = (SKFLT)(2 * tr->A[tr->nose_start] - sum) / sum;
+    tr->reflection_right = (SKFLT)(2 * tr->A[tr->nose_start + 1] - sum) / sum;
+    tr->reflection_nose = (SKFLT)(2 * tr->noseA[0] - sum) / sum;
+}
+#+END_SRC
+*** Compute The Nasal Waveguide
+Is =use_velum= is enabled, it will kick on computation
+for the Nasal Waveguide, which gets computed after the
+main tract waveguide.
+
+First, the junction outputs for the tract and nose are
+updated. In a way, this "connects" the nasal waveguide
+to the tract waveguide.
+
+After that, the segments in nasal waveguide are updated.
+
 #+NAME: velum_computation
 #+BEGIN_SRC c
 if (tr->use_velum) {
     i = tr->nose_start;
     r = tr->reflection_left;
+
     tr->junction_outL[i - 1] = r*tr->R[i-1] +
         (1+r)*(tr->noseL[0]+tr->L[i]);
 
@@ -580,7 +643,7 @@ if (tr->use_velum) {
     }
 }
 #+END_SRC
-
+*** Add nasal component to signal output
 #+NAME: add_velum_component
 #+BEGIN_SRC c
 if (tr->use_velum) {
@@ -644,24 +707,9 @@ static void calculate_reflections(sk_tract *tr)
     diam = tr->diameter;
 
     <<shapeit>>
-    /* TODO: nose stuff */
-{
-    tr->nose_diameter[0] = tr->velum;
-    tr->noseA[0] = tr->nose_diameter[0] * tr->nose_diameter[0];
-}
-
     <<calculate_areas>>
     <<calculate_reflection_coefficients>>
-
-    /* TODO: nose stuff */
-
-    {
-        SKFLT sum;
-        sum = tr->A[tr->nose_start] + tr->A[tr->nose_start + 1] + tr->noseA[0];
-        tr->reflection_left = (SKFLT)(2 * tr->A[tr->nose_start] - sum) / sum;
-        tr->reflection_right = (SKFLT)(2 * tr->A[tr->nose_start + 1] - sum) / sum;
-        tr->reflection_nose = (SKFLT)(2 * tr->noseA[0] - sum) / sum;
-    }
+    <<calculate_nasal_reflection_coefficients>>
 }
 #+END_SRC
 
