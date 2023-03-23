@@ -1504,7 +1504,7 @@ int sk_core_table_pop(sk_core *core, sk_table **tab)
 #+END_SRC
 ** Dumping Raw Table Information
 Raw table data can be written to disk 
-format using =sk_table_dump=.
+using =sk_table_dump=.
 
 The function =sk_core_tabdump= will pop the
 table off the stack and then call =sk_table_dump=.
@@ -1550,6 +1550,47 @@ int sk_core_tabdump(sk_core *core, const char *filename)
     SK_ERROR_CHECK(rc);
 
     return sk_table_dump(tab, filename);
+}
+#+END_SRC
+** Loading Raw Table Information
+Raw table data can be loaded from disk
+using =sk_core_tabload=. This will read the file into
+a newly allocated table that then gets pushed onto the
+stack.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_core_tabload(sk_core *core, const char *filename);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_core_tabload(sk_core *core, const char *filename)
+{
+    FILE *fp;
+    size_t flen;
+    int rc;
+    sk_table *tab;
+
+    fp = fopen(filename, "r");
+
+    if (fp == NULL) return 1;
+
+    fseek(fp, 0L, SEEK_END);
+
+    flen = ftell(fp);
+
+    sk_core_table_new(core, flen / sizeof(SKFLT));
+
+    rc = sk_core_table_pop(core, &tab);
+    SK_ERROR_CHECK(rc);
+
+    rewind(fp);
+    fread(tab->tab, 1, flen, fp);
+
+    rc = sk_core_table_push(core, tab);
+    SK_ERROR_CHECK(rc);
+    return 0;
 }
 #+END_SRC
 * Error Checking

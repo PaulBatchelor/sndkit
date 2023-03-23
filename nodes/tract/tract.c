@@ -55,8 +55,10 @@ static void compute(gf_node *node)
     tract = (struct tract_n *)gf_node_get_data(node);
 
     for (n = 0; n < blksize; n++) {
-        GFFLT in, out;
+        GFFLT in, velum, out;
         in = gf_cable_get(tract->in, n);
+        velum  = gf_cable_get(tract->velum, n);
+        sk_tract_velum(tract->tract, velum);
         out = sk_tract_tick(tract->tract, in);
         gf_cable_set(tract->out, n, out);
     }
@@ -172,14 +174,16 @@ int gf_node_tract(gf_node *node, sk_tract *tr)
     tract = (struct tract_n *)ud;
 
     tract->tract = tr;
+    sk_tract_use_velum(tr, 1);
 
-    rc = gf_node_cables_alloc(node, 2);
+    rc = gf_node_cables_alloc(node, 3);
     if (rc != GF_OK) return rc;
 
-    gf_node_set_block(node, 1);
+    gf_node_set_block(node, 2);
 
     gf_node_get_cable(node, 0, &tract->in);
-    gf_node_get_cable(node, 1, &tract->out);
+    gf_node_get_cable(node, 1, &tract->velum);
+    gf_node_get_cable(node, 2, &tract->out);
 
     gf_node_set_data(node, tract);
     gf_node_set_compute(node, compute);
@@ -193,23 +197,33 @@ int sk_node_tract(sk_core *core)
     gf_node *node;
     int rc;
     sk_param in;
+    sk_param velum;
     sk_tract *tr;
+    void *ud;
+
+    /* tr = sk_node_tractnew(core); */
+
+    rc = sk_param_get(core, &velum);
+    SK_ERROR_CHECK(rc);
 
     rc = sk_param_get(core, &in);
     SK_ERROR_CHECK(rc);
+
+    rc = sk_core_generic_pop(core, &ud);
+    SK_ERROR_CHECK(rc);
+    tr = ud;
 
     patch = sk_core_patch(core);
 
     rc = gf_patch_new_node(patch, &node);
     SK_GF_ERROR_CHECK(rc);
 
-    tr = sk_node_tractnew(core);
-
     rc = gf_node_tract(node, tr);
     SK_GF_ERROR_CHECK(rc);
 
     sk_param_set(core, node, &in, 0);
-    sk_param_out(core, node, 1);
+    sk_param_set(core, node, &velum, 1);
+    sk_param_out(core, node, 2);
     return 0;
 }
 
@@ -240,4 +254,37 @@ sk_tract * sk_node_tractnew(sk_core *core)
     patch = sk_core_patch(core);
 
     return gf_node_tractnew(patch);
+}
+
+int sk_tract_shape(sk_core *core)
+{
+    sk_tract *tract;
+    sk_table *tab;
+    int rc;
+    SKFLT *A;
+    SKFLT *data;
+    void *ud;
+    int sz;
+    int i;
+
+    rc = sk_core_table_pop(core, &tab);
+    SK_ERROR_CHECK(rc);
+    ud = NULL;
+    rc = sk_core_generic_pop(core, &ud);
+    SK_ERROR_CHECK(rc);
+    tract = ud;
+
+    sk_tract_use_diameters(tract, 0);
+    A = sk_tract_areas(tract);
+    data = sk_table_data(tab);
+    sz = sk_table_size(tab);
+
+    if (sz < 0) sz = 0;
+    if (sz > 44) sz = 44;
+
+    for(i = 0; i < sz; i++) {
+        A[i] = data[i];
+    }
+
+    return 0;
 }

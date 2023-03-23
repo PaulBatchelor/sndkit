@@ -93,9 +93,29 @@ static lil_value_t tabdup(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t tabload(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    const char *filename;
+    int rc;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "tabload", argc, 1);
+
+    filename = lil_to_string(argv[0]);
+
+    rc = sk_core_tabload(core, filename);
+
+    SKLIL_ERROR_CHECK(lil, rc, "Could not load up table.");
+
+    return NULL;
+}
+
 void sklil_load_tab(lil_t lil)
 {
     lil_register(lil, "tabnew", tabnew);
     lil_register(lil, "tabdump", tabdump);
     lil_register(lil, "tabdup", tabdup);
+    lil_register(lil, "tabload", tabload);
 }
