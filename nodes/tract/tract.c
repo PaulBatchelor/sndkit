@@ -256,6 +256,25 @@ sk_tract * sk_node_tractnew(sk_core *core)
     return gf_node_tractnew(patch);
 }
 
+static void shaper(sk_tract *tract, SKFLT *A, void *ud)
+{
+    sk_table *tab;
+    SKFLT *data;
+    int sz;
+    int i;
+
+    tab = ud;
+    data = sk_table_data(tab);
+    sz = sk_table_size(tab);
+
+    if (sz < 0) sz = 0;
+    if (sz > 44) sz = 44;
+
+    for(i = 0; i < sz; i++) {
+        A[i] = data[i];
+    }
+}
+
 int sk_tract_shape(sk_core *core)
 {
     sk_tract *tract;
@@ -285,6 +304,8 @@ int sk_tract_shape(sk_core *core)
     for(i = 0; i < sz; i++) {
         A[i] = data[i];
     }
+
+    sk_tract_shaper(tract, shaper, tab);
 
     return 0;
 }
