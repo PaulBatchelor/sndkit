@@ -296,6 +296,7 @@ void sk_stacklet_init(sk_stacklet *s)
 #+NAME: funcdefs
 #+BEGIN_SRC c
 SKFLT sk_stacklet_constant(sk_stacklet *s);
+void * sk_stacklet_userdata(sk_stacklet *s);
 #+END_SRC
 
 #+NAME: funcs
@@ -303,6 +304,14 @@ SKFLT sk_stacklet_constant(sk_stacklet *s);
 SKFLT sk_stacklet_constant(sk_stacklet *s)
 {
     return s->f;
+}
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void * sk_stacklet_userdata(sk_stacklet *s)
+{
+    return s->ptr;
 }
 #+END_SRC
 
