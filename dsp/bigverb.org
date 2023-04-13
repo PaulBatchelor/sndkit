@@ -300,7 +300,6 @@ void sk_bigverb_tick(sk_bigverb *bv,
                      SKFLT inL, SKFLT inR,
                      SKFLT *outL, SKFLT *outR)
 {
-    /* TODO: implement */
     SKFLT lsum, rsum;
 
     lsum = 0;
