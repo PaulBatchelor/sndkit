@@ -63,7 +63,7 @@ struct gf_patch {
     void (*print)(gf_patch *, const char *fmt, va_list);
 };
 
-size_t gf_node_size()
+size_t gf_node_size(void)
 {
     return sizeof(gf_node);
 }

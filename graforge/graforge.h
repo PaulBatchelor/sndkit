@@ -64,7 +64,7 @@ struct gf_cable {
     gf_buffer*buf;
 };
 
-size_t gf_node_size();
+size_t gf_node_size(void);
 void gf_node_init(gf_node*node,int blksize);
 int gf_node_get_id(gf_node*node);
 
