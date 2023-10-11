@@ -1,0 +1,5 @@
+metrosync [param 4] [metro 1.5]
+env zz 0.001 0.001 0.01
+sine 1000 0.8
+mul zz zz
+verify abcda2fe1fb15f56b1eb497e32cf5d7b

@@ -121,6 +121,29 @@ void sk_metro_freq(sk_metro *m, SKFLT freq)
     m->freq = freq;
 }
 #+END_SRC
+* Reset
+The metro object can be reset using =sk_metro_reset=.
+
+When this is called, it will cause the the next call
+to =sk_metro_tick= to produce a tick. The previously
+set frequency value will be untouched.
+
+To achieve a reset, the =init= flag is set, and
+internal phase value =phs= reset to zero.
+
+#+NAME: funcdefs
+#+BEGIN_SRC c
+void sk_metro_reset(sk_metro *m);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+void sk_metro_reset(sk_metro *m)
+{
+    m->init = 1;
+    m->phs = 0;
+}
+#+END_SRC
 * Compute
 Compute a sample of audio with =sk_metro_tick=.
 

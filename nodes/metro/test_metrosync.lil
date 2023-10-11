@@ -1,0 +1,6 @@
+metrosync [param 4] [metro 1.5]
+env zz 0.001 0.001 0.01
+sine 1000 0.8
+mul zz zz
+wavout zz "test.wav"
+computes 10

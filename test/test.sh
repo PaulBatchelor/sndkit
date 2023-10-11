@@ -74,3 +74,4 @@ check butbp
 check gtick
 check euclid
 check tractxyv
+check metrosync
