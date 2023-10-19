@@ -33,6 +33,8 @@ essentially just "tables" in the sndkit world.
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdint.h>
 #include "gen.h"
 
 #ifndef M_PI
@@ -224,5 +226,73 @@ void sk_gen_sinesum(SKFLT *tab,
     }
 
     free(args);
+}
+#+END_SRC
+* Line Generator
+#+NAME: funcdefs
+#+BEGIN_SRC c
+int sk_gen_line(SKFLT *tab, int sz, const char *argstring);
+#+END_SRC
+
+#+NAME: funcs
+#+BEGIN_SRC c
+int sk_gen_line(SKFLT *tab, int sz, const char *argstring)
+{
+    uint16_t i, n, seglen;
+    SKFLT incr, amp = 0;
+    SKFLT x1, x2, y1, y2;
+    SKFLT *args;
+    int argsz;
+
+    args = malloc(sizeof(SKFLT));
+    args[0] = 0;
+    argsz = 1;
+
+    sk_gen_vals(&args, &argsz, argstring);
+
+    if ((argsz % 2) == 1 || argsz == 1) {
+        fprintf(stderr, "Error: not enough arguments for gen_line.\n");
+        free(args);
+        return 1;
+    } else if (argsz == 2) {
+        for (i = 0; i < sz; i++) {
+            tab[i] = args[1];
+        }
+        free(args);
+        return 0;
+    }
+
+    x1 = args[0];
+    y1 = args[1];
+    n = 0;
+    for (i = 2; i < argsz; i += 2) {
+        x2 = args[i];
+        y2 = args[i + 1];
+
+        if (x2 < x1) {
+            fprintf(stderr, "Error: x coordiates must be sequential!\n");
+            break;
+        }
+
+        seglen = (x2 - x1);
+        incr = (SKFLT)(y2 - y1) / (seglen - 1);
+        amp = y1;
+
+        while (seglen != 0) {
+            if (n < sz) {
+                tab[n] = amp;
+                amp += incr;
+                seglen--;
+                n++;
+            } else {
+                break;
+            }
+        }
+        y1 = y2;
+        x1 = x2;
+    }
+
+    free(args);
+    return 0;
 }
 #+END_SRC

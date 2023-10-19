@@ -12,6 +12,7 @@ int sk_tab_vals(sk_core *core, const char *argstr);
 int sk_tab_sinesum(sk_core *core,
                    const char *argstr,
                    int normalize);
+int sk_tab_line(sk_core *core, const char *argstr);
 
 static lil_value_t gensine(lil_t lil, size_t argc, lil_value_t *argv)
 {
@@ -90,10 +91,30 @@ static lil_value_t genvals(lil_t lil, size_t argc, lil_value_t *argv)
     return NULL;
 }
 
+static lil_value_t genline(lil_t lil, size_t argc, lil_value_t *argv)
+{
+    sk_core *core;
+    int rc;
+    const char *str;
+
+    core = lil_get_data(lil);
+
+    SKLIL_ARITY_CHECK(lil, "genline", argc, 2);
+
+    str = lil_to_string(argv[1]);
+
+    rc = sk_tab_line(core, str);
+
+    SKLIL_ERROR_CHECK(lil, rc, "genline didn't work out.");
+
+    return NULL;
+}
+
 void sklil_load_gen(lil_t lil)
 {
     lil_register(lil, "gensine", gensine);
     lil_register(lil, "gensaw", gensaw);
     lil_register(lil, "gensinesum", gensinesum);
     lil_register(lil, "genvals", genvals);
+    lil_register(lil, "genline", genline);
 }
