@@ -14,6 +14,8 @@ CFLAGS += -Igraforge -I. -Inodes
 CFLAGS += -Wall
 CFLAGS += -O3
 CFLAGS += -g
+# needed to make sndkit tests pass with clang
+# CFLAGS += -ffp-contract=off
 
 LDFLAGS += -lm
 
