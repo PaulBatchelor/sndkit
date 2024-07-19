@@ -4,7 +4,7 @@ This algorithm implements a =rephasor=, an operation that
 dynamically resynthesizes an input =phasor= signal
 (such as @!(ref "phasor")!@) with a scaling value that
 allows the rate of the phasor to be changed proportionally
-to the input signal. This phasor also apply automatic
+to the input signal. This phasor also applies automatic
 correction to prevent clock drift accumulation.
 
 While phasors are typical signals used for table-lookup
@@ -56,7 +56,7 @@ For this reason, this phasor can be referred to as
 a =truncated phasor=.
 
 The truncation method can be defined using the following
-C-style teritiary notation:
+C-style ternary conditional notation:
 
 @!(fig "rephasor_rdef" ``
 R(x) = (x > 1) \; ? \; 0 : x
